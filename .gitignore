@@ -384,3 +384,10 @@ temp_*.wav
 
 # Ignore legacy codebase
 old_version_codes/
+
+# Mac OS System Files
+.DS_Store
+**/.DS_Store
+
+# IDE & Editor Settings
+.vscode/
