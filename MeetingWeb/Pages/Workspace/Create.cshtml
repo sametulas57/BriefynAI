@@ -1,0 +1,45 @@
+﻿@page
+@model MeetingWeb.Pages.Workspace.CreateModel
+@{
+    ViewData["Title"] = "Yeni Çalışma Alanı";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden mt-4">
+                
+                <div class="bg-primary bg-gradient text-white py-4 px-4 position-relative overflow-hidden text-center">
+                    <h3 class="mb-0 fw-bold">Yeni Çalışma Alanı Oluştur</h3>
+                    <p class="mb-0 mt-1 opacity-75 fs-6">Ekibini Briefyn AI ile güçlendir</p>
+                </div>
+
+                <div class="card-body p-5 bg-white">
+                    <form method="post">
+                        <div class="mb-5">
+                            <label class="form-label fw-bold text-dark mb-2">
+                                <i class="bi bi-briefcase text-primary me-1"></i> Şirket veya Ekip Adı
+                            </label>
+                            <input asp-for="WorkspaceName" class="form-control form-control-lg border-secondary border-opacity-25 bg-light focus-ring-primary px-4 py-3 rounded-3" placeholder="Örn: Briefyn AI Ar-Ge Ekibi" required autocomplete="off" />
+                            <div class="form-text text-muted mt-2">
+                                <i class="bi bi-info-circle me-1"></i> Bu adı daha sonra değiştiremezsiniz, ancak çalışma alanını dilediğiniz zaman silebilirsiniz.
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex flex-column-reverse flex-sm-row justify-content-between align-items-center gap-3 mt-4">
+                            <a asp-page="/Index" class="btn btn-light rounded-pill px-4 py-2 fw-bold w-100 w-sm-auto text-muted hover-bg-secondary transition-all">
+                                Vazgeç
+                            </a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 py-2 fw-bold w-100 w-sm-auto shadow-sm hover-scale transition-all d-flex align-items-center justify-content-center">
+                                <i class="bi bi-plus-lg me-2"></i> Oluştur ve Geçiş Yap
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+            
+        </div>
+    </div>
+</div>

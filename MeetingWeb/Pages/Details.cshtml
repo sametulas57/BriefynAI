@@ -1,0 +1,628 @@
+﻿@page
+@model MeetingWeb.Pages.DetailsModel
+@inject Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> UserManager
+@{
+    ViewData["Title"] = "Toplantı Detayı";
+    var currentUserId = UserManager.GetUserId(User);
+    var newCommentId = TempData["NewCommentId"] as int?;
+}
+
+<style>
+    /* Modern SaaS UI: Soft Glassmorphism and Micro-interactions */
+    .soft-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        border-radius: 1.25rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .soft-card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+    }
+
+    .bg-soft-primary { background-color: rgba(13, 110, 253, 0.06) !important; color: #0d6efd; }
+    .bg-soft-success { background-color: rgba(25, 135, 84, 0.06) !important; color: #198754; }
+    .bg-soft-danger { background-color: rgba(220, 53, 69, 0.06) !important; color: #dc3545; }
+    .bg-soft-warning { background-color: rgba(255, 193, 7, 0.10) !important; color: #856404; }
+    .bg-soft-light { background-color: #f8f9fa !important; }
+
+    .icon-container {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .btn-soft {
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        padding: 0.5rem 1.2rem;
+        border-radius: 2rem;
+        transition: all 0.2s ease;
+    }
+
+    /* Attention-grabbing animation for newly injected comments */
+    @@keyframes highlightFade {
+        0% { background-color: rgba(13, 110, 253, 0.10); box-shadow: 0 0 15px rgba(13, 110, 253, 0.2); border-color: rgba(13, 110, 253, 0.3); }
+        100% { background-color: #ffffff; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02); border-color: rgba(0, 0, 0, 0.04); }
+    }
+
+    .highlight-comment {
+        animation: highlightFade 2s ease-out forwards;
+    }
+    
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Custom Checkbox override */
+    .form-check-input:checked {
+        background-color: #198754;
+        border-color: #198754;
+    }
+</style>
+
+@Html.AntiForgeryToken()
+
+<div class="container mt-4 mb-5" style="max-width: 1100px;">
+    
+    @if (TempData["StatusMessage"] != null)
+    {
+        <div class="alert bg-soft-success border-0 rounded-4 d-flex align-items-center p-3 shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill fs-5 me-3"></i>
+            <div class="fw-medium">@TempData["StatusMessage"]</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert bg-soft-danger border-0 rounded-4 d-flex align-items-center p-3 shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 me-3"></i>
+            <div class="fw-medium">@TempData["ErrorMessage"]</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="/History" class="text-decoration-none text-muted fw-medium"><i class="bi bi-arrow-left me-1"></i> Arşive Dön</a></li>
+            <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">
+                @if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Failed && Model.Meeting.ToplantiKonusu == "Analiz Ediliyor (Kuyrukta)...")
+                {
+                    <span class="text-danger"><i class="bi bi-x-circle me-1"></i> İşlem Başarısız</span>
+                }
+                else
+                {
+                    @Model.Meeting.ToplantiKonusu
+                }
+            </li>
+        </ol>
+    </nav>
+
+    @* --- STATE MACHINE: DYNAMIC UI RENDERING BASED ON MEETING STATUS --- *@
+
+    @if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Processing)
+    {
+        <div class="soft-card mb-5">
+            <div class="card-body p-5">
+                <div class="row align-items-center mb-5">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <div class="spinner-grow text-primary spinner-grow-sm" role="status"></div>
+                            <h3 class="fw-bold text-dark mb-0" style="letter-spacing: -0.5px;">Yapay Zeka Devrede</h3>
+                        </div>
+                        <p class="text-muted fs-6 mb-0">
+                            <strong><i class="bi bi-file-earmark-music me-1"></i> @Model.Meeting.ToplantiKonusu</strong> adlı dosyanız 
+                            şu an metne çevriliyor ve özetleniyor.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-4 mt-md-0 d-flex justify-content-md-end align-items-center">
+                        <span class="badge bg-soft-light text-muted px-3 py-2 rounded-pill border fw-normal" style="font-size: 0.85rem;">
+                            <i class="bi bi-info-circle text-primary me-1"></i> İşlem süresi kaydın uzunluğuna bağlıdır
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row g-4 opacity-50">
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 rounded-4 bg-soft-light p-4 placeholder-glow">
+                            <h5 class="text-primary pb-3 fw-bold placeholder col-8 rounded mb-3"></h5>
+                            <span class="placeholder col-10 mb-2 rounded bg-secondary"></span>
+                            <span class="placeholder col-8 mb-2 rounded bg-secondary"></span>
+                            <span class="placeholder col-11 mb-2 rounded bg-secondary"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 rounded-4 bg-soft-light p-4 placeholder-glow">
+                            <h5 class="text-success pb-3 fw-bold placeholder col-7 rounded mb-3"></h5>
+                            <span class="placeholder col-9 mb-2 rounded bg-success opacity-75"></span>
+                            <span class="placeholder col-11 mb-2 rounded bg-success opacity-75"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 rounded-4 bg-soft-light p-4 placeholder-glow">
+                            <h5 class="text-danger pb-3 fw-bold placeholder col-9 rounded mb-3"></h5>
+                            <span class="placeholder col-12 mb-3 rounded bg-danger opacity-75" style="height: 20px;"></span>
+                            <span class="placeholder col-10 mb-3 rounded bg-danger opacity-75" style="height: 20px;"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-5">
+                    <small class="text-muted"><i class="bi bi-broadcast text-primary me-1"></i> Gerçek zamanlı dinleniyor, işlem bittiğinde sayfa otomatik güncellenecektir.</small>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Failed)
+    {
+        <div class="soft-card bg-soft-warning d-flex align-items-center p-4 mb-5" role="alert">
+            <div class="me-4 icon-container bg-white text-warning shadow-sm" style="width: 50px; height: 50px;">
+                <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h5 class="fw-bold mb-1" style="color: #856404;">Özetleme İşlemi Tamamlanamadı</h5>
+                <p class="mb-0 text-dark opacity-75 small">Yapay zeka sunucularında anlık bir sorun oluştu. Lütfen yeniden deneyiniz.</p>
+            </div>
+            <div class="ms-4 border-start border-warning border-opacity-50 ps-4 py-2">
+                <form method="post" asp-page-handler="RetryProcessing">
+                    <input type="hidden" name="id" value="@Model.Meeting.Id" />
+                    <button type="submit" class="btn btn-warning text-dark btn-soft shadow-sm border border-warning border-opacity-50">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Yeniden Dene
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="soft-card mb-4">
+            <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+                <div>
+                    <span class="badge bg-soft-light text-muted border rounded-pill px-3 py-2 mb-3 fw-medium">
+                        <i class="bi bi-calendar3 me-1"></i> @Model.Meeting.CreatedDate.ToString("dd MMMM yyyy, HH:mm")
+                    </span>
+                    <h2 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.5px;">@Model.Meeting.ToplantiKonusu</h2>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-primary btn-soft shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#shareModal">
+                        <i class="bi bi-send"></i> Ekiple Paylaş
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row g-4 mb-5">
+            
+            <div class="col-md-4">
+                <div class="soft-card soft-card-hover h-100 d-flex flex-column">
+                    <div class="card-body p-4 flex-grow-1">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <div class="icon-container bg-soft-primary">
+                                <i class="bi bi-chat-quote fs-5"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-dark">Görüşülen Konular</h5>
+                        </div>
+                        
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var konu in Model.Meeting.GorusulenKonular)
+                            {
+                                var parts = konu.Split("|~|");
+                                var text = parts[0];
+                                var addedBy = parts.Length > 1 ? parts[1] : null;
+
+                                <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
+                                    <i class="bi bi-dot text-primary fs-4 mt-n1 flex-shrink-0"></i>
+                                    <span class="text-dark flex-grow-1" style="line-height: 1.5; font-size: 0.95rem;">@text</span>
+                                    
+                                    @if (addedBy != null && Model.UserProfiles.TryGetValue(addedBy, out var profile))
+                                    {
+                                        <div class="flex-shrink-0" data-bs-toggle="tooltip" title="Ekleyen: @profile.FullName">
+                                            @if (!string.IsNullOrEmpty(profile.AvatarUrl))
+                                            {
+                                                <img src="@profile.AvatarUrl" class="rounded-circle shadow-sm" style="width: 22px; height: 22px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded-circle shadow-sm bg-soft-light text-secondary d-flex align-items-center justify-content-center" style="width: 22px; height: 22px; font-size: 0.6rem; font-weight: bold; border: 1px solid #dee2e6;">
+                                                    @profile.Initials
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-soft-light" style="border-radius: 0 0 1.25rem 1.25rem;">
+                        <form method="post" asp-page-handler="AddTopic" class="d-flex gap-2 align-items-center">
+                            <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                            <input type="text" name="topic" class="form-control border-0 shadow-none bg-white rounded-pill px-3 small" placeholder="Yeni konu ekle..." required style="height: 38px;" />
+                            <button type="submit" class="btn btn-white text-primary border shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-plus-lg"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="soft-card soft-card-hover h-100 d-flex flex-column">
+                    <div class="card-body p-4 flex-grow-1">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <div class="icon-container bg-soft-success">
+                                <i class="bi bi-check2-circle fs-5"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-dark">Alınan Kararlar</h5>
+                        </div>
+                        
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var karar in Model.Meeting.AlinanKararlar)
+                            {
+                                var parts = karar.Split("|~|");
+                                var text = parts[0];
+                                var addedBy = parts.Length > 1 ? parts[1] : null;
+
+                                <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
+                                    <i class="bi bi-dot text-success fs-4 mt-n1 flex-shrink-0"></i>
+                                    <span class="text-dark flex-grow-1" style="line-height: 1.5; font-size: 0.95rem;">@text</span>
+                                    
+                                    @if (addedBy != null && Model.UserProfiles.TryGetValue(addedBy, out var profile))
+                                    {
+                                        <div class="flex-shrink-0" data-bs-toggle="tooltip" title="Ekleyen: @profile.FullName">
+                                            @if (!string.IsNullOrEmpty(profile.AvatarUrl))
+                                            {
+                                                <img src="@profile.AvatarUrl" class="rounded-circle shadow-sm" style="width: 22px; height: 22px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded-circle shadow-sm bg-soft-light text-secondary d-flex align-items-center justify-content-center border" style="width: 22px; height: 22px; font-size: 0.6rem; font-weight: bold;">
+                                                    @profile.Initials
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-soft-light" style="border-radius: 0 0 1.25rem 1.25rem;">
+                        <form method="post" asp-page-handler="AddDecision" class="d-flex gap-2 align-items-center">
+                            <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                            <input type="text" name="decision" class="form-control border-0 shadow-none bg-white rounded-pill px-3 small" placeholder="Yeni karar ekle..." required style="height: 38px;" />
+                            <button type="submit" class="btn btn-white text-success border shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-plus-lg"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="soft-card soft-card-hover h-100 d-flex flex-column">
+                    <div class="card-body p-4 flex-grow-1">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <div class="icon-container bg-soft-danger">
+                                <i class="bi bi-lightning-charge fs-5"></i>
+                            </div>
+                            <h5 class="mb-0 fw-bold text-dark">Alınacak Aksiyonlar</h5>
+                        </div>
+                        
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var task in Model.Meeting.AksiyonMaddeleri)
+                            {
+                                var parts = task.Text.Split("|~|");
+                                var text = parts[0];
+                                var addedBy = parts.Length > 1 ? parts[1] : null;
+
+                                <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
+                                    <div class="form-check mt-1 flex-shrink-0">
+                                        <input class="form-check-input border-secondary shadow-sm" type="checkbox" id="task_@task.Id" @(task.IsDone ? "checked" : "") onchange="toggleTask(@task.Id)" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                                    </div>
+                                    <label class="form-check-label flex-grow-1 text-break @(task.IsDone ? "text-decoration-line-through text-muted" : "text-dark fw-medium")" for="task_@task.Id" style="cursor: pointer; line-height: 1.5; font-size: 0.95rem;">
+                                        @text
+                                    </label>
+                                    
+                                    @if (addedBy != null && Model.UserProfiles.TryGetValue(addedBy, out var profile))
+                                    {
+                                        <div class="flex-shrink-0 mt-1" data-bs-toggle="tooltip" title="Ekleyen: @profile.FullName">
+                                            @if (!string.IsNullOrEmpty(profile.AvatarUrl))
+                                            {
+                                                <img src="@profile.AvatarUrl" class="rounded-circle shadow-sm" style="width: 22px; height: 22px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="rounded-circle shadow-sm bg-soft-light text-secondary d-flex align-items-center justify-content-center border" style="width: 22px; height: 22px; font-size: 0.6rem; font-weight: bold;">
+                                                    @profile.Initials
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-soft-light" style="border-radius: 0 0 1.25rem 1.25rem;">
+                        <form method="post" asp-page-handler="AddActionItem" class="d-flex gap-2 align-items-center">
+                            <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                            <input type="text" name="actionText" class="form-control border-0 shadow-none bg-white rounded-pill px-3 small" placeholder="Yeni görev ekle..." required style="height: 38px;" />
+                            <button type="submit" class="btn btn-white text-danger border shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-plus-lg"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    }
+
+    <div class="d-flex align-items-center gap-3 mb-4 mt-5">
+        <div class="icon-container bg-primary text-white shadow-sm">
+            <i class="bi bi-chat-text fs-5"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-0" style="letter-spacing: -0.5px;">Ekip Tartışması (@Model.Comments.Count)</h4>
+    </div>
+
+    <div class="soft-card mb-5">
+        <div class="card-body p-4 p-md-5">
+            <form method="post" asp-page-handler="AddComment" class="mb-5 pb-4 border-bottom border-light">
+                <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                <div class="d-flex align-items-start gap-3">
+                    @{ var currentUserProfile = Model.UserProfiles.GetValueOrDefault(currentUserId!); }
+                    @if (currentUserProfile != null && !string.IsNullOrEmpty(currentUserProfile.AvatarUrl))
+                    {
+                        <img src="@currentUserProfile.AvatarUrl" class="rounded-circle shadow-sm border" style="width: 45px; height: 45px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="bg-soft-primary rounded-circle d-flex align-items-center justify-content-center shadow-sm border fw-bold" style="width: 45px; height: 45px;">
+                            @(currentUserProfile?.Initials ?? "👤")
+                        </div>
+                    }
+
+                    <div class="flex-grow-1">
+                        <textarea name="content" class="form-control bg-soft-light border-0 rounded-4 px-4 py-3" rows="3" placeholder="Fikirlerinizi, sorularınızı veya notlarınızı ekleyin..." required style="box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); resize: none;"></textarea>
+                        <div class="text-end mt-3">
+                            <button type="submit" class="btn btn-primary btn-soft shadow-sm"><i class="bi bi-send me-2"></i> Paylaş</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            @foreach (var comment in Model.Comments)
+            {
+                var profile = Model.UserProfiles.GetValueOrDefault(comment.UserId, new DetailsModel.UserProfileData { FullName = "İsimsiz", Initials = "?" });
+                var isNewComment = (newCommentId == comment.Id);
+                var commentClass = isNewComment ? "highlight-comment" : "soft-card";
+                
+                <div class="d-flex gap-3 mb-5" id="comment-@comment.Id">
+                    @if (!string.IsNullOrEmpty(profile.AvatarUrl))
+                    {
+                        <img src="@profile.AvatarUrl" class="rounded-circle shadow-sm border" style="width: 45px; height: 45px; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div class="bg-white text-dark rounded-circle d-flex align-items-center justify-content-center shadow-sm border fw-bold" style="width: 45px; height: 45px;">
+                            @profile.Initials
+                        </div>
+                    }
+                    
+                    <div class="flex-grow-1">
+                        <div class="p-4 @commentClass">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark">@profile.FullName</span>
+                                <div class="d-flex align-items-center gap-3">
+                                    <small class="text-muted fw-medium"><i class="bi bi-clock me-1"></i> @comment.CreatedAt.AddHours(3).ToString("HH:mm")</small>
+                                    @if (comment.UserId == currentUserId)
+                                    {
+                                        <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yorumu kalıcı olarak silmek istediğinize emin misiniz?');">
+                                            <input type="hidden" name="commentId" value="@comment.Id" />
+                                            <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                                            <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0 text-decoration-none" title="Sil"><i class="bi bi-trash3"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </div>
+                            <p class="mb-0 text-dark" style="line-height: 1.6;">@comment.Content</p>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-4 mt-3 ms-2">
+                            <button class="btn btn-sm text-muted p-0 border-0 btn-reaction hover-primary" data-id="@comment.Id" data-islike="true">
+                                <i class="bi bi-arrow-up-circle fs-5 me-1"></i> <span class="fw-medium" id="like-count-@comment.Id">@comment.LikeCount</span>
+                            </button>
+                            <button class="btn btn-sm text-muted p-0 border-0 btn-reaction hover-danger" data-id="@comment.Id" data-islike="false">
+                                <i class="bi bi-arrow-down-circle fs-5 me-1"></i> <span class="fw-medium" id="dislike-count-@comment.Id">@comment.DislikeCount</span>
+                            </button>
+                            <button class="btn btn-sm text-primary fw-bold p-0 border-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#replyBox-@comment.Id">
+                                Yanıtla
+                            </button>
+                        </div>
+
+                        <div class="collapse mt-3 ms-2" id="replyBox-@comment.Id">
+                            <form method="post" asp-page-handler="AddComment" class="d-flex gap-2 align-items-center">
+                                <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                                <input type="hidden" name="parentCommentId" value="@comment.Id" />
+                                <input type="text" name="content" class="form-control bg-soft-light border-0 rounded-pill px-4 py-2" placeholder="Yanıtınızı yazın..." required />
+                                <button type="submit" class="btn btn-primary btn-soft px-4 rounded-pill">Gönder</button>
+                            </form>
+                        </div>
+
+                        @if (comment.Replies != null && comment.Replies.Any())
+                        {
+                            <div class="mt-4 ps-4 border-start ms-3 border-light">
+                                @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
+                                {
+                                    var replyProfile = Model.UserProfiles.GetValueOrDefault(reply.UserId, new DetailsModel.UserProfileData { FullName = "İsimsiz", Initials = "?" });
+                                    var isNewReply = (newCommentId == reply.Id);
+                                    var replyClass = isNewReply ? "highlight-comment" : "bg-soft-light border-0";
+
+                                    <div class="mb-4" id="comment-@reply.Id">
+                                        <div class="d-flex gap-3">
+                                            @if (!string.IsNullOrEmpty(replyProfile.AvatarUrl))
+                                            {
+                                                <img src="@replyProfile.AvatarUrl" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;" />
+                                            }
+                                            else
+                                            {
+                                                <div class="bg-white text-secondary rounded-circle d-flex align-items-center justify-content-center shadow-sm border" style="width: 32px; height: 32px; font-size: 0.75rem; font-weight: bold;">
+                                                    @replyProfile.Initials
+                                                </div>
+                                            }
+                                            
+                                            <div class="flex-grow-1 p-3 rounded-4 @replyClass transition-all">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-bold text-dark" style="font-size: 0.9rem;">@replyProfile.FullName</span>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> @reply.CreatedAt.AddHours(3).ToString("HH:mm")</span>
+                                                        @if (reply.UserId == currentUserId)
+                                                        {
+                                                            <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yanıtı silmek istediğinize emin misiniz?');">
+                                                                <input type="hidden" name="commentId" value="@reply.Id" />
+                                                                <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                                                                <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0 text-decoration-none" style="font-size: 0.85rem;"><i class="bi bi-trash3"></i></button>
+                                                            </form>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">@reply.Content</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center gap-3 mt-2" style="margin-left: 3rem;">
+                                            <button class="btn btn-sm text-muted p-0 border-0 btn-reaction" data-id="@reply.Id" data-islike="true" style="font-size: 0.85rem;"><i class="bi bi-arrow-up-circle me-1"></i> <span id="like-count-@reply.Id">@reply.LikeCount</span></button>
+                                            <button class="btn btn-sm text-muted p-0 border-0 btn-reaction" data-id="@reply.Id" data-islike="false" style="font-size: 0.85rem;"><i class="bi bi-arrow-down-circle me-1"></i> <span id="dislike-count-@reply.Id">@reply.DislikeCount</span></button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pt-4 pb-2 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-container bg-soft-primary">
+                        <i class="bi bi-send-fill text-primary"></i>
+                    </div>
+                    <h5 class="modal-title fw-bold text-dark">Raporu Paylaş</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="Share">
+                <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                <div class="modal-body px-4 pb-4">
+                    <p class="text-muted mb-4 small">Bu toplantı özetini e-posta olarak göndermek istediğiniz çalışma arkadaşlarınızı seçin.</p>
+                    <div class="list-group rounded-4 border-0 gap-2">
+                        @if (Model.WorkspaceMembers != null && Model.WorkspaceMembers.Any())
+                        {
+                            foreach (var member in Model.WorkspaceMembers)
+                            {
+                                <label class="list-group-item d-flex gap-3 align-items-center cursor-pointer border rounded-4 py-3 bg-soft-light transition-all hover-bg-white shadow-sm-hover">
+                                    <input class="form-check-input flex-shrink-0 fs-5 mt-0 border-secondary" type="checkbox" name="selectedEmails" value="@member.User.Email" checked>
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-bold text-dark" style="font-size: 0.95rem;">@member.User.Email</span>
+                                        @if (member.Role == "Sahip")
+                                        {
+                                            <span class="badge bg-soft-primary border border-primary border-opacity-25 mt-1 fw-medium" style="width: fit-content;"><i class="bi bi-star-fill me-1 small"></i> Kurucu</span>
+                                        }
+                                    </div>
+                                </label>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light btn-soft text-muted" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary btn-soft shadow-sm px-4">Gönder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    
+    <script>
+        // Initialize Bootstrap UI Components
+        document.addEventListener("DOMContentLoaded", function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl) });
+        });
+
+        // Initialize SignalR Hub Connection specifically for pending background jobs
+        @if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Processing)
+        {
+            <text>
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/meetingHub")
+                .configureLogging(signalR.LogLevel.Information)
+                .build();
+
+            // Auto-refresh the DOM once the Hangfire server signals completion
+            connection.on("MeetingProcessed", function (processedMeetingId) {
+                if (processedMeetingId === @Model.Meeting.Id) {
+                    window.location.reload();
+                }
+            });
+
+            connection.start().catch(err => console.error(err.toString()));
+            </text>
+        }
+
+        // AJAX Fetch API: Asynchronously toggle task completion status
+        function toggleTask(id) {
+            var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            fetch(`?handler=ToggleTask&taskId=${id}`, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    var label = document.querySelector(`label[for='task_${id}']`);
+                    // Dynamically mutate DOM classes based on new state
+                    if(data.isDone) {
+                        label.classList.remove('text-dark', 'fw-medium');
+                        label.classList.add('text-decoration-line-through', 'text-muted');
+                    } else {
+                        label.classList.remove('text-decoration-line-through', 'text-muted');
+                        label.classList.add('text-dark', 'fw-medium');
+                    }
+                }
+            })
+            .catch(error => console.error(error));
+        }
+
+        // AJAX Fetch API: Asynchronously dispatch comment likes/dislikes
+        document.querySelectorAll('.btn-reaction').forEach(button => {
+            button.addEventListener('click', async function () {
+                const commentId = this.getAttribute('data-id');
+                const isLike = this.getAttribute('data-islike') === 'true';
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const formData = new FormData();
+                formData.append('commentId', commentId);
+                formData.append('isLike', isLike);
+                
+                try {
+                    const response = await fetch('?handler=ToggleReaction', {
+                        method: 'POST', body: formData, headers: { 'RequestVerificationToken': token }
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        // Immediately update the counters on the UI
+                        document.getElementById('like-count-' + commentId).innerText = result.likes;
+                        document.getElementById('dislike-count-' + commentId).innerText = result.dislikes;
+                    }
+                } catch (error) { console.error(error); }
+            });
+        });
+    </script>
+}

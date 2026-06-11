@@ -1,0 +1,88 @@
+﻿@page
+@model MeetingWeb.Pages.Auth.RegisterModel
+@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="bg-primary bg-gradient text-white text-center py-4">
+                    <h2 class="fw-bold mb-0">Hesap Oluştur</h2>
+                    <p class="mb-0 mt-1 opacity-75 fs-6">Briefyn AI ile toplantı asistanınızı kullanmaya hemen başlayın.</p>
+                </div>
+
+                <div class="card-body p-5 bg-white">
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm rounded-3 border-0 py-2 px-3 mb-4 d-none d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.FullName" class="form-control rounded-3 focus-ring-primary bg-light border-0" placeholder="Ad Soyad" autocomplete="name" />
+                            <label asp-for="Input.FullName" class="text-muted"><i class="bi bi-person me-1"></i> Ad Soyad</label>
+                            <span asp-validation-for="Input.FullName" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Email" class="form-control rounded-3 focus-ring-primary bg-light border-0" type="email" placeholder="ad@sirket.com" autocomplete="username" />
+                            <label asp-for="Input.Email" class="text-muted"><i class="bi bi-envelope me-1"></i> E-Posta Adresi</label>
+                            <span asp-validation-for="Input.Email" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.PhoneNumber" class="form-control rounded-3 focus-ring-primary bg-light border-0" type="tel" maxlength="10" placeholder="5551234567" autocomplete="tel" />
+                            <label asp-for="Input.PhoneNumber" class="text-muted"><i class="bi bi-telephone me-1"></i> Telefon (Başında 0 olmadan)</label>
+                            <span asp-validation-for="Input.PhoneNumber" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Password" class="form-control rounded-3 focus-ring-primary bg-light border-0" placeholder="Şifre" autocomplete="new-password" />
+                            <label asp-for="Input.Password" class="text-muted"><i class="bi bi-shield-lock me-1"></i> Şifre</label>
+                            <span asp-validation-for="Input.Password" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="form-floating mb-4">
+                            <input asp-for="Input.ConfirmPassword" class="form-control rounded-3 focus-ring-primary bg-light border-0" placeholder="Şifreyi Onayla" autocomplete="new-password" />
+                            <label asp-for="Input.ConfirmPassword" class="text-muted"><i class="bi bi-shield-check me-1"></i> Şifreyi Onayla</label>
+                            <span asp-validation-for="Input.ConfirmPassword" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="form-check mb-4 mt-2">
+                            <input class="form-check-input border-secondary shadow-sm" type="checkbox" id="kvkkCheck" required style="cursor: pointer;">
+                            <label class="form-check-label text-muted ms-1" for="kvkkCheck" style="font-size: 0.9rem; cursor: pointer;">
+                                <a href="/Privacy" target="_blank" class="text-primary text-decoration-none fw-bold hover-underline">KVKK Aydınlatma Metni</a>'ni okudum ve kabul ediyorum.
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill shadow-sm fw-bold hover-scale transition-all">
+                            Ücretsiz Kayıt Ol
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-4 pt-3 border-top border-light">
+                        <span class="text-muted">Zaten hesabınız var mı?</span>
+                        <a asp-page="/Auth/Login" class="text-primary fw-bold text-decoration-none ms-1 hover-primary transition-all">Giriş Yap</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    
+    <script>
+        // Unhide validation summary if server-side errors exist
+        document.addEventListener("DOMContentLoaded", function () {
+            var validationSummary = document.querySelector(".validation-summary-errors");
+            if (validationSummary) {
+                validationSummary.classList.remove("d-none");
+            }
+        });
+    </script>
+}

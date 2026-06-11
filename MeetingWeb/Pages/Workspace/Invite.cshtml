@@ -1,0 +1,93 @@
+﻿@page
+@model MeetingWeb.Pages.Workspace.InviteModel
+@{
+    ViewData["Title"] = "Ekibe Davet Et";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger shadow-sm rounded-3 mb-4 border-0 d-flex align-items-center">
+                    <i class="bi bi-shield-x fs-4 me-3 text-danger"></i>
+                    <span class="fw-bold">@TempData["ErrorMessage"]</span>
+                </div>
+            }
+
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-primary bg-gradient text-white text-center py-5 border-0">
+                    <h3 class="mb-0 fw-bold">@Model.WorkspaceName</h3>
+                    <p class="mb-0 mt-2 opacity-75 fs-6 tracking-wide text-uppercase">Ekibini Büyüt</p>
+                </div>
+                
+                <div class="card-body text-center p-5 bg-white">
+                    <p class="text-muted mb-4 fs-5" style="line-height: 1.7;">
+                        Çalışma arkadaşlarını <b>Briefyn AI</b> sistemine dahil etmek için <strong class="text-dark">7 gün geçerli</strong> ve tek kullanımlık güvenli bir link oluştur.
+                    </p>
+
+                    <form method="post">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm px-5 py-3 rounded-pill w-100 hover-scale transition-all d-flex justify-content-center align-items-center">
+                            <i class="bi bi-link-45deg fs-4 me-2"></i> Yeni Davet Linki Üret
+                        </button>
+                    </form>
+
+                    @if (!string.IsNullOrEmpty(Model.GeneratedLink))
+                    {
+                        <div class="mt-5 p-4 bg-light border border-success border-opacity-50 rounded-4 shadow-sm">
+                            
+                            <div class="input-group mt-3 shadow-sm rounded-pill overflow-hidden border bg-white p-1">
+                                <input type="text" class="form-control border-0 text-muted ps-4 bg-transparent focus-ring-none" id="inviteLinkInput" value="@Model.GeneratedLink" readonly>
+                                <button class="btn btn-success fw-bold px-4 rounded-pill transition-all" type="button" id="copyBtn" onclick="copyLink()">
+                                    <i class="bi bi-clipboard me-1"></i> Kopyala
+                                </button>
+                            </div>
+                            <div class="text-start mt-4 ps-2 border-start border-3 border-success">
+                                <small class="text-muted d-block ms-2">
+                                    <i class="bi bi-shield-lock-fill text-success me-1"></i> <span class="fw-bold text-dark">Uçtan Uca Şifreli:</span> Bu davetiye sadece 1 kez kullanılabilir.
+                                </small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a asp-page="/Workspace/Members" class="text-muted text-decoration-none small hover-primary transition-all fw-medium">
+                    <i class="bi bi-arrow-left me-1"></i> Ekip Yönetimine Dön
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Interacts with the browser's Clipboard API to copy the token URL securely
+        function copyLink() {
+            var copyText = document.getElementById("inviteLinkInput");
+            var copyBtn = document.getElementById("copyBtn");
+
+            // Highlight and copy text payload
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value).then(() => {
+                
+                // UX: Provide immediate visual feedback for the copy action
+                var originalHTML = copyBtn.innerHTML;
+                var originalClass = copyBtn.className;
+
+                copyBtn.innerHTML = "<i class='bi bi-check2-all me-1'></i> Kopyalandı!";
+                copyBtn.className = "btn btn-dark fw-bold px-4 rounded-pill transition-all";
+
+                // UX: Revert button state after 3 seconds
+                setTimeout(function() {
+                    copyBtn.innerHTML = originalHTML;
+                    copyBtn.className = originalClass;
+                }, 3000);
+            });
+        }
+    </script>
+}

@@ -1,0 +1,286 @@
+﻿@page
+@model MeetingWeb.Pages.Auth.ProfileModel
+@{
+    ViewData["Title"] = "Profilimi Yönet";
+}
+
+<!-- Cropper.js CSS Library -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<style>
+    /* CSS trick to render the crop box as a circle */
+    .cropper-view-box, .cropper-face {
+        border-radius: 50%;
+    }
+</style>
+
+@Html.AntiForgeryToken()
+
+<div class="container mt-5 mb-5">
+    
+    <!-- Status Notifications -->
+    @if (TempData["StatusMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 rounded-3 d-flex align-items-center" role="alert">
+            <i class="bi bi-check-circle-fill fs-5 me-3 text-success"></i>
+            <div>@TempData["StatusMessage"]</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 rounded-3 d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 me-3 text-danger"></i>
+            <div>@TempData["ErrorMessage"]</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <h2 class="mb-4 text-dark fw-bold"><i class="bi bi-person-gear text-primary me-2"></i> Profilimi Yönet</h2>
+
+    <div class="row g-4">
+        <!-- LEFT PANEL: Avatar Management -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 rounded-4 text-center h-100">
+                <div class="card-body py-5">
+                    
+                    <div class="position-relative d-inline-block mb-4">
+                        @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
+                        {
+                            <img src="@Model.ProfilePictureUrl" class="rounded-circle shadow" style="width: 160px; height: 160px; object-fit: cover; border: 5px solid white;" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle shadow bg-primary bg-gradient text-white d-flex align-items-center justify-content-center" style="width: 160px; height: 160px; font-size: 3.5rem; font-weight: bold; margin: 0 auto; border: 5px solid white;">
+                                @Model.Initials
+                            </div>
+                        }
+                    </div>
+                    
+                    <h4 class="fw-bold text-dark mb-1">@Model.ProfileInput.FullName</h4>
+                    <p class="text-muted mb-4"><i class="bi bi-envelope me-1"></i> @Model.Username</p>
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <label class="btn btn-primary fw-bold rounded-pill px-4 m-0 shadow-sm transition-all hover-scale" style="cursor: pointer;">
+                            <i class="bi bi-camera-fill me-1"></i> Değiştir
+                            <input type="file" id="avatarInput" class="d-none" accept="image/png, image/jpeg, image/jpg" />
+                        </label>
+
+                        @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
+                        {
+                            <form method="post" asp-page-handler="RemoveAvatar" class="m-0" onsubmit="return confirm('Fotoğrafınızı kaldırmak istediğinize emin misiniz?');">
+                                <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill px-4 shadow-sm transition-all">Sil</button>
+                            </form>
+                        }
+                    </div>
+                    <small class="d-block text-muted mt-3"><i class="bi bi-info-circle me-1"></i> Maks. 5MB, sadece JPG veya PNG</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Forms -->
+        <div class="col-lg-8">
+            
+            <!-- Personal Information Form -->
+            <div class="card shadow-sm border-0 rounded-4 mb-4 overflow-hidden">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold text-primary"><i class="bi bi-person-lines-fill me-2"></i>Kişisel Bilgiler</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" asp-page-handler="UpdateProfile">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label asp-for="ProfileInput.FullName" class="form-label fw-bold text-muted small"></label>
+                                <input asp-for="ProfileInput.FullName" class="form-control form-control-lg bg-light border-0 focus-ring-primary rounded-3" placeholder="Örn: Ali Yılmaz" />
+                                <span asp-validation-for="ProfileInput.FullName" class="text-danger small fw-bold mt-1 d-block"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ProfileInput.PhoneNumber" class="form-label fw-bold text-muted small"></label>
+                                <input asp-for="ProfileInput.PhoneNumber" class="form-control form-control-lg bg-light border-0 focus-ring-primary rounded-3" placeholder="5551234567" />
+                                <span asp-validation-for="ProfileInput.PhoneNumber" class="text-danger small fw-bold mt-1 d-block"></span>
+                            </div>
+                        </div>
+                        <div class="text-end mt-4 pt-2 border-top border-light">
+                            <button type="submit" class="btn btn-success fw-bold px-5 rounded-pill shadow-sm transition-all hover-scale">
+                                <i class="bi bi-check-lg me-1"></i> Bilgileri Kaydet
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Change Password Form -->
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold text-danger"><i class="bi bi-shield-lock-fill me-2"></i>Şifre Değiştir</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" asp-page-handler="ChangePassword">
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label asp-for="PasswordInput.OldPassword" class="form-label fw-bold text-muted small">Mevcut Şifre</label>
+                                <input asp-for="PasswordInput.OldPassword" class="form-control bg-light border-0 focus-ring-danger rounded-3" />
+                                <span asp-validation-for="PasswordInput.OldPassword" class="text-danger small fw-bold mt-1 d-block"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="PasswordInput.NewPassword" class="form-label fw-bold text-muted small">Yeni Şifre</label>
+                                <input asp-for="PasswordInput.NewPassword" class="form-control bg-light border-0 focus-ring-danger rounded-3" />
+                                <span asp-validation-for="PasswordInput.NewPassword" class="text-danger small fw-bold mt-1 d-block"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="PasswordInput.ConfirmPassword" class="form-label fw-bold text-muted small">Yeni Şifre (Tekrar)</label>
+                                <input asp-for="PasswordInput.ConfirmPassword" class="form-control bg-light border-0 focus-ring-danger rounded-3" />
+                                <span asp-validation-for="PasswordInput.ConfirmPassword" class="text-danger small fw-bold mt-1 d-block"></span>
+                            </div>
+                        </div>
+                        <div class="text-end mt-4 pt-2 border-top border-light">
+                            <button type="submit" class="btn btn-danger fw-bold px-5 rounded-pill shadow-sm transition-all hover-scale">
+                                <i class="bi bi-key-fill me-1"></i> Şifreyi Güncelle
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- Cropper.js Modal -->
+<div class="modal fade" id="cropperModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-bottom-0 py-3">
+                <h5 class="modal-title fw-bold text-dark"><i class="bi bi-crop me-2"></i> Fotoğrafı Ayarla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body text-center p-0 bg-dark" style="max-height: 400px; width: 100%; overflow: hidden;">
+                <img id="imageToCrop" src="" style="max-width: 100%; display: block; margin: 0 auto;">
+            </div>
+            
+            <div class="modal-footer bg-white border-top py-3">
+                <button type="button" class="btn btn-light px-4 rounded-pill fw-bold text-muted" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm d-flex align-items-center transition-all" id="cropAndSaveBtn">
+                    <span class="spinner-border spinner-border-sm d-none me-2" id="cropSpinner" role="status"></span>
+                    <i class="bi bi-check-circle-fill me-2" id="cropIcon"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Client-Side Validation -->
+    <partial name="_ValidationScriptsPartial" />
+    
+    <!-- Cropper.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <script>
+        let cropper;
+        const avatarInput = document.getElementById('avatarInput');
+        const imageToCrop = document.getElementById('imageToCrop');
+        const cropperModalElement = document.getElementById('cropperModal');
+        const cropperModal = new bootstrap.Modal(cropperModalElement);
+        const cropAndSaveBtn = document.getElementById('cropAndSaveBtn');
+        const cropSpinner = document.getElementById('cropSpinner');
+        const cropIcon = document.getElementById('cropIcon');
+
+        // 1. Triggered when the user selects a file from their device
+        avatarInput.addEventListener('change', function (e) {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+        const file = files[0];
+                
+        // Read the file into memory and attach it to the modal's <img> tag
+        const reader = new FileReader();
+        reader.onload = function (event) {
+        imageToCrop.src = event.target.result;
+        cropperModal.show();
+        };
+        reader.readAsDataURL(file);
+        }
+        });
+
+        // 2. Initialize the Cropper engine when the modal is fully visible
+        cropperModalElement.addEventListener('shown.bs.modal', function () {
+        cropper = new Cropper(imageToCrop, {
+        aspectRatio: 1, // Enforce a 1:1 aspect ratio (square)
+        viewMode: 1,    // Restrict the crop box to not exceed the canvas size
+        dragMode: 'move',
+        autoCropArea: 0.9,
+        guides: false,
+        center: false,
+        highlight: false,
+        cropBoxMovable: false,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+        });
+        });
+
+        // 3. Destroy the Cropper instance on modal close to prevent memory leaks
+        cropperModalElement.addEventListener('hidden.bs.modal', function () {
+        if (cropper) {
+        cropper.destroy();
+        cropper = null;
+        }
+        avatarInput.value = ''; // Reset input to allow selecting the same file again if needed
+        });
+
+        // 4. Dispatch the cropped image to the backend via AJAX (Fetch API)
+        cropAndSaveBtn.addEventListener('click', async function () {
+        if (!cropper) return;
+
+        // Lock the button and display the loading spinner
+        cropSpinner.classList.remove('d-none');
+        cropIcon.classList.add('d-none');
+        cropAndSaveBtn.disabled = true;
+
+        // Extract the cropped area at a fixed 256x256 resolution
+        const canvas = cropper.getCroppedCanvas({
+        width: 256,
+        height: 256,
+        fillColor: '#fff', // Force a white background for transparent PNGs
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+        });
+
+        // Compress and convert the canvas payload to a Base64 JPEG string (90% quality)
+        const base64Image = canvas.toDataURL('image/jpeg', 0.9);
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        const formData = new FormData();
+        formData.append('base64Image', base64Image);
+
+        try {
+        // Execute a POST request to the OnPostUploadAvatarAsync handler
+        const response = await fetch('?handler=UploadAvatar', {
+        method: 'POST',
+        body: formData,
+        headers: { 'RequestVerificationToken': token }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+        // Reload the page to reflect the new avatar across the application (Claims refresh)
+        window.location.reload();
+        } else {
+        alert('Hata: ' + result.message);
+        resetBtn();
+        }
+        } catch (error) {
+        console.error('Upload failed:', error);
+        alert('Fotoğraf yüklenirken bir ağ hatası oluştu. Lütfen bağlantınızı kontrol edin.');
+        resetBtn();
+        }
+        });
+
+        // Helper function to restore the save button to its original interactive state
+        function resetBtn() {
+        cropSpinner.classList.add('d-none');
+        cropIcon.classList.remove('d-none');
+        cropAndSaveBtn.disabled = false;
+        }
+    </script>
+}

@@ -1,0 +1,158 @@
+﻿@page
+@model MeetingWeb.Pages.UploadModel
+@{
+    ViewData["Title"] = "Yeni Toplantı Yükle";
+}
+
+<style>
+    .soft-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        border-radius: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .upload-zone {
+        border: 2px dashed rgba(13, 110, 253, 0.3);
+        background-color: rgba(13, 110, 253, 0.02);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: rgba(13, 110, 253, 0.8);
+            background-color: rgba(13, 110, 253, 0.08);
+        }
+
+    .file-input-hidden {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 10;
+    }
+</style>
+
+<div class="container mt-5 mb-5">
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <div class="text-center mb-5 mt-4">
+                <div class="d-inline-block bg-primary bg-opacity-10 text-primary rounded-circle p-4 mb-3">
+                    <i class="bi bi-cloud-arrow-up-fill" style="font-size: 3rem;"></i>
+                </div>
+                <h2 class="fw-bold text-dark" style="letter-spacing: -0.5px;">Toplantı Ses Kaydı Yükle</h2>
+                <p class="text-muted fs-6">Analiz edilmesini istediğiniz ses kaydını güvenli bir şekilde sisteme yükleyin.</p>
+            </div>
+
+            <div class="card soft-card overflow-hidden">
+                <div class="card-body p-4 p-md-5">
+                    
+                    <form method="post" enctype="multipart/form-data">
+                        
+                        <div class="mb-5 position-relative">
+                            <label asp-for="UploadFile" class="form-label fw-bold text-primary small tracking-wide text-uppercase mb-3">Ses Dosyası Seçin</label>
+                            
+                            <!-- Drag-Drop Section -->
+                            <div class="upload-zone rounded-4 p-5 text-center" id="drop-zone">
+                                
+                                <i class="bi bi-file-earmark-music text-muted fs-1 d-block mb-3" id="upload-icon"></i>
+                                <span class="text-dark fw-bold fs-5 d-block mb-2" id="file-name-display">Dosyayı buraya sürükleyin veya tıklayın</span>
+                                <span class="text-muted small d-block">.m4a, .mp3 veya .wav formatında yükleyin</span>
+                                
+                                <input asp-for="UploadFile" id="UploadFile" type="file" class="file-input-hidden" accept=".m4a,.mp3,.wav" required />
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button id="uploadBtn" type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill shadow-sm transition-all hover-scale" onclick="showLoader()">
+                                <i class="bi bi-robot me-2" id="btnIcon"></i> <span id="btnText">Yükle ve Analizi Başlat</span>
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger mt-4 shadow-sm border-0 rounded-4 d-flex align-items-center p-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-danger"></i>
+                    <div class="fw-medium text-dark">
+                        @Model.ErrorMessage
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('UploadFile');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const uploadIcon = document.getElementById('upload-icon');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files && files.length > 0) {
+                fileInput.files = files;
+                updateUI();
+            }
+        });
+
+        fileInput.addEventListener('change', updateUI);
+
+        function updateUI() {
+            if (fileInput.files.length > 0) {
+                const fileName = fileInput.files[0].name;
+                
+                fileNameDisplay.innerText = fileName;
+                fileNameDisplay.classList.remove('text-dark');
+                fileNameDisplay.classList.add('text-success');
+                
+                uploadIcon.className = "bi bi-check-circle-fill text-success fs-1 d-block mb-3";
+            }
+        }
+
+        // UX: Show loading spinner to prevent multiple submissions during large file uploads
+        function showLoader() {
+            if(fileInput.files.length > 0) {
+                const btn = document.getElementById("uploadBtn");
+                const icon = document.getElementById("btnIcon");
+                const text = document.getElementById("btnText");
+                
+                btn.classList.add("disabled");
+                icon.className = "spinner-border spinner-border-sm me-2";
+                text.innerText = "Sunucuya Yükleniyor...";
+            }
+        }
+    </script>
+}

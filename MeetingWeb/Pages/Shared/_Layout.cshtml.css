@@ -1,0 +1,51 @@
+﻿/* Briefyn AI - Global CSS Variables & Overrides */
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}
+
+a {
+    color: #0d6efd;
+}
+
+/* Primary Button Corporate Overrides */
+.btn-primary {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0a58ca;
+}
+
+    .btn-primary:hover {
+        background-color: #0b5ed7;
+        border-color: #0a58ca;
+    }
+
+.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0a58ca;
+}
+
+.border-top {
+    border-top: 1px solid #dee2e6 !important;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+/* Soft Drop Shadow for SaaS Layouts */
+.box-shadow {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+button.accept-policy {
+    font-size: 1rem;
+    line-height: inherit;
+}
+
+/* Flexbox integrated footer (removed absolute positioning for stability) */
+.footer {
+    width: 100%;
+}

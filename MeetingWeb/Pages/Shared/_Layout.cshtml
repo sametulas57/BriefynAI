@@ -1,0 +1,229 @@
+﻿@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Identity
+@using MeetingWeb.Data
+@using Microsoft.EntityFrameworkCore
+@inject IHttpContextAccessor HttpContextAccessor
+@inject UserManager<IdentityUser> UserManager
+@inject ApplicationDbContext DbContext
+
+@{
+    // SECURITY & CONTEXT MANAGEMENT: Retrieve active tenant state from Session.
+    var activeWorkspaceId = HttpContextAccessor.HttpContext?.Session.GetInt32("ActiveWorkspaceId");
+    var userId = UserManager.GetUserId(User);
+    
+    string currentUserRole = "";
+    string activeWorkspaceName = "Çalışma Alanı";
+    
+    // Initialize collection to hold the user's authorized workspaces.
+    var userWorkspaces = new List<MeetingWeb.Models.WorkspaceUser>();
+
+    if (userId != null)
+    {
+        // 1. Eager load all workspaces where the current user holds membership.
+        userWorkspaces = DbContext.WorkspaceUsers
+            .Include(w => w.Workspace)
+            .Where(w => w.UserId == userId)
+            .ToList();
+
+        // 2. AUTO-FALLBACK: If session drops, re-initialize context to the first available workspace.
+        if (activeWorkspaceId == null && userWorkspaces.Any())
+        {
+            activeWorkspaceId = userWorkspaces.First().WorkspaceId;
+            HttpContextAccessor.HttpContext?.Session.SetInt32("ActiveWorkspaceId", activeWorkspaceId.Value);
+        }
+
+        // 3. Extract metadata for the active workspace to render in the navigation bar.
+        var userRecord = userWorkspaces.FirstOrDefault(w => w.WorkspaceId == activeWorkspaceId);
+            
+        if (userRecord != null)
+        {
+            currentUserRole = userRecord.Role;
+            activeWorkspaceName = userRecord.Workspace.Name;
+        }
+    }
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Briefyn AI</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/MeetingWeb.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+            /* Smooth drop-down animation for modern SaaS feel */
+            @@keyframes slideDownFade {
+                from {
+                    opacity: 0;
+                    transform: translateY(-15px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .dropdown-menu.show {
+                animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                display: block;
+            }
+
+            /* Multi-level nested dropdown styling */
+            .dropdown-submenu {
+                position: relative;
+            }
+        
+                .dropdown-submenu .dropdown-menu {
+                    top: 0;
+                    left: 100%;
+                    margin-top: -5px;
+                    margin-left: 0px;
+                    display: none;
+                    border-radius: 0.75rem;
+                }
+        
+                .dropdown-submenu:hover > .dropdown-menu {
+                    display: block;
+                    animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+
+            /* Glassmorphism sticky navbar */
+            .navbar-sticky {
+                position: sticky;
+                top: 0;
+                z-index: 1020;
+                backdrop-filter: blur(10px);
+                background-color: rgba(255, 255, 255, 0.95) !important;
+            }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-light border-bottom box-shadow navbar-sticky py-3">
+            <div class="container-fluid px-4 px-lg-5">
+                <a class="navbar-brand fw-bold text-primary d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
+                    <div class="bg-primary text-white rounded-3 p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bi bi-robot fs-5"></i>
+                    </div>
+                    Briefyn AI
+                </a>
+                
+                <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                
+                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between mt-3 mt-lg-0">
+                    <ul class="navbar-nav flex-grow-1 align-items-lg-center">
+                        <li class="nav-item mb-2 mb-lg-0">
+                            <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-area="" asp-page="/Index">Ana Sayfa</a>
+                        </li>
+                        
+                        @if (User.Identity!.IsAuthenticated)
+                        {
+                            <li class="nav-item mb-2 mb-lg-0 ms-lg-2">
+                                <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-page="/History">
+                                    <i class="bi bi-folder2-open text-primary me-1"></i> Geçmiş Özetler
+                                </a>
+                            </li>
+                            <li class="nav-item mb-3 mb-lg-0 ms-lg-3">
+                                <a class="btn btn-primary fw-bold shadow-sm rounded-pill px-4 transition-all hover-scale d-flex align-items-center justify-content-center" asp-area="" asp-page="/Upload">
+                                    <i class="bi bi-cloud-arrow-up-fill me-2"></i> Yeni Kayıt Yükle
+                                </a>
+                            </li>
+
+                            @if (activeWorkspaceId != null)
+                            {
+                                <li class="nav-item dropdown ms-lg-4 mt-2 mt-lg-0 border-lg-start ps-lg-3">
+                                    <a class="nav-link dropdown-toggle text-dark fw-bold border rounded-pill px-4 py-2 bg-white shadow-sm transition-all hover-primary" href="#" id="workspaceMenu" role="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-buildings-fill text-primary me-1"></i> @activeWorkspaceName
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 rounded-4 p-2" aria-labelledby="workspaceMenu" style="min-width: 250px;">
+                                        <li><h6 class="dropdown-header text-uppercase tracking-wide">Ekip Yönetimi</h6></li>
+                                        <li>
+                                            <a class="dropdown-item py-2 rounded-3 transition-all fw-medium" asp-page="/Workspace/Members">
+                                                <i class="bi bi-people text-secondary me-2"></i> Ekibi Görüntüle
+                                            </a>
+                                        </li>
+                                        
+                                        @if (currentUserRole == "Sahip")
+                                        {
+                                            <li>
+                                                <a class="dropdown-item py-2 rounded-3 transition-all text-success fw-bold bg-success bg-opacity-10 mt-1" asp-page="/Workspace/Invite">
+                                                    <i class="bi bi-link-45deg me-2 fs-5"></i> Davet Linki Üret
+                                                </a>
+                                            </li>
+                                        }
+
+                                        <li><hr class="dropdown-divider opacity-25 my-2"></li>
+                                        <li>
+                                            <a class="dropdown-item py-2 rounded-3 transition-all fw-medium" asp-page="/Workspace/Create">
+                                                <i class="bi bi-plus-circle text-primary me-2"></i> Yeni Alan Oluştur
+                                            </a>
+                                        </li>
+                                        
+                                        <li class="dropdown-submenu mt-1">
+                                            <a class="dropdown-item py-2 rounded-3 transition-all fw-medium d-flex justify-content-between align-items-center" href="#">
+                                                <span><i class="bi bi-arrow-left-right text-secondary me-2"></i> Şirket Değiştir</span>
+                                                <i class="bi bi-chevron-right small text-muted"></i>
+                                            </a>
+                                            <ul class="dropdown-menu shadow-lg border-0 mt-0 rounded-4 p-2" style="min-width: 220px;">
+                                                <li><h6 class="dropdown-header text-uppercase tracking-wide">Alanlarınız</h6></li>
+                                                @foreach (var ws in userWorkspaces)
+                                                {
+                                                    <li>
+                                                        <a class="dropdown-item py-2 rounded-3 mb-1 transition-all @(ws.WorkspaceId == activeWorkspaceId ? "fw-bold text-primary bg-primary bg-opacity-10" : "text-dark")"
+                                                               href="/Workspace/Switch?workspaceId=@ws.WorkspaceId&returnUrl=@Context.Request.Path">
+                                                            @if (ws.WorkspaceId == activeWorkspaceId)
+                                                            {
+                                                                <i class="bi bi-check2 text-primary me-2 fw-bold"></i>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="ms-4"></span>
+                                                            }
+                                                            @ws.Workspace.Name
+                                                        </a>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+                        }
+                    </ul>
+                    
+                    <hr class="d-lg-none opacity-25">
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+    </header>
+    
+    <div class="container flex-grow-1">
+        <main role="main" class="pb-5 pt-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted bg-white mt-auto py-4">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+            <span class="fw-medium text-dark">&copy; 2026 - Briefyn AI</span>
+            <div class="d-flex gap-4">
+                <a asp-area="" asp-page="/Privacy" class="text-muted text-decoration-none hover-primary transition-all">Gizlilik Politikası</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

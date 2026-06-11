@@ -1,0 +1,236 @@
+﻿@page
+@model MeetingWeb.Pages.HistoryModel
+@{
+    ViewData["Title"] = "Geçmiş Toplantılarım";
+}
+
+<style>
+    /* MODERN SAAS UI - SOFT DESIGN */
+    .soft-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        border-radius: 1.25rem;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .soft-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+    }
+
+    .bg-soft-primary { background-color: rgba(13, 110, 253, 0.04) !important; }
+    .bg-soft-danger { background-color: rgba(220, 53, 69, 0.04) !important; }
+    .bg-soft-light { background-color: #f8f9fa !important; }
+
+    .icon-container {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+
+    .btn-soft {
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        padding: 0.6rem 1.2rem;
+        border-radius: 2rem;
+    }
+</style>
+
+<div class="container mt-5 mb-5" style="max-width: 1100px;">
+    
+    @if (TempData["StatusMessage"] != null)
+    {
+        <div class="alert bg-soft-primary text-primary border-0 rounded-4 d-flex align-items-center mb-4 p-3 shadow-sm" role="alert">
+            <i class="bi bi-check-circle-fill fs-5 me-3"></i>
+            <div class="fw-medium">@TempData["StatusMessage"]</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert bg-soft-danger text-danger border-0 rounded-4 d-flex align-items-center mb-4 p-3 shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-5 me-3"></i>
+            <div class="fw-medium">@TempData["ErrorMessage"]</div>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="d-flex align-items-center mb-5 mt-3">
+        <div class="icon-container bg-primary bg-opacity-10 text-primary me-3">
+            <i class="bi bi-journal-text fs-4"></i>
+        </div>
+        <div>
+            <h2 class="mb-0 text-dark fw-bold" style="letter-spacing: -0.5px;">Toplantı Arşivi</h2>
+            <p class="text-muted mb-0 small">Geçmiş tüm analizlerinizi buradan yönetin.</p>
+        </div>
+    </div>
+
+    <div class="card soft-card mb-5 bg-white">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-medium mb-1 ms-1">Ne arıyorsunuz?</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-soft-light border-0 rounded-start-pill ps-4 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" asp-for="SearchString" class="form-control form-control-lg border-0 bg-soft-light rounded-end-pill fs-6" placeholder="Örn: Finans raporu...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-medium mb-1 ms-1">Başlangıç</label>
+                    <input type="date" asp-for="StartDate" class="form-control form-control-lg border-0 bg-soft-light rounded-pill fs-6 px-4">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-medium mb-1 ms-1">Bitiş</label>
+                    <input type="date" asp-for="EndDate" class="form-control form-control-lg border-0 bg-soft-light rounded-pill fs-6 px-4">
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-soft flex-grow-1 shadow-sm">
+                        Ara
+                    </button>
+                    <a asp-page="/History" class="btn btn-light btn-soft border-0 text-secondary" title="Sıfırla">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.MeetingSummaries == null || !Model.MeetingSummaries.Any())
+    {
+        <div class="text-center py-5">
+            <div class="icon-container bg-soft-light mx-auto mb-3" style="width: 80px; height: 80px;">
+                <i class="bi bi-inbox text-muted" style="font-size: 2rem;"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-1">Arşiviniz Boş</h4>
+            <p class="text-muted">Arama kriterlerinize uygun bir sonuç bulunamadı.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var item in Model.MeetingSummaries)
+            {
+                <div class="col-md-6 col-lg-4" id="meeting-card-@item.Id">
+                    
+                    @{
+                        var cardBgClass = "bg-white";
+                        var iconBgClass = "bg-soft-light text-secondary";
+                        var iconHtml = "<i class='bi bi-file-earmark-text'></i>";
+
+                        if (item.Status == MeetingWeb.Models.MeetingStatus.Processing) { 
+                            cardBgClass = "bg-soft-primary border-primary border-opacity-10"; 
+                            iconBgClass = "bg-white text-primary shadow-sm";
+                            iconHtml = "<div class='spinner-border spinner-border-sm text-primary' role='status'></div>";
+                        }
+                        else if (item.Status == MeetingWeb.Models.MeetingStatus.Failed) { 
+                            cardBgClass = "bg-soft-danger border-danger border-opacity-10"; 
+                            iconBgClass = "bg-white text-danger shadow-sm";
+                            iconHtml = "<i class='bi bi-exclamation-triangle'></i>";
+                        }
+                    }
+
+                    <div class="card h-100 soft-card @cardBgClass">
+                        <div class="card-body p-4">
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="icon-container @iconBgClass">
+                                    @Html.Raw(iconHtml)
+                                </div>
+                                <span class="badge bg-white text-secondary border fw-medium rounded-pill px-3 py-2 shadow-sm" style="font-size: 0.75rem;">
+                                    @item.CreatedDate.ToString("dd MMM yyyy")
+                                </span>
+                            </div>
+
+                            @if (item.Status == MeetingWeb.Models.MeetingStatus.Processing)
+                            {
+                                <h5 class="card-title text-primary fw-bold mb-1" style="letter-spacing: -0.3px;">Analiz Ediliyor</h5>
+                                <div class="text-muted small fst-italic text-truncate mb-3" title="@item.ToplantiKonusu">Dosya: @item.ToplantiKonusu</div>
+                                <p class="text-secondary small mb-0" style="line-height: 1.6;">Yapay zeka ses dosyasını metne çeviriyor. Bu işlem arka planda devam ediyor...</p>
+                            }
+                            else if (item.Status == MeetingWeb.Models.MeetingStatus.Failed)
+                            {
+                                <h5 class="card-title text-danger fw-bold mb-1" style="letter-spacing: -0.3px;">İşlem Başarısız</h5>
+                                <div class="text-muted small text-decoration-line-through text-truncate mb-3" title="@item.ToplantiKonusu">Dosya: @item.ToplantiKonusu</div>
+                                <p class="text-danger opacity-75 small mb-0" style="line-height: 1.6;">Sunucu kaynaklı bir hata oluştu. Yeniden denemek için detay sayfasına gidebilirsiniz.</p>
+                            }
+                            else
+                            {
+                                <h5 class="card-title text-dark fw-bold mb-3 text-truncate" title="@item.ToplantiKonusu" style="letter-spacing: -0.3px;">@item.ToplantiKonusu</h5>
+                                
+                                <div class="border-top pt-3 mt-auto">
+                                    <span class="text-muted" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Görüşülenler</span>
+                                    <p class="text-dark small mt-1 mb-0" style="line-height: 1.5; font-weight: 500;">
+                                        @(item.GorusulenKonular != null && item.GorusulenKonular.Count > 0
+                                            ? string.Join(", ", item.GorusulenKonular.Take(2)) + "..."
+                                            : "Henüz konu eklenmedi.")
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                        
+                        <div class="card-footer bg-transparent border-0 d-flex gap-2 p-4 pt-0">
+                            @if (item.Status == MeetingWeb.Models.MeetingStatus.Failed)
+                            {
+                                <a asp-page="/Details" asp-route-id="@item.Id" class="btn btn-warning text-dark btn-soft flex-grow-1 text-center py-2 shadow-sm">
+                                    Sorunu Çöz
+                                </a>
+                            }
+                            else if (item.Status == MeetingWeb.Models.MeetingStatus.Processing)
+                            {
+                                <a asp-page="/Details" asp-route-id="@item.Id" class="btn btn-light text-primary btn-soft flex-grow-1 text-center py-2 shadow-sm">
+                                    Detaya Bak
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-page="/Details" asp-route-id="@item.Id" class="btn btn-primary text-white btn-soft flex-grow-1 text-center py-2 shadow-sm">
+                                    Özeti İncele
+                                </a>
+                            }
+                            
+                            @if (Model.IsOwner)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@item.Id" class="m-0"
+                                      onsubmit="return confirm('Bu toplantıyı silmek istediğinize emin misiniz?');">
+                                    <button type="submit" class="btn btn-light btn-soft text-danger py-2 px-3 shadow-sm border-0" title="Sil">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/meetingHub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        // Listen for Hangfire completion events broadcasted by the server
+        connection.on("MeetingProcessed", function (processedMeetingId) {
+            const cardExists = document.getElementById("meeting-card-" + processedMeetingId);
+            if (cardExists) {
+                console.log("SignalR Context: A background job listed on this page has finished. Initiating auto-refresh.");
+                window.location.reload();
+            }
+        });
+
+        connection.start().then(function () {
+            console.log("SignalR Context: History tracking module active.");
+        }).catch(function (err) {
+            return console.error("SignalR Connection Failure:", err.toString());
+        });
+    </script>
+}

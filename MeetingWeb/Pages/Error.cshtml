@@ -1,0 +1,43 @@
+﻿@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Hata Oluştu";
+}
+
+<div class="container mt-5 mb-5 text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden mt-4">
+                <div class="card-body p-5">
+                    
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 5rem; filter: drop-shadow(0px 4px 6px rgba(220, 53, 69, 0.3));"></i>
+                    
+                    <h1 class="fw-bold text-dark mt-4">Eyvah, Bir Şeyler Ters Gitti!</h1>
+                    <p class="text-muted fs-5 mt-3 mb-4">
+                        İşleminiz gerçekleştirilirken beklenmedik bir sunucu hatasıyla karşılaştık.
+                        Bu durum için özür dileriz.
+                    </p>
+
+                    @if (Model.ShowRequestId)
+                    {
+                        <div class="alert alert-light mt-4 border rounded-3 text-start shadow-sm">
+                            <p class="mb-2 small text-muted fw-bold">
+                                <i class="bi bi-bug me-1"></i> Destek ekibi için hata kodu (Trace ID):
+                            </p>
+                            <code class="fs-6 text-danger bg-white p-2 rounded d-block border">@Model.RequestId</code>
+                        </div>
+                    }
+
+                    <div class="mt-5">
+                        <a asp-page="/Index" class="btn btn-primary btn-lg rounded-pill shadow-sm px-5 fw-bold transition-all hover-scale">
+                            <i class="bi bi-house-door me-2"></i> Ana Sayfaya Dön
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>

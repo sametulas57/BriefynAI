@@ -1,0 +1,76 @@
+﻿@page
+@model MeetingWeb.Pages.Auth.LoginModel
+@{
+    ViewData["Title"] = "Giriş Yap";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <!-- Header Section -->
+                <div class="bg-primary bg-gradient text-white text-center py-4">
+                    <h2 class="fw-bold mb-0">Hoş Geldiniz</h2>
+                    <p class="mb-0 mt-1 opacity-75 fs-6">Toplantı asistanınıza giriş yapın.</p>
+                </div>
+
+                <!-- Login Form -->
+                <div class="card-body p-5 bg-white">
+                    <form method="post">
+                        <!-- Validation Summary Alert -->
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm rounded-3 border-0 py-2 px-3 mb-4 d-none d-flex align-items-center">
+                            <i class="bi bi-shield-x me-2 fs-5"></i>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Email" class="form-control rounded-3 focus-ring-primary bg-light border-0" type="email" placeholder="ad@sirket.com" autocomplete="username" />
+                            <label asp-for="Input.Email" class="text-muted"><i class="bi bi-envelope me-1"></i> E-Posta Adresi</label>
+                            <span asp-validation-for="Input.Email" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Password" class="form-control rounded-3 focus-ring-primary bg-light border-0" placeholder="••••••••" autocomplete="current-password" />
+                            <label asp-for="Input.Password" class="text-muted"><i class="bi bi-shield-lock me-1"></i> Şifre</label>
+                            <span asp-validation-for="Input.Password" class="text-danger fw-bold small ms-1 mt-1 d-block"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-4 mt-2 px-1">
+                            <div class="form-check">
+                                <input asp-for="Input.RememberMe" class="form-check-input border-secondary shadow-sm" style="cursor: pointer;" />
+                                <label asp-for="Input.RememberMe" class="form-check-label text-muted" style="font-size: 0.95rem; cursor: pointer;">Oturumu açık tut</label>
+                            </div>
+                            <!-- TODO: Enable Forgot Password functionality in future iterations -->
+                            <!-- <a href="#" class="text-primary text-decoration-none fw-medium small hover-primary transition-all">Şifremi Unuttum?</a> -->
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill shadow-sm fw-bold hover-scale transition-all d-flex align-items-center justify-content-center">
+                            <i class="bi bi-box-arrow-in-right me-2"></i> Giriş Yap
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-4 pt-3 border-top border-light">
+                        <span class="text-muted">Hesabınız yok mu?</span>
+                        <a asp-page="/Auth/Register" class="text-primary fw-bold text-decoration-none ms-1 hover-primary transition-all">Hemen Kayıt Olun</a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Client-side validation scripts -->
+    <partial name="_ValidationScriptsPartial" />
+    
+    <script>
+        // Unhide validation summary if server-side errors exist
+        document.addEventListener("DOMContentLoaded", function () {
+            var validationSummary = document.querySelector(".validation-summary-errors");
+            if (validationSummary) {
+                validationSummary.classList.remove("d-none");
+            }
+        });
+    </script>
+}   

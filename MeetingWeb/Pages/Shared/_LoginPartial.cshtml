@@ -1,0 +1,61 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+<ul class="navbar-nav align-items-center gap-2">
+    @if (SignInManager.IsSignedIn(User))
+    {
+        // PERFORMANCE OPTIMIZATION: Retrieve user metadata directly from the encrypted Auth Cookie (Claims)
+        // to avoid expensive database queries on every page load.
+        var fullName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? User.Identity?.Name ?? "İsimsiz";
+        var avatarUrl = User.Claims.FirstOrDefault(c => c.Type == "AvatarUrl")?.Value;
+
+        // UI FALLBACK: Dynamically generate initials if the user hasn't uploaded a custom avatar.
+        var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = nameParts.Length > 1
+            ? (nameParts[0][0].ToString() + nameParts[nameParts.Length - 1][0].ToString()).ToUpper()
+            : (fullName.Length > 1 ? fullName.Substring(0, 2).ToUpper() : fullName.ToUpper());
+
+        <li class="nav-item">
+            <a class="nav-link text-dark fw-bold d-flex align-items-center gap-2 bg-light rounded-pill px-3 py-2 shadow-sm border border-light hover-bg-secondary transition-all" asp-area="" asp-page="/Auth/Profile" title="Profilimi Yönet">
+                
+                @* RENDER AVATAR OR GENERATED INITIALS *@
+                @if (!string.IsNullOrEmpty(avatarUrl))
+                {
+                    <img src="@avatarUrl" alt="Profil" class="rounded-circle object-fit-cover border border-white shadow-sm" style="width: 32px; height: 32px;" />
+                }
+                else
+                {
+                    <div class="rounded-circle shadow-sm bg-primary text-white d-flex align-items-center justify-content-center border border-white" style="width: 32px; height: 32px; font-size: 0.85rem; font-weight: 800;">
+                        @initials
+                    </div>
+                }
+                
+                <span class="d-none d-sm-inline ms-1" style="font-size: 0.95rem;">@fullName</span>
+            </a>
+        </li>
+        
+        <li class="nav-item ms-1">
+            <form class="form-inline m-0" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" method="post">
+                <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-pill shadow-sm px-3 py-2 d-flex align-items-center transition-all hover-scale" title="Çıkış Yap">
+                    <i class="bi bi-box-arrow-right d-sm-none fs-5"></i>
+                    <span class="d-none d-sm-inline"><i class="bi bi-power me-1"></i> Çıkış</span>
+                </button>
+            </form>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link text-muted fw-bold px-3 transition-all hover-primary" asp-area="" asp-page="/Auth/Register">
+                Kayıt Ol
+            </a>
+        </li>
+        <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+            <a class="btn btn-primary fw-bold shadow-sm rounded-pill px-4 py-2 transition-all hover-scale" asp-area="" asp-page="/Auth/Login">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Giriş Yap
+            </a>
+        </li>
+    }
+</ul>
