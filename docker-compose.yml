@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. VERİTABANI (Microsoft SQL Server)
+  # ==========================================
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: briefyn-sql
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=REMOVED_DEV_PASSWORD # Gerçek canlı ortamda bu şifreyi değiştirmelisin
+    ports:
+      - "1433:1433" # Mac'inden veritabanına bağlanabilmen için portu dışarı açıyoruz
+    volumes:
+      - sql_data:/var/opt/mssql # Konteyner silinse bile verilerin (Volume) kaybolmaması için
+
+  # ==========================================
+  # 2. YAPAY ZEKA MOTORU (Python FastAPI)
+  # ==========================================
+  ai_engine:
+    build: 
+      context: ./ai_engine # Dockerfile'ın bulunduğu klasör
+    container_name: briefyn-ai
+    ports:
+      - "8000:8000"
+    volumes:
+      # Yapay zeka modelleri her defasında baştan inmesin diye HuggingFace önbelleğini Mac'ine bağlıyoruz
+      - model_cache:/root/.cache/huggingface
+    restart: unless-stopped # Çökerse kendi kendini otomatik yeniden başlatır
+
+  # ==========================================
+  # 3. WEB BACKEND (C# ASP.NET Core)
+  # ==========================================
+  web:
+    build:
+      context: ./MeetingWeb # C# Dockerfile'ın bulunduğu klasör
+    container_name: briefyn-web
+    ports:
+      - "8080:8080" # Tarayıcıdan http://localhost:8080 ile gireceğin port
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # C# kodundaki "appsettings.json" ayarlarını Docker üzerinden eziyoruz (Override)
+      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=sa;Password=REMOVED_DEV_PASSWORD;TrustServerCertificate=True;
+      - PythonApiSettings__BaseUrl=http://ai_engine:8000/
+    depends_on:
+      - db
+      - ai_engine
+    restart: unless-stopped
+
+# ==========================================
+# KALICI DEPOLAMA ALANLARI (Volumes)
+# ==========================================
+volumes:
+  sql_data:
+  model_cache:
