@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   # ==========================================
   # 1. VERİTABANI (Microsoft SQL Server)
   # ==========================================
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
     container_name: briefyn-sql
     environment:
       - ACCEPT_EULA=Y
@@ -24,6 +23,8 @@ services:
     container_name: briefyn-ai
     ports:
       - "8000:8000"
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
     volumes:
       # Yapay zeka modelleri her defasında baştan inmesin diye HuggingFace önbelleğini Mac'ine bağlıyoruz
       - model_cache:/root/.cache/huggingface
