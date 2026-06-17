@@ -7,14 +7,14 @@ namespace MeetingWeb.Helpers
     // Static utility class for symmetric AES encryption/decryption operations.
     public static class EncryptionHelper
     {
-        private static byte[] _key;
-        private static byte[] _iv;
+        private static byte[] _key = null!;
+        private static byte[] _iv = null!;
 
         // Reads encryption keys from configuration during application startup.
         public static void Initialize(IConfiguration configuration)
         {
-            string keyString = configuration["EncryptionSettings:Key"];
-            string ivString = configuration["EncryptionSettings:IV"];
+            string? keyString = configuration["EncryptionSettings:Key"];
+            string? ivString = configuration["EncryptionSettings:IV"];
 
             if (string.IsNullOrEmpty(keyString) || string.IsNullOrEmpty(ivString))
             {

@@ -57,6 +57,10 @@ namespace MeetingWeb.Pages.Auth
             [Display(Name = "Şifre Tekrar")]
             [Compare("Password", ErrorMessage = "Şifreler birbiriyle eşleşmiyor. Lütfen kontrol edin.")]
             public string ConfirmPassword { get; set; } = string.Empty;
+
+            [Range(typeof(bool), "true", "true", ErrorMessage = "Kayıt olmak için KVKK metnini onaylamanız gerekmektedir.")]
+            [Display(Name = "KVKK Onayı")]
+            public bool IsKvkkAccepted { get; set; }
         }
 
         // HTTP POST handler for the registration workflow.

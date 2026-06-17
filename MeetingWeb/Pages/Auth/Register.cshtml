@@ -51,10 +51,11 @@
                         </div>
 
                         <div class="form-check mb-4 mt-2">
-                            <input class="form-check-input border-secondary shadow-sm" type="checkbox" id="kvkkCheck" required style="cursor: pointer;">
+                            <input asp-for="Input.IsKvkkAccepted" class="form-check-input border-secondary shadow-sm" type="checkbox" id="kvkkCheck" required style="cursor: pointer;">
                             <label class="form-check-label text-muted ms-1" for="kvkkCheck" style="font-size: 0.9rem; cursor: pointer;">
                                 <a href="/Privacy" target="_blank" class="text-primary text-decoration-none fw-bold hover-underline">KVKK Aydınlatma Metni</a>'ni okudum ve kabul ediyorum.
                             </label>
+                            <span asp-validation-for="Input.IsKvkkAccepted" class="text-danger d-block mt-1" style="font-size: 0.85rem;"></span>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill shadow-sm fw-bold hover-scale transition-all">
