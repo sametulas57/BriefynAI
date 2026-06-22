@@ -58,7 +58,7 @@ namespace MeetingWeb.Pages.Auth
             [Compare("Password", ErrorMessage = "Şifreler birbiriyle eşleşmiyor. Lütfen kontrol edin.")]
             public string ConfirmPassword { get; set; } = string.Empty;
 
-            [Range(typeof(bool), "true", "true", ErrorMessage = "Kayıt olmak için KVKK metnini onaylamanız gerekmektedir.")]
+            // Range etiketi tamamen kaldırıldı, kontrol aşağıda manuel yapılacak.
             [Display(Name = "KVKK Onayı")]
             public bool IsKvkkAccepted { get; set; }
         }
@@ -66,6 +66,12 @@ namespace MeetingWeb.Pages.Auth
         // HTTP POST handler for the registration workflow.
         public async Task<IActionResult> OnPostAsync()
         {
+            // DÜZELTME: Manuel KVKK Kontrolü (ModelState.IsValid kontrolünden hemen önce yapıyoruz)
+            if (!Input.IsKvkkAccepted)
+            {
+                ModelState.AddModelError("Input.IsKvkkAccepted", "Kayıt olmak için KVKK metnini onaylamanız gerekmektedir.");
+            }
+
             if (ModelState.IsValid)
             {
                 // SECURITY GATEWAY: Enforce global uniqueness constraint on phone numbers.
@@ -120,6 +126,8 @@ namespace MeetingWeb.Pages.Auth
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
             }
+            
+            // ModelState içinde hata varsa (Örn: KVKK işaretlenmediyse) sayfayı hatalarla geri döndür.
             return Page();
         }
     }
