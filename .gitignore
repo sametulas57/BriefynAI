@@ -391,3 +391,6 @@ old_version_codes/
 
 # IDE & Editor Settings
 .vscode/
+
+# Ignore uploaded files in the wwwroot/uploads directory
+MeetingWeb/wwwroot/uploads/
