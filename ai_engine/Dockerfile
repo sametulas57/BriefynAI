@@ -24,4 +24,4 @@ EXPOSE 8000
 
 # 8. Konteyner ayağa kalktığında çalıştırılacak nihai komut
 # Not: api_server.py içindeki FastAPI değişkeninin adının "app" olduğu varsayılmıştır.
-CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
