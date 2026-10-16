@@ -8,7 +8,7 @@ services:
     container_name: briefyn-sql
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=REMOVED_DEV_PASSWORD
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
     ports:
       - "1433:1433"
     volumes:
@@ -41,8 +41,13 @@ services:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=sa;Password=REMOVED_DEV_PASSWORD;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
       - PythonApiSettings__BaseUrl=http://ai_engine:8000/
+      # Sırlar .env dosyasından gelir (git\'e girmez); şablon: .env.example
+      - EmailSettings__SenderEmail=${EMAIL_SENDER}
+      - EmailSettings__Password=${EMAIL_PASSWORD}
+      - EncryptionSettings__Key=${ENCRYPTION_KEY}
+      - EncryptionSettings__IV=${ENCRYPTION_IV}
       
       # 1. SİNYAL: Docker içindeki .NET motorunun dosya değişikliklerini anlık yakalamasını tetikler
       - DOTNET_USE_POLLING_FILE_WATCHER=1
