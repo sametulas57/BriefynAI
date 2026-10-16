@@ -16,14 +16,14 @@ namespace MeetingWeb.Pages
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IAudioStorage _audioStorage;
         private readonly IBackgroundJobClient _backgroundJobClient;
 
-        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IWebHostEnvironment environment, IBackgroundJobClient backgroundJobClient)
+        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage, IBackgroundJobClient backgroundJobClient)
         {
             _context = context;
             _userManager = userManager;
-            _environment = environment;
+            _audioStorage = audioStorage;
             _backgroundJobClient = backgroundJobClient;
         }
 
@@ -71,41 +71,26 @@ namespace MeetingWeb.Pages
                 return Page();
             }
 
-            // 3. STORAGE PROVISIONING: Ensure physical directory exists in the web root.
-            var uploadsDir = Path.Combine(_environment.WebRootPath, "uploads");
-            if (!Directory.Exists(uploadsDir))
-            {
-                Directory.CreateDirectory(uploadsDir);
-            }
+            // 3. PRIVATE STORAGE: the recording goes to a folder outside wwwroot and is deleted after analysis (S2).
+            var storedName = await _audioStorage.SaveAsync(UploadFile);
 
-            // 4. PATH TRAVERSAL PREVENTION: Sanitize filename with high-entropy GUIDs.
-            var safeFileName = Path.GetFileName(UploadFile.FileName);
-            var fileName = Guid.NewGuid() + "_" + safeFileName;
-            var filePath = Path.Combine(uploadsDir, fileName);
-
-            // 5. ASYNCHRONOUS I/O: Stream the file securely to disk.
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await UploadFile.CopyToAsync(stream);
-            }
-
-            // 6. ENTITY CREATION: Provision the draft meeting in the database (Strictly UTC for consistency).
+            // 4. ENTITY CREATION: Provision the draft meeting in the database (Strictly UTC for consistency).
             var draftMeeting = new MeetingSummary
             {
                 ToplantiKonusu = UploadFile.FileName,
                 CreatedDate = DateTime.UtcNow,
                 WorkspaceId = activeWorkspaceId,
                 Status = MeetingStatus.Processing,
-                AudioFilePath = "/uploads/" + fileName
+                AudioFilePath = storedName
             };
 
             _context.MeetingSummaries.Add(draftMeeting);
             await _context.SaveChangesAsync();
 
-            // 7. BACKGROUND DELEGATION: Offload the heavy AI processing to Hangfire.
-            _backgroundJobClient.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(draftMeeting.Id, filePath));
+            // 5. BACKGROUND DELEGATION: Offload the heavy AI processing to Hangfire.
+            _backgroundJobClient.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(draftMeeting.Id, _audioStorage.GetPath(storedName)));
 
-            // 8. UX ROUTING: Immediately redirect to the Details page for Real-Time SignalR tracking.
+            // 6. UX ROUTING: Immediately redirect to the Details page for Real-Time SignalR tracking.
             return RedirectToPage("/Details", new { id = draftMeeting.Id });
         }
     }

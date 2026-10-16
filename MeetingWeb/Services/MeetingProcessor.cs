@@ -23,6 +23,7 @@ namespace MeetingWeb.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<MeetingProcessor> _logger;
         private readonly IHubContext<MeetingHub> _hubContext;
+        private readonly IAudioStorage _audioStorage;
 
         // Constructor injection for required dependencies.
         public MeetingProcessor(
@@ -30,13 +31,15 @@ namespace MeetingWeb.Services
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
             ILogger<MeetingProcessor> logger,
-            IHubContext<MeetingHub> hubContext)
+            IHubContext<MeetingHub> hubContext,
+            IAudioStorage audioStorage)
         {
             _context = context;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _logger = logger;
             _hubContext = hubContext;
+            _audioStorage = audioStorage;
         }
 
         public async Task ProcessMeetingJob(int meetingId, string audioPath)
@@ -52,6 +55,8 @@ namespace MeetingWeb.Services
                 _logger.LogWarning("MeetingId: {MeetingId} not found in database. Aborting job.", meetingId);
                 return;
             }
+
+            string? completedAudio = null;
 
             try
             {
@@ -80,6 +85,10 @@ namespace MeetingWeb.Services
 
                     // Update meeting status upon successful processing.
                     meeting.Status = MeetingStatus.Completed;
+
+                    // DATA MINIMIZATION (S2/KVKK): the recording has served its purpose once the summary exists.
+                    completedAudio = meeting.AudioFilePath;
+                    meeting.AudioFilePath = null;
                 }
                 else
                 {
@@ -88,6 +97,9 @@ namespace MeetingWeb.Services
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Processing complete. MeetingId: {MeetingId} saved successfully.", meetingId);
+
+                // Delete only after the save succeeded; a leftover file is swept by AudioCleanupService.
+                _audioStorage.Delete(completedAudio);
 
                 // Push real-time completion notification to connected clients via SignalR.
                 await _hubContext.Clients.All.SendAsync("MeetingProcessed", meetingId);

@@ -394,3 +394,6 @@ old_version_codes/
 
 # Ignore uploaded files in the wwwroot/uploads directory
 MeetingWeb/wwwroot/uploads/
+
+# Private meeting recordings (S2): stored outside wwwroot, never committed
+MeetingWeb/App_Data/

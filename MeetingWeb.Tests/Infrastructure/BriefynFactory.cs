@@ -16,8 +16,14 @@ namespace MeetingWeb.Tests.Infrastructure
     public class BriefynFactory : WebApplicationFactory<Program>
     {
         private readonly SqliteConnection _connection = new("DataSource=:memory:");
+        private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), "briefyn-tests-" + Guid.NewGuid().ToString("N"));
 
         public FakeBackgroundJobClient Jobs { get; } = new();
+        public StubPythonApiHandler PythonApi { get; } = new();
+
+        // Per-factory folders, so parallel test classes never share files.
+        public string WebRoot => Path.Combine(_tempRoot, "wwwroot");
+        public string AudioRoot => Path.Combine(_tempRoot, "audio");
         public SeedData Seed { get; private set; } = null!;
 
         static BriefynFactory()
@@ -31,11 +37,15 @@ namespace MeetingWeb.Tests.Infrastructure
         public BriefynFactory()
         {
             _connection.Open();
+            Directory.CreateDirectory(Path.Combine(WebRoot, "uploads", "avatars"));
+            Directory.CreateDirectory(AudioRoot);
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.UseWebRoot(WebRoot);
+            builder.UseSetting("AudioStorage:RootPath", AudioRoot);
 
             builder.ConfigureTestServices(services =>
             {
@@ -47,6 +57,7 @@ namespace MeetingWeb.Tests.Infrastructure
                 services.AddDbContext<ApplicationDbContext>(o => o.UseSqlite(_connection));
 
                 services.AddSingleton<IBackgroundJobClient>(Jobs);
+                services.AddHttpClient("PythonApi").ConfigurePrimaryHttpMessageHandler(() => PythonApi);
 
                 services.AddAuthentication(TestAuthHandler.SchemeName)
                     .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
@@ -88,7 +99,11 @@ namespace MeetingWeb.Tests.Infrastructure
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
-            if (disposing) _connection.Dispose();
+            if (disposing)
+            {
+                _connection.Dispose();
+                try { Directory.Delete(_tempRoot, recursive: true); } catch (IOException) { }
+            }
         }
     }
 }

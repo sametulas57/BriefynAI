@@ -17,7 +17,7 @@ namespace MeetingWeb.Pages
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IBackgroundJobClient _backgroundJobClient;
-        private readonly IWebHostEnvironment _environment;
+        private readonly IAudioStorage _audioStorage;
         private readonly IMeetingAccessService _access;
 
         // Constructor injection for required services and physical path resolution.
@@ -25,13 +25,13 @@ namespace MeetingWeb.Pages
             ApplicationDbContext context,
             UserManager<IdentityUser> userManager,
             IBackgroundJobClient backgroundJobClient,
-            IWebHostEnvironment environment,
+            IAudioStorage audioStorage,
             IMeetingAccessService access)
         {
             _context = context;
             _userManager = userManager;
             _backgroundJobClient = backgroundJobClient;
-            _environment = environment;
+            _audioStorage = audioStorage;
             _access = access;
         }
 
@@ -131,17 +131,14 @@ namespace MeetingWeb.Pages
             var meeting = await _context.MeetingSummaries.FindAsync(id);
             if (meeting == null) return NotFound();
 
-            // Revert state machine back to Processing status.
-            meeting.Status = MeetingStatus.Processing;
-            await _context.SaveChangesAsync();
+            // Recordings are deleted after a successful analysis and after the failed-retry window,
+            // so only flip the state machine when there is actually a file to re-process.
+            string? absolutePath = string.IsNullOrEmpty(meeting.AudioFilePath) ? null : _audioStorage.GetPath(meeting.AudioFilePath);
 
-            string relativePath = meeting.AudioFilePath ?? "";
-
-            if (!string.IsNullOrEmpty(relativePath))
+            if (absolutePath != null && System.IO.File.Exists(absolutePath))
             {
-                // PATH RECONSTRUCTION: Rebuild absolute physical path for the Hangfire background worker.
-                string fileName = Path.GetFileName(relativePath);
-                string absolutePath = Path.Combine(_environment.WebRootPath, "uploads", fileName);
+                meeting.Status = MeetingStatus.Processing;
+                await _context.SaveChangesAsync();
 
                 // Re-enqueue the AI pipeline job.
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ProcessMeetingJob(meeting.Id, absolutePath));

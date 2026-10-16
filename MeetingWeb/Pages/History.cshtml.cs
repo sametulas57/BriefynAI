@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages
 {
@@ -14,11 +15,13 @@ namespace MeetingWeb.Pages
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly IAudioStorage _audioStorage;
 
-        public HistoryModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public HistoryModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage)
         {
             _context = context;
             _userManager = userManager;
+            _audioStorage = audioStorage;
         }
 
         public IList<MeetingSummary> MeetingSummaries { get; set; } = default!;
@@ -130,6 +133,7 @@ namespace MeetingWeb.Pages
             {
                 _context.MeetingSummaries.Remove(meeting);
                 await _context.SaveChangesAsync();
+                _audioStorage.Delete(meeting.AudioFilePath);
 
                 TempData["StatusMessage"] = "Toplantı özeti kalıcı olarak silindi.";
             }

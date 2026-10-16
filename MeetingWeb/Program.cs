@@ -80,6 +80,8 @@ try
 
     // --- 6. Custom Services ---
     builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
+    builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
+    builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
@@ -157,6 +159,18 @@ try
         app.UseHttpsRedirection();
     }
 
+    // S2: wwwroot/uploads may still hold recordings from before the private audio store; only avatars stay public.
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path;
+        if (path.StartsWithSegments("/uploads") && !path.StartsWithSegments("/uploads/avatars"))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        await next();
+    });
+
     app.UseStaticFiles();
     app.UseRouting();
     app.UseSession();
@@ -169,6 +183,10 @@ try
         {
             Authorization = new[] { new HangfireAuthorizationFilter() }
         });
+
+        // Daily sweep of recordings left behind by failed analyses (see AudioCleanupService).
+        app.Services.GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<IAudioCleanupService>("audio-cleanup", s => s.RunAsync(), Cron.Daily());
     }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");
