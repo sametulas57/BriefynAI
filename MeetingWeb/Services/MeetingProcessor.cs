@@ -101,8 +101,8 @@ namespace MeetingWeb.Services
                 // Delete only after the save succeeded; a leftover file is swept by AudioCleanupService.
                 _audioStorage.Delete(completedAudio);
 
-                // Push real-time completion notification to connected clients via SignalR.
-                await _hubContext.Clients.All.SendAsync("MeetingProcessed", meetingId);
+                // Push real-time completion notification to the meeting's workspace members via SignalR.
+                await NotifyWorkspaceAsync(meetingId, meeting.WorkspaceId);
             }
             catch (Exception ex)
             {
@@ -118,13 +118,27 @@ namespace MeetingWeb.Services
                     await _context.SaveChangesAsync();
                     _logger.LogInformation("Status reverted to Failed for MeetingId: {MeetingId}", meetingId);
 
-                    // Push real-time error notification to connected clients.
-                    await _hubContext.Clients.All.SendAsync("MeetingProcessed", meetingId);
+                    // Push real-time error notification to the meeting's workspace members.
+                    await NotifyWorkspaceAsync(meetingId, errorMeeting.WorkspaceId);
                 }
 
                 // Rethrow to allow Hangfire to register the job as failed.
                 throw;
             }
+        }
+
+        // S3: resolve recipients from current workspace membership at send time (not from hub groups),
+        // so a member removed from the workspace stops receiving notifications immediately.
+        private async Task NotifyWorkspaceAsync(int meetingId, int? workspaceId)
+        {
+            if (workspaceId == null) return;
+
+            var memberIds = await _context.WorkspaceUsers
+                .Where(wu => wu.WorkspaceId == workspaceId)
+                .Select(wu => wu.UserId)
+                .ToListAsync();
+
+            await _hubContext.Clients.Users(memberIds).SendAsync("MeetingProcessed", meetingId);
         }
 
         // Handles secure HTTP multipart/form-data communication with the external Python API.
