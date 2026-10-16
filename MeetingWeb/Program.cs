@@ -20,6 +20,9 @@ try
     Log.Information("Uygulama başlatılıyor, servisler yükleniyor...");
     var builder = WebApplication.CreateBuilder(args);
 
+    // Entegrasyon testleri "Testing" ortamında çalışır: SQL Server'a bağlı parçalar (Hangfire, migration, SQL log) atlanır.
+    var isTesting = builder.Environment.IsEnvironment("Testing");
+
     // Appsettings.json'dan connection string'i al
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -60,18 +63,23 @@ try
     });
 
     // --- 5. Background Jobs (Hangfire) ---
-    builder.Services.AddHangfire(config => config
-        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-        .UseSimpleAssemblyNameTypeSerializer()
-        .UseRecommendedSerializerSettings()
-        .UseSqlServerStorage(connectionString));
-
-    builder.Services.AddHangfireServer(options =>
+    // Testlerde Hangfire kurulmaz; testler IBackgroundJobClient yerine sahte bir istemci koyar.
+    if (!isTesting)
     {
-        options.WorkerCount = 1;
-    });
+        builder.Services.AddHangfire(config => config
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseSqlServerStorage(connectionString));
+
+        builder.Services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = 1;
+        });
+    }
 
     // --- 6. Custom Services ---
+    builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
@@ -91,41 +99,45 @@ try
     // =========================================================================
     // 2. AŞAMA: Veritabanını Otomatik Oluşturma (Migration) ve Tam Loglamaya Geçiş
     // =========================================================================
-    using (var scope = app.Services.CreateScope())
+    // Testler veritabanını kendisi kurar (SQLite, EnsureCreated) ve SQL Server log hedefini kullanmaz.
+    if (!isTesting)
     {
-        var services = scope.ServiceProvider;
-        try
+        using (var scope = app.Services.CreateScope())
         {
-            var context = services.GetRequiredService<ApplicationDbContext>();
-            Log.Information("Veritabanı kontrol ediliyor ve gerekiyorsa oluşturuluyor (Migration)...");
-            
-            // Eğer veritabanı hiç yoksa oluşturur, varsa son migration'ları uygular.
-            context.Database.Migrate(); 
-            Log.Information("Veritabanı hazır!");
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "Veritabanı oluşturulurken kritik bir hata meydana geldi!");
-            throw;
-        }
-    }
-
-    // Veritabanı KESİN olarak var olduğuna göre Asıl Logger'a geçebiliriz.
-    Log.Information("MSSQL Loglama sistemine geçiş yapılıyor...");
-    Log.CloseAndFlush(); // Geçici logger'ı kapat ve belleği boşalt
-
-    Log.Logger = new LoggerConfiguration()
-        .MinimumLevel.Information()
-        .WriteTo.Console() // Docker terminali için konsol AÇIK kalmalı
-        .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // Dosya yedeği (senin talebin)
-        .WriteTo.MSSqlServer(
-            connectionString: connectionString,
-            sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
+            var services = scope.ServiceProvider;
+            try
             {
-                TableName = "Logs",
-                AutoCreateSqlTable = true // Tablo yoksa oluşturur
-            })
-        .CreateLogger();
+                var context = services.GetRequiredService<ApplicationDbContext>();
+                Log.Information("Veritabanı kontrol ediliyor ve gerekiyorsa oluşturuluyor (Migration)...");
+            
+                // Eğer veritabanı hiç yoksa oluşturur, varsa son migration'ları uygular.
+                context.Database.Migrate(); 
+                Log.Information("Veritabanı hazır!");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Veritabanı oluşturulurken kritik bir hata meydana geldi!");
+                throw;
+            }
+        }
+
+        // Veritabanı KESİN olarak var olduğuna göre Asıl Logger'a geçebiliriz.
+        Log.Information("MSSQL Loglama sistemine geçiş yapılıyor...");
+        Log.CloseAndFlush(); // Geçici logger'ı kapat ve belleği boşalt
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console() // Docker terminali için konsol AÇIK kalmalı
+            .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // Dosya yedeği (senin talebin)
+            .WriteTo.MSSqlServer(
+                connectionString: connectionString,
+                sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
+                {
+                    TableName = "Logs",
+                    AutoCreateSqlTable = true // Tablo yoksa oluşturur
+                })
+            .CreateLogger();
+    }
     // =========================================================================
 
     // --- HTTP REQUEST PIPELINE (MIDDLEWARE) ---
@@ -151,10 +163,13 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    if (!isTesting)
     {
-        Authorization = new[] { new HangfireAuthorizationFilter() }
-    });
+        app.UseHangfireDashboard("/hangfire", new DashboardOptions
+        {
+            Authorization = new[] { new HangfireAuthorizationFilter() }
+        });
+    }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");
     app.MapRazorPages();
@@ -180,3 +195,6 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
         return httpContext.User.Identity?.IsAuthenticated == true;
     }
 }
+
+// WebApplicationFactory'nin (entegrasyon testleri) Program sınıfına erişebilmesi için.
+public partial class Program { }

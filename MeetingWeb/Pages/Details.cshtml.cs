@@ -18,19 +18,26 @@ namespace MeetingWeb.Pages
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IWebHostEnvironment _environment;
+        private readonly IMeetingAccessService _access;
 
         // Constructor injection for required services and physical path resolution.
         public DetailsModel(
             ApplicationDbContext context,
             UserManager<IdentityUser> userManager,
             IBackgroundJobClient backgroundJobClient,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IMeetingAccessService access)
         {
             _context = context;
             _userManager = userManager;
             _backgroundJobClient = backgroundJobClient;
             _environment = environment;
+            _access = access;
         }
+
+        // AUTHORIZATION: every handler resolves access through the meeting's workspace, never the session.
+        // Unauthorized requests get 404 so outsiders cannot even confirm that a meeting id exists.
+        private Task<bool> CanAccessAsync(int meetingId) => _access.CanAccessMeetingAsync(_userManager.GetUserId(User), meetingId);
 
         public MeetingSummary Meeting { get; set; } = default!;
         public List<WorkspaceUser> WorkspaceMembers { get; set; } = new();
@@ -51,6 +58,7 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnGetAsync(int? id)
         {
             if (id == null) return NotFound();
+            if (!await CanAccessAsync(id.Value)) return NotFound();
 
             // Eager load the core meeting entity and its actionable tasks.
             var meeting = await _context.MeetingSummaries
@@ -60,15 +68,11 @@ namespace MeetingWeb.Pages
             if (meeting == null) return NotFound();
             Meeting = meeting;
 
-            // Fetch tenant members for the sharing/collaboration module.
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
-            if (activeWorkspaceId != null)
-            {
-                WorkspaceMembers = await _context.WorkspaceUsers
-                    .Include(wu => wu.User)
-                    .Where(wu => wu.WorkspaceId == activeWorkspaceId)
-                    .ToListAsync();
-            }
+            // Fetch the members of the meeting's own workspace for the sharing/collaboration module.
+            WorkspaceMembers = await _context.WorkspaceUsers
+                .Include(wu => wu.User)
+                .Where(wu => wu.WorkspaceId == meeting.WorkspaceId)
+                .ToListAsync();
 
             // Eager load root comments, nested replies, and associated user reactions.
             Comments = await _context.MeetingComments
@@ -123,6 +127,7 @@ namespace MeetingWeb.Pages
         // --- FAULT TOLERANCE: RETRY MECHANISM ---
         public async Task<IActionResult> OnPostRetryProcessingAsync(int id)
         {
+            if (!await CanAccessAsync(id)) return NotFound();
             var meeting = await _context.MeetingSummaries.FindAsync(id);
             if (meeting == null) return NotFound();
 
@@ -155,8 +160,14 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnPostAddCommentAsync(int meetingId, string content, int? parentCommentId)
         {
             var userId = _userManager.GetUserId(User);
+            if (!await CanAccessAsync(meetingId)) return NotFound();
             if (userId == null || string.IsNullOrWhiteSpace(content))
                 return RedirectToPage(new { id = meetingId });
+
+            // A reply must belong to the same meeting; otherwise it could be attached to another tenant's thread.
+            if (parentCommentId != null &&
+                !await _context.MeetingComments.AnyAsync(c => c.Id == parentCommentId && c.MeetingId == meetingId))
+                return NotFound();
 
             var newComment = new MeetingComment
             {
@@ -179,6 +190,7 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnPostDeleteCommentAsync(int commentId, int meetingId)
         {
             var currentUserId = _userManager.GetUserId(User);
+            if (!await _access.CanAccessCommentAsync(currentUserId, commentId)) return NotFound();
 
             var comment = await _context.MeetingComments
                 .Include(c => c.Replies)
@@ -212,6 +224,7 @@ namespace MeetingWeb.Pages
         {
             var userId = _userManager.GetUserId(User);
             if (userId == null) return new JsonResult(new { success = false });
+            if (!await _access.CanAccessCommentAsync(userId, commentId)) return NotFound();
 
             var existingReaction = await _context.CommentReactions
                 .FirstOrDefaultAsync(r => r.CommentId == commentId && r.UserId == userId);
@@ -241,6 +254,7 @@ namespace MeetingWeb.Pages
 
         public async Task<IActionResult> OnPostAddTopicAsync(int meetingId, string topic)
         {
+            if (!await CanAccessAsync(meetingId)) return NotFound();
             var userId = _userManager.GetUserId(User);
             if (string.IsNullOrWhiteSpace(topic) || userId == null) return RedirectToPage(new { id = meetingId });
 
@@ -262,6 +276,7 @@ namespace MeetingWeb.Pages
 
         public async Task<IActionResult> OnPostAddDecisionAsync(int meetingId, string decision)
         {
+            if (!await CanAccessAsync(meetingId)) return NotFound();
             var userId = _userManager.GetUserId(User);
             if (string.IsNullOrWhiteSpace(decision) || userId == null) return RedirectToPage(new { id = meetingId });
 
@@ -282,6 +297,7 @@ namespace MeetingWeb.Pages
 
         public async Task<IActionResult> OnPostAddActionItemAsync(int meetingId, string actionText)
         {
+            if (!await CanAccessAsync(meetingId)) return NotFound();
             var userId = _userManager.GetUserId(User);
             if (string.IsNullOrWhiteSpace(actionText) || userId == null) return RedirectToPage(new { id = meetingId });
 
@@ -300,6 +316,7 @@ namespace MeetingWeb.Pages
         // AJAX Handler: Updates the completion status of a task without page reload.
         public async Task<IActionResult> OnPostToggleTaskAsync(int taskId)
         {
+            if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return NotFound();
             var task = await _context.Set<ActionItem>().FindAsync(taskId);
             if (task != null)
             {
@@ -311,11 +328,22 @@ namespace MeetingWeb.Pages
         }
 
         // Hangfire Integration: Dispatches background jobs to transmit reports via email.
-        public IActionResult OnPostShareAsync(int meetingId, List<string> selectedEmails)
+        public async Task<IActionResult> OnPostShareAsync(int meetingId, List<string> selectedEmails)
         {
-            foreach (var email in selectedEmails)
+            if (!await CanAccessAsync(meetingId)) return NotFound();
+
+            // Reports may only go to members of the meeting's workspace, never to arbitrary addresses.
+            var memberEmails = await _context.WorkspaceUsers
+                .Where(wu => wu.Workspace.Meetings.Any(m => m.Id == meetingId))
+                .Select(wu => wu.User.Email)
+                .ToListAsync();
+            var recipients = selectedEmails
+                .Where(e => memberEmails.Contains(e, StringComparer.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var email in recipients)
             {
-                BackgroundJob.Enqueue<IEmailService>(x => x.SendMeetingSummaryAsync(meetingId, email));
+                _backgroundJobClient.Enqueue<IEmailService>(x => x.SendMeetingSummaryAsync(meetingId, email));
             }
             TempData["StatusMessage"] = "Rapor gönderimi arka planda başlatıldı!";
             return RedirectToPage(new { id = meetingId });

@@ -17,12 +17,14 @@ namespace MeetingWeb.Pages
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IWebHostEnvironment _environment;
+        private readonly IBackgroundJobClient _backgroundJobClient;
 
-        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IWebHostEnvironment environment)
+        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IWebHostEnvironment environment, IBackgroundJobClient backgroundJobClient)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
+            _backgroundJobClient = backgroundJobClient;
         }
 
         [BindProperty]
@@ -101,7 +103,7 @@ namespace MeetingWeb.Pages
             await _context.SaveChangesAsync();
 
             // 7. BACKGROUND DELEGATION: Offload the heavy AI processing to Hangfire.
-            BackgroundJob.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(draftMeeting.Id, filePath));
+            _backgroundJobClient.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(draftMeeting.Id, filePath));
 
             // 8. UX ROUTING: Immediately redirect to the Details page for Real-Time SignalR tracking.
             return RedirectToPage("/Details", new { id = draftMeeting.Id });
