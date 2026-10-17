@@ -139,6 +139,12 @@ try
         });
     });
 
+    // Uploads: allow recordings up to Upload:MaxMegabytes (+ room for the form itself); the page explains the limit.
+    builder.Services.AddOptions<Microsoft.AspNetCore.Http.Features.FormOptions>().Configure<IConfiguration>((o, c) =>
+        o.MultipartBodyLengthLimit = (c.GetValue("Upload:MaxMegabytes", 300) + 5) * 1024L * 1024L);
+    builder.Services.AddOptions<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>().Configure<IConfiguration>((o, c) =>
+        o.Limits.MaxRequestBodySize = (c.GetValue("Upload:MaxMegabytes", 300) + 5) * 1024L * 1024L);
+
     builder.Services.AddSignalR();
     builder.Services.AddRazorPages();
 
@@ -227,6 +233,9 @@ try
         }
         await next();
     });
+
+    // Empty error responses (404, 401, ...) are re-rendered as a friendly page instead of the browser's blank one.
+    app.UseStatusCodePagesWithReExecute("/Durum/{0}");
 
     app.UseStaticFiles();
     app.UseRouting();

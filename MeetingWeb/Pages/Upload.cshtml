@@ -71,7 +71,7 @@
                         </div>
                         
                         <div class="d-grid">
-                            <button id="uploadBtn" type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill shadow-sm transition-all hover-scale" onclick="showLoader()">
+                            <button id="uploadBtn" type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill shadow-sm transition-all hover-scale" onclick="return showLoader()">
                                 <i class="bi bi-robot me-2" id="btnIcon"></i> <span id="btnText">Yükle ve Analizi Başlat</span>
                             </button>
                         </div>
@@ -143,7 +143,13 @@
         }
 
         // UX: Show loading spinner to prevent multiple submissions during large file uploads
+        const maxBytes = @(Model.MaxMegabytes) * 1024 * 1024;
         function showLoader() {
+            if (fileInput.files.length > 0 && fileInput.files[0].size > maxBytes) {
+                fileNameDisplay.innerText = "Dosya çok büyük. En fazla @(Model.MaxMegabytes) MB'lık bir kayıt yükleyebilirsiniz.";
+                fileNameDisplay.classList.remove('text-success');
+                return false;
+            }
             if(fileInput.files.length > 0) {
                 const btn = document.getElementById("uploadBtn");
                 const icon = document.getElementById("btnIcon");
@@ -151,8 +157,9 @@
                 
                 btn.classList.add("disabled");
                 icon.className = "spinner-border spinner-border-sm me-2";
-                text.innerText = "Sunucuya Yükleniyor...";
+                text.innerText = "Yükleniyor...";
             }
+            return true;
         }
     </script>
 }

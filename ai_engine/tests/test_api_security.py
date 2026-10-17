@@ -77,3 +77,14 @@ def test_internal_errors_are_not_leaked(client, monkeypatch):
     res = upload(client, {"X-Api-Key": KEY})
     assert res.status_code == 500
     assert "hunter2" not in res.text
+
+
+def test_llm_failure_is_reported_as_failure_not_as_an_empty_summary(monkeypatch):
+    # Before: an exception produced a placeholder summary, the API said success and the meeting showed "Completed".
+    import summarize_text
+
+    def broken_chat(**kwargs):
+        raise RuntimeError("ollama down")
+
+    monkeypatch.setattr(summarize_text.ollama, "chat", broken_chat)
+    assert summarize_text.generate_meeting_summary("metin") is None

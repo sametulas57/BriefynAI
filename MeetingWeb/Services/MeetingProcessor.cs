@@ -92,7 +92,9 @@ namespace MeetingWeb.Services
                 }
                 else
                 {
-                    _logger.LogWarning("Python API executed successfully but returned a null payload.");
+                    // An empty answer is a failed analysis; leaving it "Processing" made the meeting spin forever.
+                    _logger.LogWarning("Python API returned no summary for MeetingId: {MeetingId}; marking as Failed.", meetingId);
+                    meeting.Status = MeetingStatus.Failed;
                 }
 
                 await _context.SaveChangesAsync();

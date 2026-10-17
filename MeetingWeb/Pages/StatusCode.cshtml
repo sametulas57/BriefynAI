@@ -1,0 +1,25 @@
+@page "/Durum/{code:int}"
+@model MeetingWeb.Pages.StatusCodeModel
+@{
+    ViewData["Title"] = Model.Code == 404 ? "Sayfa bulunamadı" : "Bir şeyler ters gitti";
+}
+
+<div class="container py-5">
+    <div class="soft-card mx-auto text-center p-5" style="max-width: 560px;">
+        <i class="bi @(Model.Code == 404 ? "bi-signpost-split" : "bi-cloud-slash") text-primary" style="font-size: 3rem;"></i>
+        @if (Model.Code == 404)
+        {
+            <h3 class="fw-bold mt-3">Aradığınız sayfa bulunamadı</h3>
+            <p class="text-muted mb-4">Bağlantı eskimiş ya da sayfa taşınmış olabilir.</p>
+        }
+        else
+        {
+            <h3 class="fw-bold mt-3">Bir şeyler ters gitti</h3>
+            <p class="text-muted mb-4">Bu işlemi şu anda tamamlayamadık. Biraz sonra tekrar deneyebilirsiniz.</p>
+        }
+        <div class="d-flex gap-2 justify-content-center">
+            <a href="/History" class="btn btn-primary rounded-pill px-4">Geçmiş özetlere git</a>
+            <a href="/" class="btn btn-outline-secondary rounded-pill px-4">Ana sayfa</a>
+        </div>
+    </div>
+</div>

@@ -19,10 +19,15 @@ namespace MeetingWeb.Pages
         private readonly IAudioStorage _audioStorage;
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IActiveWorkspaceService _activeWorkspace;
+        private readonly IConfiguration _configuration;
+
+        // Shown on the page and checked in the browser before uploading.
+        public int MaxMegabytes => _configuration.GetValue("Upload:MaxMegabytes", 300);
 
         public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage,
-            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace)
+            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace, IConfiguration configuration)
         {
+            _configuration = configuration;
             _activeWorkspace = activeWorkspace;
             _context = context;
             _userManager = userManager;
@@ -43,6 +48,12 @@ namespace MeetingWeb.Pages
             if (UploadFile == null || UploadFile.Length == 0)
             {
                 ErrorMessage = "Lütfen bir dosya seçin.";
+                return Page();
+            }
+
+            if (UploadFile.Length > MaxMegabytes * 1024L * 1024L)
+            {
+                ErrorMessage = $"Dosya çok büyük. En fazla {MaxMegabytes} MB'lık bir kayıt yükleyebilirsiniz; uzun toplantıları parçalara bölerek yükleyebilirsiniz.";
                 return Page();
             }
 

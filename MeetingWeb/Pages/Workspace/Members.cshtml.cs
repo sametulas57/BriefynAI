@@ -17,10 +17,12 @@ namespace MeetingWeb.Pages.Workspace
         private readonly UserManager<IdentityUser> _userManager;
 
         private readonly IActiveWorkspaceService _activeWorkspace;
+        private readonly IAudioStorage _audioStorage;
 
-        public MembersModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IActiveWorkspaceService activeWorkspace)
+        public MembersModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IActiveWorkspaceService activeWorkspace, IAudioStorage audioStorage)
         {
             _activeWorkspace = activeWorkspace;
+            _audioStorage = audioStorage;
             _context = context;
             _userManager = userManager;
         }
@@ -157,9 +159,23 @@ namespace MeetingWeb.Pages.Workspace
             var workspaceToDelete = await _context.Workspaces.FindAsync(activeWorkspaceId);
             if (workspaceToDelete != null)
             {
-                // Note: Configure EF Core cascade delete to clean up associated MeetingSummaries and Invitations.
+                // The meeting -> workspace foreign key does not cascade, so the team's meetings (with their comments;
+                // action items, reactions, members and invitations cascade in the database) are removed first.
+                var meetings = await _context.MeetingSummaries.Where(m => m.WorkspaceId == activeWorkspaceId).ToListAsync();
+                var meetingIds = meetings.Select(m => m.Id).ToList();
+                var comments = await _context.MeetingComments.Where(c => meetingIds.Contains(c.MeetingId)).ToListAsync();
+                var audioFiles = meetings.Select(m => m.AudioFilePath).ToList();
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                _context.MeetingComments.RemoveRange(comments.Where(c => c.ParentCommentId != null));
+                await _context.SaveChangesAsync();
+                _context.MeetingComments.RemoveRange(comments.Where(c => c.ParentCommentId == null));
+                _context.MeetingSummaries.RemoveRange(meetings);
                 _context.Workspaces.Remove(workspaceToDelete);
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                foreach (var audio in audioFiles) _audioStorage.Delete(audio);
 
                 HttpContext.Session.Remove("ActiveWorkspaceId");
                 TempData["StatusMessage"] = $"'{workspaceToDelete.Name}' ekibi ve çalışma alanı tamamen silindi.";

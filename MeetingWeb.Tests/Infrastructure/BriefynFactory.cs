@@ -49,6 +49,7 @@ namespace MeetingWeb.Tests.Infrastructure
             builder.UseWebRoot(WebRoot);
             builder.UseSetting("AudioStorage:RootPath", AudioRoot);
             builder.UseSetting("PythonApiSettings:ApiKey", AiEngineApiKey);
+            builder.UseSetting("Upload:MaxMegabytes", "1");
 
             builder.ConfigureTestServices(services =>
             {

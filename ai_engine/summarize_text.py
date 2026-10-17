@@ -76,10 +76,6 @@ def generate_meeting_summary(transkript_metni: str, model_name: str = 'qwen2.5:1
 
     except Exception as e:
         logging.error(f"❌ Ollama ile iletişimde veya JSON işlemesinde hata oluştu: {e}")
-        # Hata durumunda C# tarafının çökmemesi için en azından boş ama formatlı bir yapı dönüyoruz
-        return {
-            "toplanti_konusu": "Analiz Sırasında Sunucu Hatası Oluştu",
-            "gorusulen_konular": [],
-            "alinan_kararlar": [],
-            "aksiyon_maddeleri": []
-        }
+        # None, API'nin 500 dönmesini, C# tarafının da toplantıyı Failed (yeniden denenebilir) işaretlemesini sağlar.
+        # Eskiden burada boş bir "özet" dönüyordu ve hatalı toplantı "Tamamlandı" görünüyordu.
+        return None
