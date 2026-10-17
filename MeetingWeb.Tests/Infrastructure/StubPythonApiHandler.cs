@@ -7,13 +7,17 @@ namespace MeetingWeb.Tests.Infrastructure
     public class StubPythonApiHandler : HttpMessageHandler
     {
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
+        public string? LastApiKey { get; private set; }
 
         public string Body { get; set; } = """
             {"success": true, "transkript": "test",
              "summary": {"toplanti_konusu": "Konu", "gorusulen_konular": ["a"], "alinan_kararlar": ["b"], "aksiyon_maddeleri": ["c"]}}
             """;
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(Status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") });
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            LastApiKey = request.Headers.TryGetValues("X-Api-Key", out var values) ? values.Single() : null;
+            return Task.FromResult(new HttpResponseMessage(Status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") });
+        }
     }
 }

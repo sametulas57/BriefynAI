@@ -52,14 +52,22 @@ try
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
     // --- 4. Python API Communication ---
-    builder.Services.AddHttpClient("PythonApi", client =>
+    builder.Services.AddHttpClient("PythonApi", (sp, client) =>
     {
-        var baseUrl = builder.Configuration["PythonApiSettings:BaseUrl"];
+        var configuration = sp.GetRequiredService<IConfiguration>();
+        var baseUrl = configuration["PythonApiSettings:BaseUrl"];
         if (!string.IsNullOrEmpty(baseUrl))
         {
             client.BaseAddress = new Uri(baseUrl);
         }
         client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
+        // S5: the AI engine only accepts requests carrying the shared secret (AI_ENGINE_API_KEY in .env).
+        var apiKey = configuration["PythonApiSettings:ApiKey"];
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+        }
     });
 
     // --- 5. Background Jobs (Hangfire) ---

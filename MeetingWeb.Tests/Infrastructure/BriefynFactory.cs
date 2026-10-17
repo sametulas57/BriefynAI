@@ -24,6 +24,7 @@ namespace MeetingWeb.Tests.Infrastructure
         // Per-factory folders, so parallel test classes never share files.
         public string WebRoot => Path.Combine(_tempRoot, "wwwroot");
         public string AudioRoot => Path.Combine(_tempRoot, "audio");
+        public const string AiEngineApiKey = "test-ai-engine-key";
         public SeedData Seed { get; private set; } = null!;
 
         static BriefynFactory()
@@ -46,6 +47,7 @@ namespace MeetingWeb.Tests.Infrastructure
             builder.UseEnvironment("Testing");
             builder.UseWebRoot(WebRoot);
             builder.UseSetting("AudioStorage:RootPath", AudioRoot);
+            builder.UseSetting("PythonApiSettings:ApiKey", AiEngineApiKey);
 
             builder.ConfigureTestServices(services =>
             {

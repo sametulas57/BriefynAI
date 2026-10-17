@@ -22,9 +22,13 @@ services:
       context: ./ai_engine
     container_name: briefyn-ai
     ports:
-      - "8000:8000"
+      # S5: yalnız bu bilgisayardan erişilir (Docker'sız yerel geliştirme için); ağdaki başka cihazlar ulaşamaz.
+      # Web servisi Docker ağı içinden ai_engine:8000 adresiyle bağlanır.
+      - "127.0.0.1:8000:8000"
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
+      # Paylaşılan anahtar .env'den gelir; yoksa servis her isteği reddeder (503).
+      - AI_ENGINE_API_KEY=${AI_ENGINE_API_KEY}
     volumes:
       - ./ai_engine:/app
       - model_cache:/root/.cache/huggingface
@@ -43,6 +47,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
       - PythonApiSettings__BaseUrl=http://ai_engine:8000/
+      - PythonApiSettings__ApiKey=${AI_ENGINE_API_KEY}
       # Sırlar .env dosyasından gelir (git\'e girmez); şablon: .env.example
       - EmailSettings__SenderEmail=${EMAIL_SENDER}
       - EmailSettings__Password=${EMAIL_PASSWORD}
