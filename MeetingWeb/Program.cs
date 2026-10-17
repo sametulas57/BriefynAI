@@ -93,6 +93,7 @@ try
     builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
+    builder.Services.AddScoped<IReencryptionService, ReencryptionService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
@@ -173,6 +174,17 @@ try
             .CreateLogger();
     }
     // =========================================================================
+
+    // S4 maintenance command (run by hand, never on normal startup):
+    //   dotnet run -- reencrypt            -> dry run: counts legacy and unreadable values, changes nothing
+    //   dotnet run -- reencrypt --apply    -> converts legacy values to the v2 format, verifying each one
+    if (args.Contains("reencrypt"))
+    {
+        using var scope = app.Services.CreateScope();
+        var report = await scope.ServiceProvider.GetRequiredService<IReencryptionService>().RunAsync(apply: args.Contains("--apply"));
+        Console.WriteLine($"reencrypt {(args.Contains("--apply") ? "--apply" : "(dry run)")}: {report}");
+        return;
+    }
 
     // --- HTTP REQUEST PIPELINE (MIDDLEWARE) ---
     if (app.Environment.IsDevelopment())

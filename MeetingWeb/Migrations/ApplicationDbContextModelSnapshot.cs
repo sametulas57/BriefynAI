@@ -38,8 +38,7 @@ namespace MeetingWeb.Migrations
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -137,8 +136,7 @@ namespace MeetingWeb.Migrations
 
                     b.Property<string>("ToplantiKonusu")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("WorkspaceId")
                         .HasColumnType("int");

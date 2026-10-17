@@ -19,7 +19,7 @@ namespace MeetingWeb.Models
 
         // --- ENCRYPTED DOMAIN DATA ---
 
-        [MaxLength(255)]
+        // No length limit: the column stores ciphertext, which is longer than the title itself (S4).
         public string ToplantiKonusu { get; set; } = string.Empty;
 
         // Note: These lists are serialized and encrypted at rest via ApplicationDbContext.

@@ -11,7 +11,6 @@ namespace MeetingWeb.Models
 
         // The descriptive text of the action item. (Encrypted at rest via DbContext).
         [Required]
-        [MaxLength(1000)]
         public string Text { get; set; } = string.Empty;
 
         // State tracking flag to indicate task completion status.

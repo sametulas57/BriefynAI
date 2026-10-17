@@ -31,8 +31,9 @@ namespace MeetingWeb.Tests.Security
             await client.PostAsync("/Upload", form);
         }
 
+        // ToplantiKonusu is encrypted with a random nonce (S4), so it cannot be compared in SQL; filter after decryption.
         private int? WorkspaceOfUpload(string fileName) => _app.WithDb(db => db.MeetingSummaries.AsNoTracking()
-            .Where(m => m.ToplantiKonusu == fileName).Select(m => m.WorkspaceId).SingleOrDefault());
+            .AsEnumerable().Where(m => m.ToplantiKonusu == fileName).Select(m => m.WorkspaceId).SingleOrDefault());
 
         [Fact]
         public async Task Removed_member_cannot_keep_uploading_into_the_old_workspace()

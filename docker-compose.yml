@@ -53,6 +53,8 @@ services:
       - EmailSettings__Password=${EMAIL_PASSWORD}
       - EncryptionSettings__Key=${ENCRYPTION_KEY}
       - EncryptionSettings__IV=${ENCRYPTION_IV}
+      # S4: yeni biçim (v2) bu anahtarla yazılır; Key/IV yalnız eski kayıtları okumak için durur.
+      - EncryptionSettings__KeyV2=${ENCRYPTION_KEY_V2}
       # Hangfire paneli (/hangfire) yalnız bu e-postaya açılır; boşsa kimse giremez.
       - Hangfire__DashboardAdminEmails__0=${HANGFIRE_ADMIN_EMAIL:-}
       

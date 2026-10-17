@@ -33,6 +33,7 @@ namespace MeetingWeb.Tests.Infrastructure
             Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "unused-in-tests");
             Environment.SetEnvironmentVariable("EncryptionSettings__Key", "test-key-32-bytes-long-000000000");
             Environment.SetEnvironmentVariable("EncryptionSettings__IV", "test-iv-16-bytes");
+            Environment.SetEnvironmentVariable("EncryptionSettings__KeyV2", TestKeys.KeyV2Base64);
         }
 
         public BriefynFactory()

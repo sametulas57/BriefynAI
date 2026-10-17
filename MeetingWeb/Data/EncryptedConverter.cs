@@ -37,20 +37,21 @@ namespace MeetingWeb.Data
         {
             if (string.IsNullOrWhiteSpace(cipherText)) return new List<string>();
 
+            // S4: an unreadable value shows up as a visible marker instead of silently becoming an empty list.
+            if (!EncryptionHelper.TryDecrypt(cipherText, out var decryptedJson))
+            {
+                Serilog.Log.Warning("Encrypted list could not be decrypted.");
+                return new List<string> { EncryptionHelper.DecryptionFailedMarker };
+            }
+
             try
             {
-                string decryptedJson = EncryptionHelper.Decrypt(cipherText);
                 return JsonSerializer.Deserialize<List<string>>(decryptedJson) ?? new List<string>();
             }
             catch (JsonException)
             {
-                // Fallback for legacy plain-text data or malformed JSON structures.
-                return new List<string>();
-            }
-            catch (System.Security.Cryptography.CryptographicException)
-            {
-                // Fallback for decryption failures (e.g., changed encryption keys).
-                return new List<string>();
+                // Decrypted but not a JSON list (malformed legacy data): surface it rather than drop it.
+                return new List<string> { decryptedJson };
             }
         }
     }
