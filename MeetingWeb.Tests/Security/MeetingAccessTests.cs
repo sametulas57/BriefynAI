@@ -28,6 +28,13 @@ namespace MeetingWeb.Tests.Security
             return (bob, await GetAntiforgeryTokenAsync(bob, $"/Details?id={S.MeetingB}"));
         }
 
+        // Rejected form posts send the user to their own history (same answer whether the meeting exists or not).
+        private static void AssertSentToHistory(HttpResponseMessage res)
+        {
+            Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
+            Assert.Equal("/History", res.Headers.Location!.OriginalString);
+        }
+
         private MeetingSummary MeetingA() => _app.WithDb(db => db.MeetingSummaries
             .Include(m => m.AksiyonMaddeleri).AsNoTracking().Single(m => m.Id == S.MeetingA));
 
@@ -48,10 +55,11 @@ namespace MeetingWeb.Tests.Security
         }
 
         [Fact]
-        public async Task Outsider_gets_404_for_another_workspaces_meeting()
+        public async Task Outsider_is_sent_to_own_history_without_seeing_the_meeting()
         {
             var res = await _app.ClientFor(S.BobId).GetAsync($"/Details?id={S.MeetingA}");
-            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
+            Assert.Equal("/History", res.Headers.Location!.OriginalString);
             Assert.DoesNotContain("A gizli toplantı", await res.Content.ReadAsStringAsync());
         }
 
@@ -68,7 +76,7 @@ namespace MeetingWeb.Tests.Security
             var decision = await PostFormAsync(bob, url + "&handler=AddDecision", token, ("meetingId", $"{S.MeetingA}"), ("decision", "bob-karar"));
             var action = await PostFormAsync(bob, url + "&handler=AddActionItem", token, ("meetingId", $"{S.MeetingA}"), ("actionText", "bob-gorev"));
 
-            Assert.All(new[] { topic, decision, action }, r => Assert.Equal(HttpStatusCode.NotFound, r.StatusCode));
+            Assert.All(new[] { topic, decision, action }, AssertSentToHistory);
             var after = MeetingA();
             Assert.Equal(before.GorusulenKonular, after.GorusulenKonular);
             Assert.Equal(before.AlinanKararlar, after.AlinanKararlar);
@@ -96,8 +104,8 @@ namespace MeetingWeb.Tests.Security
             var reaction = await PostFormAsync(bob, $"/Details?handler=ToggleReaction", token,
                 ("commentId", $"{S.CommentA}"), ("isLike", "true"));
 
-            Assert.Equal(HttpStatusCode.NotFound, comment.StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, reaction.StatusCode);
+            AssertSentToHistory(comment);
+            Assert.Equal(HttpStatusCode.NotFound, reaction.StatusCode); // AJAX handler: no page to redirect to
             Assert.False(_app.WithDb(db => db.MeetingComments.Any(c => c.Content == "bob-yorum")));
             Assert.False(_app.WithDb(db => db.CommentReactions.Any(r => r.CommentId == S.CommentA && r.UserId == S.BobId)));
         }
@@ -111,7 +119,7 @@ namespace MeetingWeb.Tests.Security
             var res = await PostFormAsync(bob, $"/Details?id={S.MeetingB}&handler=AddComment", token,
                 ("meetingId", $"{S.MeetingB}"), ("content", "bob-sizma-yaniti"), ("parentCommentId", $"{S.CommentA}"));
 
-            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            AssertSentToHistory(res);
             Assert.False(_app.WithDb(db => db.MeetingComments.Any(c => c.Content == "bob-sizma-yaniti")));
         }
 
@@ -122,7 +130,7 @@ namespace MeetingWeb.Tests.Security
 
             var res = await PostFormAsync(bob, $"/Details?id={S.MeetingA}&handler=RetryProcessing", token, ("id", $"{S.MeetingA}"));
 
-            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            AssertSentToHistory(res);
             Assert.Equal(MeetingStatus.Failed, MeetingA().Status);
             Assert.Equal(0, _app.Jobs.CountFor("ProcessMeetingJob", a => (int)a[0]! == S.MeetingA));
         }
@@ -135,7 +143,7 @@ namespace MeetingWeb.Tests.Security
             var res = await PostFormAsync(bob, $"/Details?id={S.MeetingA}&handler=Share", token,
                 ("meetingId", $"{S.MeetingA}"), ("selectedEmails", "attacker@evil.test"));
 
-            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            AssertSentToHistory(res);
             // The job queue is shared with the other tests in this class, so match on the attacker's address.
             Assert.Equal(0, _app.Jobs.CountFor("SendMeetingSummaryAsync", a => (string)a[1]! == "attacker@evil.test"));
         }

@@ -40,6 +40,13 @@ namespace MeetingWeb.Pages.Workspace
             // SECURITY: Mitigate Open Redirect vulnerabilities by enforcing local domain routing.
             if (Url.IsLocalUrl(returnUrl))
             {
+                // A meeting summary belongs to one company: after switching it would not exist there,
+                // so open the new company's meeting history instead of an empty "not found" page.
+                if (returnUrl.StartsWith("/Details", StringComparison.OrdinalIgnoreCase))
+                {
+                    return RedirectToPage("/History");
+                }
+
                 return LocalRedirect(returnUrl);
             }
 
