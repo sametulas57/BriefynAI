@@ -1,0 +1,121 @@
+using System.Net;
+using MeetingWeb.Models;
+using MeetingWeb.Services;
+using MeetingWeb.Tests.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using static MeetingWeb.Tests.Infrastructure.FormHelpers;
+
+namespace MeetingWeb.Tests.Security
+{
+    public class UserFacingFixture : IAsyncLifetime
+    {
+        public BriefynFactory Factory { get; } = new();
+        public Task InitializeAsync() => Factory.InitializeAsync();
+        public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
+    }
+
+    // Follow-ups from Ulaş's browser check after S4: times were shown in UTC, report emails started landing in spam,
+    // and the share confirmation talked about "background" processing.
+    public class UserFacingTests : IClassFixture<UserFacingFixture>
+    {
+        private readonly BriefynFactory _app;
+        private SeedData S => _app.Seed;
+
+        public UserFacingTests(UserFacingFixture fixture) => _app = fixture.Factory;
+
+        [Fact]
+        public void Utc_times_are_shown_in_turkish_time_and_format()
+        {
+            var utc = new DateTime(2026, 10, 17, 21, 30, 0, DateTimeKind.Unspecified); // EF returns Unspecified
+
+            Assert.Equal("18 Ekim 2026, 00:30", DisplayTime.Format(utc, "dd MMMM yyyy, HH:mm"));
+        }
+
+        // Razor HTML-encodes non-ASCII letters (ç → &#xE7;); browsers show them normally, so compare decoded text.
+        private static async Task<string> PageTextAsync(HttpClient client, string url) =>
+            WebUtility.HtmlDecode(await client.GetStringAsync(url));
+
+        [Fact]
+        public async Task Meeting_page_shows_turkish_time()
+        {
+            // The date badge is rendered for analysed meetings.
+            var created = new DateTime(2026, 10, 17, 21, 30, 0, DateTimeKind.Utc);
+            var id = _app.WithDb(db =>
+            {
+                var m = new MeetingSummary { WorkspaceId = S.WorkspaceA, ToplantiKonusu = "Saat testi", Status = MeetingStatus.Completed, CreatedDate = created };
+                db.MeetingSummaries.Add(m);
+                db.SaveChanges();
+                return m.Id;
+            });
+
+            var page = await PageTextAsync(_app.ClientFor(S.AliceId), $"/Details?id={id}");
+
+            Assert.Contains("18 Ekim 2026, 00:30", page);
+        }
+
+        [Fact]
+        public void Email_keeps_turkish_letters_readable_and_still_blocks_html()
+        {
+            var meeting = new MeetingSummary
+            {
+                ToplantiKonusu = "Lansman öncesi değerlendirme",
+                GorusulenKonular = new List<string> { "Tedarikçi değişti", "<script>x</script>" }
+            };
+
+            var html = EmailService.BuildSummaryHtml(meeting);
+
+            Assert.Contains("Tedarikçi değişti", html);       // no &#231; style entities, which spam filters dislike
+            Assert.Contains("Lansman öncesi değerlendirme", html);
+            Assert.Contains("&lt;script&gt;", html);
+        }
+
+        [Fact]
+        public void Email_has_a_plain_text_version()
+        {
+            var meeting = new MeetingSummary
+            {
+                ToplantiKonusu = "Sprint",
+                AlinanKararlar = new List<string> { "Release salıya kaldı|~|user-1" },
+                AksiyonMaddeleri = new List<ActionItem> { new() { Text = "Deniz: hotfix" } }
+            };
+
+            var text = EmailService.BuildSummaryText(meeting);
+
+            Assert.Contains("Release salıya kaldı", text);
+            Assert.Contains("Deniz: hotfix", text);
+            Assert.DoesNotContain("<", text);
+            Assert.DoesNotContain("user-1", text);
+        }
+
+        [Fact]
+        public async Task Share_confirmation_is_plain_language()
+        {
+            var alice = _app.ClientFor(S.AliceId);
+            var token = await GetAntiforgeryTokenAsync(alice, $"/Details?id={S.MeetingA}");
+
+            var res = await PostFormAsync(alice, $"/Details?id={S.MeetingA}&handler=Share", token,
+                ("meetingId", $"{S.MeetingA}"), ("selectedEmails", SeedData.CarolEmail));
+            var page = await PageTextAsync(alice, res.Headers.Location!.ToString());
+
+            Assert.DoesNotContain("arka plan", page, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("e-postayla gönderiliyor", page);
+        }
+
+        [Fact]
+        public async Task Hitting_the_share_limit_explains_what_happened()
+        {
+            var bob = _app.ClientFor(S.BobId);
+            var url = $"/Details?id={S.MeetingB}";
+            var token = await GetAntiforgeryTokenAsync(bob, url);
+            bob.DefaultRequestHeaders.Referrer = new Uri("https://localhost" + url);
+
+            HttpResponseMessage last = null!;
+            for (var i = 0; i < 11; i++)
+                last = await PostFormAsync(bob, url + "&handler=Share", token, ("meetingId", $"{S.MeetingB}"), ("selectedEmails", SeedData.BobEmail));
+
+            Assert.Equal(HttpStatusCode.Redirect, last.StatusCode);
+            var page = await PageTextAsync(bob, last.Headers.Location!.ToString());
+            Assert.Contains("çok fazla rapor", page);
+        }
+    }
+}

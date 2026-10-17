@@ -185,7 +185,7 @@
             <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
                 <div>
                     <span class="badge bg-soft-light text-muted border rounded-pill px-3 py-2 mb-3 fw-medium">
-                        <i class="bi bi-calendar3 me-1"></i> @Model.Meeting.CreatedDate.ToString("dd MMMM yyyy, HH:mm")
+                        <i class="bi bi-calendar3 me-1"></i> @MeetingWeb.Services.DisplayTime.Format(Model.Meeting.CreatedDate, "dd MMMM yyyy, HH:mm")
                     </span>
                     <h2 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.5px;">@Model.Meeting.ToplantiKonusu</h2>
                 </div>
@@ -412,7 +412,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="fw-bold text-dark">@profile.FullName</span>
                                 <div class="d-flex align-items-center gap-3">
-                                    <small class="text-muted fw-medium"><i class="bi bi-clock me-1"></i> @comment.CreatedAt.AddHours(3).ToString("HH:mm")</small>
+                                    <small class="text-muted fw-medium"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(comment.CreatedAt, "HH:mm")</small>
                                     @if (comment.UserId == currentUserId)
                                     {
                                         <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yorumu kalıcı olarak silmek istediğinize emin misiniz?');">
@@ -473,7 +473,7 @@
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                                     <span class="fw-bold text-dark" style="font-size: 0.9rem;">@replyProfile.FullName</span>
                                                     <div class="d-flex align-items-center gap-3">
-                                                        <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> @reply.CreatedAt.AddHours(3).ToString("HH:mm")</span>
+                                                        <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(reply.CreatedAt, "HH:mm")</span>
                                                         @if (reply.UserId == currentUserId)
                                                         {
                                                             <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yanıtı silmek istediğinize emin misiniz?');">

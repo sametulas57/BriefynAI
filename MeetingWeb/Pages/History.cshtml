@@ -141,7 +141,7 @@
                                     @Html.Raw(iconHtml)
                                 </div>
                                 <span class="badge bg-white text-secondary border fw-medium rounded-pill px-3 py-2 shadow-sm" style="font-size: 0.75rem;">
-                                    @item.CreatedDate.ToString("dd MMM yyyy")
+                                    @MeetingWeb.Services.DisplayTime.Format(item.CreatedDate, "dd MMM yyyy")
                                 </span>
                             </div>
 
@@ -149,7 +149,7 @@
                             {
                                 <h5 class="card-title text-primary fw-bold mb-1" style="letter-spacing: -0.3px;">Analiz Ediliyor</h5>
                                 <div class="text-muted small fst-italic text-truncate mb-3" title="@item.ToplantiKonusu">Dosya: @item.ToplantiKonusu</div>
-                                <p class="text-secondary small mb-0" style="line-height: 1.6;">Yapay zeka ses dosyasını metne çeviriyor. Bu işlem arka planda devam ediyor...</p>
+                                <p class="text-secondary small mb-0" style="line-height: 1.6;">Yapay zekâ kaydınızı yazıya döküp özetliyor. Bittiğinde bu sayfa kendiliğinden yenilenir.</p>
                             }
                             else if (item.Status == MeetingWeb.Models.MeetingStatus.Failed)
                             {

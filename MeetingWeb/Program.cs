@@ -109,6 +109,19 @@ try
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        // Instead of a bare 429 page, send the user back to the meeting with an explanation.
+        options.OnRejected = (rejected, _) =>
+        {
+            var http = rejected.HttpContext;
+            var tempData = http.RequestServices.GetRequiredService<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory>().GetTempData(http);
+            tempData["ErrorMessage"] = "Bu saat içinde çok fazla rapor gönderdiniz. Lütfen biraz sonra tekrar deneyin.";
+            tempData.Save();
+
+            var referer = http.Request.Headers.Referer.ToString();
+            var back = Uri.TryCreate(referer, UriKind.Absolute, out var uri) && uri.Host == http.Request.Host.Host ? uri.PathAndQuery : "/History";
+            http.Response.Redirect(back);
+            return ValueTask.CompletedTask;
+        };
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         {
             var isShare = HttpMethods.IsPost(context.Request.Method) &&

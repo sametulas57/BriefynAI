@@ -342,7 +342,7 @@ namespace MeetingWeb.Pages
             {
                 _backgroundJobClient.Enqueue<IEmailService>(x => x.SendMeetingSummaryAsync(meetingId, email));
             }
-            TempData["StatusMessage"] = "Rapor gönderimi arka planda başlatıldı!";
+            TempData["StatusMessage"] = "Rapor e-postayla gönderiliyor. Birkaç dakika içinde seçtiğiniz kişilerin gelen kutusunda olur.";
             return RedirectToPage(new { id = meetingId });
         }
     }

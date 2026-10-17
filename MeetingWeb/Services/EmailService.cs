@@ -1,4 +1,7 @@
 ﻿using System.Net;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 using System.Net.Mail;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
@@ -36,16 +39,19 @@ namespace MeetingWeb.Services
                 EnableSsl = true,
             };
 
-            string htmlBody = BuildSummaryHtml(meeting);
-
-            // Compose and dispatch the mail message.
+            // Compose and dispatch the mail message: a plain-text body plus an HTML alternative.
+            // Mail with both parts (and real UTF-8 instead of character entities) is far less likely to be marked as spam.
             using var mailMessage = new MailMessage
             {
                 From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
                 Subject = BuildSubject(meeting),
-                IsBodyHtml = true,
-                Body = htmlBody
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = BuildSummaryText(meeting)
             };
+            mailMessage.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildSummaryHtml(meeting), Encoding.UTF8, "text/html"));
 
             mailMessage.To.Add(toEmail);
 
@@ -56,8 +62,31 @@ namespace MeetingWeb.Services
         public static string BuildSubject(MeetingSummary meeting) =>
             $"Briefyn AI Raporu: {string.Join(' ', (meeting.ToplantiKonusu ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))}";
 
+        public static string BuildSummaryText(MeetingSummary meeting)
+        {
+            var text = new StringBuilder();
+            text.AppendLine("Briefyn AI · Toplantı ve Karar Raporu").AppendLine();
+            text.AppendLine(meeting.ToplantiKonusu).AppendLine();
+            Section("Görüşülen Konular", meeting.GorusulenKonular);
+            Section("Alınan Kararlar", meeting.AlinanKararlar);
+            Section("Aksiyon Maddeleri", meeting.AksiyonMaddeleri.Select(a => a.Text));
+            text.AppendLine($"Bu e-posta Briefyn AI tarafından {DisplayTime.Format(meeting.CreatedDate, "dd MMMM yyyy HH:mm")} tarihli toplantı için oluşturulmuştur.");
+            return text.ToString();
+
+            void Section(string title, IEnumerable<string> items)
+            {
+                text.AppendLine(title);
+                foreach (var item in items) text.AppendLine("- " + item.Split("|~|")[0]);
+                text.AppendLine();
+            }
+        }
+
+        // Encodes only what HTML needs (<, >, &, quotes); Turkish letters stay as real UTF-8 text.
+        // WebUtility.HtmlEncode turned "ç" into "&#231;", which made the mail look obfuscated to spam filters.
+        private static readonly HtmlEncoder Html = HtmlEncoder.Create(UnicodeRanges.All);
+
         // Manual entries carry "text|~|authorId"; only the text belongs in the email, HTML-encoded.
-        private static string Item(string value) => WebUtility.HtmlEncode(value.Split("|~|")[0]);
+        private static string Item(string value) => Html.Encode(value.Split("|~|")[0]);
 
         // Construct the responsive HTML email template using inline CSS for mail client compatibility.
         // S8: every meeting value comes from the LLM or from users, so all of it is HTML-encoded.
@@ -74,7 +103,7 @@ namespace MeetingWeb.Services
 
                     <div style=""padding: 35px 30px;"">
                         <h2 style=""color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 30px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"">
-                            {WebUtility.HtmlEncode(meeting.ToplantiKonusu)}
+                            {Html.Encode(meeting.ToplantiKonusu)}
                         </h2>
 
                         <div style=""margin-bottom: 30px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; border-radius: 6px;"">
@@ -108,7 +137,7 @@ namespace MeetingWeb.Services
 
                     <div style=""background-color: #f8fafc; padding: 25px 20px; text-align: center; border-top: 1px solid #e2e8f0;"">
                         <p style=""color: #64748b; font-size: 13px; margin: 0; line-height: 1.5;"">
-                            Bu e-posta <strong>Briefyn AI</strong> asistanı tarafından <br> {meeting.CreatedDate:dd MMMM yyyy HH:mm} tarihinde otomatik olarak oluşturulmuştur.
+                            Bu e-posta <strong>Briefyn AI</strong> asistanı tarafından <br> {DisplayTime.Format(meeting.CreatedDate, "dd MMMM yyyy HH:mm")} tarihinde otomatik olarak oluşturulmuştur.
                         </p>
                         <p style=""color: #94a3b8; font-size: 12px; margin-top: 15px; margin-bottom: 0;"">
                             © {DateTime.Now.Year} Briefyn AI. Tüm hakları saklıdır.

@@ -66,7 +66,8 @@ namespace MeetingWeb.Tests.Security
                 statuses.Add(res.StatusCode);
             }
 
-            Assert.Equal(HttpStatusCode.TooManyRequests, statuses[^1]);
+            // Over the limit the user is sent back with an explanation (UserFacingTests checks the message).
+            Assert.Equal(HttpStatusCode.Redirect, statuses[^1]);
             Assert.True(_app.Jobs.CountFor("SendMeetingSummaryAsync") <= 10);
         }
     }
