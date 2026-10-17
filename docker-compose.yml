@@ -10,9 +10,25 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
     ports:
-      - "1433:1433"
+      # S9a: yalnız bu bilgisayardan erişilir (veritabanı araçları için). Ağdaki başka cihazlar bağlanamaz;
+      # web servisi Docker ağı içinden "db" adıyla bağlanır.
+      - "127.0.0.1:1433:1433"
     volumes:
       - sql_data:/var/opt/mssql
+
+  # S9a: uygulamanın kendi veritabanı kullanıcısını (briefyn_app) her açılışta hazırlar; sa yalnız burada kullanılır.
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    depends_on:
+      - db
+    environment:
+      - SQLCMDPASSWORD=${MSSQL_SA_PASSWORD}
+      - APP_DB_PASSWORD=${APP_DB_PASSWORD}
+    volumes:
+      - ./db:/db:ro
+    entrypoint: ["/bin/bash", "/db/init-app-user.sh"]
+    restart: "no"
 
   # ==========================================
   # 2. YAPAY ZEKA MOTORU (Python FastAPI)
@@ -45,7 +61,8 @@ services:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      # S9a: sa değil, yalnız BriefynDB'ye yetkili kullanıcı.
+      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=briefyn_app;Password=${APP_DB_PASSWORD};TrustServerCertificate=True;
       - PythonApiSettings__BaseUrl=http://ai_engine:8000/
       - PythonApiSettings__ApiKey=${AI_ENGINE_API_KEY}
       # Sırlar .env dosyasından gelir (git\'e girmez); şablon: .env.example
@@ -72,8 +89,10 @@ services:
       - /app/obj
       
     depends_on:
-      - db
-      - ai_engine
+      db-init:
+        condition: service_completed_successfully
+      ai_engine:
+        condition: service_started
     restart: unless-stopped
 
 # ==========================================
