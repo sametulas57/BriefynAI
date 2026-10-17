@@ -38,6 +38,12 @@ namespace MeetingWeb.Services
             (typeof(ActionItem), nameof(ActionItem.Text)),
         };
 
+        // Columns that were stored as plain text before they were encrypted: any non-v2 value is plain text.
+        private static readonly (Type Entity, string Property)[] FormerlyPlainColumns =
+        {
+            (typeof(MeetingComment), nameof(MeetingComment.Content)),
+        };
+
         private sealed record RawValue(int Id, string? Value);
 
         private readonly ApplicationDbContext _context;
@@ -53,7 +59,8 @@ namespace MeetingWeb.Services
         {
             var report = new ReencryptionReport();
 
-            foreach (var (entity, property) in EncryptedColumns)
+            foreach (var (entity, property, wasPlain) in EncryptedColumns.Select(c => (c.Entity, c.Property, false))
+                         .Concat(FormerlyPlainColumns.Select(c => (c.Entity, c.Property, true))))
             {
                 var entityType = _context.Model.FindEntityType(entity)!;
                 var table = entityType.GetTableName()!;
@@ -74,7 +81,8 @@ namespace MeetingWeb.Services
                     if (string.IsNullOrEmpty(row.Value) || EncryptionHelper.IsCurrentFormat(row.Value)) continue;
 
                     report.Legacy++;
-                    if (!EncryptionHelper.TryDecrypt(row.Value, out var plainText))
+                    var plainText = row.Value;
+                    if (!wasPlain && !EncryptionHelper.TryDecrypt(row.Value, out plainText))
                     {
                         report.Undecryptable.Add($"{table}#{row.Id}.{column}");
                         continue;

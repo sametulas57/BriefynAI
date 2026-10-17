@@ -176,6 +176,11 @@ namespace MeetingWeb.Pages
             if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
             if (userId == null || string.IsNullOrWhiteSpace(content))
                 return RedirectToPage(new { id = meetingId });
+            if (content.Length > MeetingComment.MaxContentLength)
+            {
+                TempData["ErrorMessage"] = $"Yorum en fazla {MeetingComment.MaxContentLength} karakter olabilir.";
+                return RedirectToPage(new { id = meetingId });
+            }
 
             // A reply must belong to the same meeting; otherwise it could be attached to another tenant's thread.
             if (parentCommentId != null &&

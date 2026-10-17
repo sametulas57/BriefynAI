@@ -22,8 +22,11 @@ namespace MeetingWeb.Models
         [ForeignKey("UserId")]
         public IdentityUser? User { get; set; }
 
+        // Longest comment a user may write; checked in the page handler. The column itself has no limit because it
+        // stores ciphertext, which is longer than the text.
+        public const int MaxContentLength = 2000;
+
         [Required(ErrorMessage = "Comment content cannot be empty.")]
-        [MaxLength(2000)]
         public string Content { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

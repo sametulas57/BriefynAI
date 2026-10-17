@@ -65,6 +65,11 @@ namespace MeetingWeb.Data
                 .WithMany()
                 .HasForeignKey(wu => wu.UserId);
 
+            // Comments discuss meeting content, so they are encrypted too (older plain comments stay readable).
+            builder.Entity<MeetingComment>()
+                .Property(c => c.Content)
+                .HasConversion(new EncryptedOrPlainTextConverter());
+
             // Prevent cascade delete on nested comments to maintain comment history integrity.
             builder.Entity<MeetingComment>()
                 .HasOne(c => c.ParentComment)

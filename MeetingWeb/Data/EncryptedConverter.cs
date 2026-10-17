@@ -15,6 +15,18 @@ namespace MeetingWeb.Data
         { }
     }
 
+    // For columns that held plain text before encryption was added (meeting comments): values are always written
+    // encrypted, and old plain values are read as they are until the reencrypt command has converted them.
+    public class EncryptedOrPlainTextConverter : ValueConverter<string, string>
+    {
+        public EncryptedOrPlainTextConverter()
+            : base(
+                v => EncryptionHelper.Encrypt(v),
+                v => EncryptionHelper.IsCurrentFormat(v) ? EncryptionHelper.Decrypt(v) : v
+            )
+        { }
+    }
+
     // Custom EF Core converter to serialize, and then encrypt List<string> objects.
     public class EncryptedStringListConverter : ValueConverter<List<string>, string>
     {

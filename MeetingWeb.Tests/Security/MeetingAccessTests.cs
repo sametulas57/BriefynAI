@@ -106,7 +106,7 @@ namespace MeetingWeb.Tests.Security
 
             AssertSentToHistory(comment);
             Assert.Equal(HttpStatusCode.NotFound, reaction.StatusCode); // AJAX handler: no page to redirect to
-            Assert.False(_app.WithDb(db => db.MeetingComments.Any(c => c.Content == "bob-yorum")));
+            Assert.False(_app.WithDb(db => db.MeetingComments.AsEnumerable().Any(c => c.Content == "bob-yorum")));
             Assert.False(_app.WithDb(db => db.CommentReactions.Any(r => r.CommentId == S.CommentA && r.UserId == S.BobId)));
         }
 
@@ -120,7 +120,7 @@ namespace MeetingWeb.Tests.Security
                 ("meetingId", $"{S.MeetingB}"), ("content", "bob-sizma-yaniti"), ("parentCommentId", $"{S.CommentA}"));
 
             AssertSentToHistory(res);
-            Assert.False(_app.WithDb(db => db.MeetingComments.Any(c => c.Content == "bob-sizma-yaniti")));
+            Assert.False(_app.WithDb(db => db.MeetingComments.AsEnumerable().Any(c => c.Content == "bob-sizma-yaniti")));
         }
 
         [Fact]
