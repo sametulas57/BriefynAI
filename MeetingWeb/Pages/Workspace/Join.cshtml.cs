@@ -55,7 +55,7 @@ namespace MeetingWeb.Pages.Workspace
                 return Page();
             }
 
-            WorkspaceName = invitation.Workspace?.Name ?? "Bilinmeyen Çalışma Alanı";
+            WorkspaceName = invitation.Workspace?.Name ?? "Bilinmeyen Ekip";
             return Page();
         }
 

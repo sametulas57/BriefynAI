@@ -51,7 +51,7 @@ namespace MeetingWeb.Pages.Workspace
 
             // Retrieve current workspace metadata.
             var workspace = await _context.Workspaces.FindAsync(activeWorkspaceId);
-            WorkspaceName = workspace?.Name ?? "Çalışma Alanı";
+            WorkspaceName = workspace?.Name ?? "Ekip";
 
             TeamMembers = await _context.WorkspaceUsers
                 .Include(wu => wu.User)
@@ -121,7 +121,7 @@ namespace MeetingWeb.Pages.Workspace
                 // Orphan Prevention: Owners cannot leave; they must transfer ownership or delete the tenant.
                 if (me.Role == "Sahip")
                 {
-                    TempData["ErrorMessage"] = "Kurucu sahipler çalışma alanından ayrılamaz. Ekibi tamamen silmeniz gerekir.";
+                    TempData["ErrorMessage"] = "Ekip kurucusu ekipten ayrılamaz; isterseniz ekibi silebilirsiniz.";
                     return RedirectToPage();
                 }
 
@@ -130,7 +130,7 @@ namespace MeetingWeb.Pages.Workspace
 
                 // Clear session context upon departure.
                 HttpContext.Session.Remove("ActiveWorkspaceId");
-                TempData["StatusMessage"] = "Çalışma alanından başarıyla ayrıldınız.";
+                TempData["StatusMessage"] = "Ekipten ayrıldınız.";
             }
 
             return RedirectToPage("/Index");
@@ -178,7 +178,7 @@ namespace MeetingWeb.Pages.Workspace
                 foreach (var audio in audioFiles) _audioStorage.Delete(audio);
 
                 HttpContext.Session.Remove("ActiveWorkspaceId");
-                TempData["StatusMessage"] = $"'{workspaceToDelete.Name}' ekibi ve çalışma alanı tamamen silindi.";
+                TempData["StatusMessage"] = $"'{workspaceToDelete.Name}' ekibi silindi.";
             }
 
             return RedirectToPage("/Index");

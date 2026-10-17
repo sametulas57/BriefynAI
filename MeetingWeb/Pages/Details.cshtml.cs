@@ -43,7 +43,7 @@ namespace MeetingWeb.Pages
         // The message is identical for "no access" and "does not exist", so outsiders still learn nothing.
         private IActionResult MeetingUnavailable()
         {
-            TempData["ErrorMessage"] = "Bu özet seçili çalışma alanında bulunamadı. Çalışma alanınızın geçmiş özetlerini görüyorsunuz.";
+            TempData["ErrorMessage"] = "Bu özet seçili ekipte bulunamadı. Ekibinizin geçmiş özetlerini görüyorsunuz.";
             return RedirectToPage("/History");
         }
 

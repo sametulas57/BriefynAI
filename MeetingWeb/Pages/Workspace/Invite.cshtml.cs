@@ -49,12 +49,12 @@ namespace MeetingWeb.Pages.Workspace
 
             if (userRole != "Sahip")
             {
-                TempData["ErrorMessage"] = "Yetki İhlali: Bu sayfaya sadece şirket kurucuları erişebilir.";
+                TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu oluşturabilir.";
                 return RedirectToPage("/Workspace/Members");
             }
 
             var workspace = await _context.Workspaces.FindAsync(activeWorkspaceId);
-            WorkspaceName = workspace?.Name ?? "Çalışma Alanı";
+            WorkspaceName = workspace?.Name ?? "Ekip";
 
             return Page();
         }
@@ -77,7 +77,7 @@ namespace MeetingWeb.Pages.Workspace
 
             if (userRole != "Sahip")
             {
-                TempData["ErrorMessage"] = "Güvenlik İhlali: Sadece kurucular davet linki üretebilir.";
+                TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu oluşturabilir.";
                 return RedirectToPage("/Workspace/Members");
             }
 
@@ -99,7 +99,7 @@ namespace MeetingWeb.Pages.Workspace
             GeneratedLink = $"{request.Scheme}://{request.Host}/Workspace/Join?token={invitation.Token}";
 
             var workspace = await _context.Workspaces.FindAsync(activeWorkspaceId);
-            WorkspaceName = workspace?.Name ?? "Çalışma Alanı";
+            WorkspaceName = workspace?.Name ?? "Ekip";
 
             return Page();
         }

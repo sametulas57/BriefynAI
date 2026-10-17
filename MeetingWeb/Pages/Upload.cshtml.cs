@@ -73,7 +73,7 @@ namespace MeetingWeb.Pages
 
             if (activeWorkspaceId == null)
             {
-                ErrorMessage = "Herhangi bir çalışma alanına dahil değilsiniz. Lütfen önce bir alan seçin veya oluşturun.";
+                ErrorMessage = "Henüz bir ekibiniz yok. Kayıt yüklemek için önce bir ekip oluşturun ya da bir davete katılın.";
                 return Page();
             }
 

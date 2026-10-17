@@ -79,7 +79,7 @@ namespace MeetingWeb.Tests.Security
             Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
             Assert.Equal(res.Headers.Location, missing.Headers.Location); // same answer as for an id that does not exist
             var page = await PageTextAsync(carol, res.Headers.Location!.OriginalString);
-            Assert.Contains("Bu özet seçili çalışma alanında bulunamadı", page);
+            Assert.Contains("Bu özet seçili ekipte bulunamadı", page);
             Assert.DoesNotContain("B gizli toplantı", page);
         }
     }

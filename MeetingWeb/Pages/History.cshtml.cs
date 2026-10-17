@@ -107,7 +107,7 @@ namespace MeetingWeb.Pages
 
             if (!isOwner)
             {
-                TempData["ErrorMessage"] = "Yetkisiz İşlem: Geçmiş toplantıları sadece Kurucular silebilir.";
+                TempData["ErrorMessage"] = "Geçmiş toplantıları yalnız ekip kurucusu silebilir.";
                 return RedirectToPage();
             }
 

@@ -1,7 +1,7 @@
 ﻿@page
 @model MeetingWeb.Pages.Workspace.CreateModel
 @{
-    ViewData["Title"] = "Yeni Çalışma Alanı";
+    ViewData["Title"] = "Yeni Ekip";
 }
 
 <div class="container mt-5 mb-5">
@@ -11,7 +11,7 @@
             <div class="card shadow-lg border-0 rounded-4 overflow-hidden mt-4">
                 
                 <div class="bg-primary bg-gradient text-white py-4 px-4 position-relative overflow-hidden text-center">
-                    <h3 class="mb-0 fw-bold">Yeni Çalışma Alanı Oluştur</h3>
+                    <h3 class="mb-0 fw-bold">Yeni Ekip Oluştur</h3>
                     <p class="mb-0 mt-1 opacity-75 fs-6">Ekibini Briefyn AI ile güçlendir</p>
                 </div>
 
@@ -19,11 +19,11 @@
                     <form method="post">
                         <div class="mb-5">
                             <label class="form-label fw-bold text-dark mb-2">
-                                <i class="bi bi-briefcase text-primary me-1"></i> Şirket veya Ekip Adı
+                                <i class="bi bi-briefcase text-primary me-1"></i> Ekip Adı
                             </label>
                             <input asp-for="WorkspaceName" class="form-control form-control-lg border-secondary border-opacity-25 bg-light focus-ring-primary px-4 py-3 rounded-3" placeholder="Örn: Briefyn AI Ar-Ge Ekibi" required autocomplete="off" />
                             <div class="form-text text-muted mt-2">
-                                <i class="bi bi-info-circle me-1"></i> Bu adı daha sonra değiştiremezsiniz, ancak çalışma alanını dilediğiniz zaman silebilirsiniz.
+                                <i class="bi bi-info-circle me-1"></i> Bu adı daha sonra değiştiremezsiniz, ancak ekibi dilediğiniz zaman silebilirsiniz.
                             </div>
                         </div>
                         
