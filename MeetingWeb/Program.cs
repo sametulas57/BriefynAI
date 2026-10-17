@@ -7,6 +7,7 @@ using MeetingWeb.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
@@ -43,6 +44,16 @@ try
     builder.Services.AddDefaultIdentity<IdentityUser>(options =>
         options.SignIn.RequireConfirmedAccount = false)
         .AddEntityFrameworkStores<ApplicationDbContext>();
+
+    // S9b: Data Protection keys sign the login cookie, antiforgery tokens and TempData. Inside the container they
+    // vanished on every rebuild (everyone logged out, open forms failed). They now live in a persistent folder:
+    // App_Data/keys under the content root, which Docker keeps on the host through the ./MeetingWeb bind mount.
+    var keysPath = builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } configuredKeys
+        ? configuredKeys
+        : Path.Combine(builder.Environment.ContentRootPath, "App_Data", "keys");
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+        .SetApplicationName("Briefyn");
 
     builder.Services.ConfigureApplicationCookie(options =>
     {

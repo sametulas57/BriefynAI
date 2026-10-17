@@ -24,6 +24,10 @@ namespace MeetingWeb.Tests.Infrastructure
         // Per-factory folders, so parallel test classes never share files.
         public string WebRoot => Path.Combine(_tempRoot, "wwwroot");
         public string AudioRoot => Path.Combine(_tempRoot, "audio");
+
+        // Where Data Protection keys (login cookies, antiforgery, TempData) are stored; tests can share one folder
+        // between two app instances to simulate a container restart.
+        public string KeysPath { get; init; } = Path.Combine(Path.GetTempPath(), "briefyn-tests-keys-" + Guid.NewGuid().ToString("N"));
         public const string AiEngineApiKey = "test-ai-engine-key";
         public SeedData Seed { get; private set; } = null!;
 
@@ -50,6 +54,7 @@ namespace MeetingWeb.Tests.Infrastructure
             builder.UseSetting("AudioStorage:RootPath", AudioRoot);
             builder.UseSetting("PythonApiSettings:ApiKey", AiEngineApiKey);
             builder.UseSetting("Upload:MaxMegabytes", "1");
+            builder.UseSetting("DataProtection:KeysPath", KeysPath);
 
             builder.ConfigureTestServices(services =>
             {
