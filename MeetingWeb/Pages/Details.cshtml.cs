@@ -317,6 +317,12 @@ namespace MeetingWeb.Pages
             return RedirectToPage(new { id = meetingId });
         }
 
+        private static bool IsValidEmail(string value)
+        {
+            try { return new System.Net.Mail.MailAddress(value).Address == value; }
+            catch (FormatException) { return false; }
+        }
+
         // AJAX Handler: Updates the completion status of a task without page reload.
         public async Task<IActionResult> OnPostToggleTaskAsync(int taskId)
         {
@@ -332,9 +338,29 @@ namespace MeetingWeb.Pages
         }
 
         // Hangfire Integration: Dispatches background jobs to transmit reports via email.
-        public async Task<IActionResult> OnPostShareAsync(int meetingId, List<string> selectedEmails)
+        // Addresses outside the team are allowed for sharing (e.g. a client, or a summary from a personal space),
+        // but capped per send; together with the hourly share limit this keeps the sender account from being abused.
+        public const int MaxExtraRecipients = 3;
+
+        public async Task<IActionResult> OnPostShareAsync(int meetingId, List<string> selectedEmails, string? extraEmails)
         {
             if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
+
+            var extras = (extraEmails ?? "")
+                .Split(new[] { ',', ';', ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (extras.Count > MaxExtraRecipients)
+            {
+                TempData["ErrorMessage"] = $"Ekip dışından en fazla {MaxExtraRecipients} adres ekleyebilirsiniz. Rapor gönderilmedi.";
+                return RedirectToPage(new { id = meetingId });
+            }
+            var invalid = extras.Where(e => !IsValidEmail(e)).ToList();
+            if (invalid.Count > 0)
+            {
+                TempData["ErrorMessage"] = $"{string.Join(", ", invalid)} geçerli bir e-posta adresi değil. Düzeltip tekrar deneyin; rapor gönderilmedi.";
+                return RedirectToPage(new { id = meetingId });
+            }
 
             // Reports may only go to members of the meeting's workspace, never to arbitrary addresses.
             var memberEmails = await _context.WorkspaceUsers
@@ -343,7 +369,15 @@ namespace MeetingWeb.Pages
                 .ToListAsync();
             var recipients = selectedEmails
                 .Where(e => memberEmails.Contains(e, StringComparer.OrdinalIgnoreCase))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+                .Concat(extras)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (recipients.Count == 0)
+            {
+                TempData["ErrorMessage"] = "Raporu göndermek için en az bir kişi seçin ya da bir e-posta adresi yazın.";
+                return RedirectToPage(new { id = meetingId });
+            }
 
             foreach (var email in recipients)
             {

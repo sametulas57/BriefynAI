@@ -518,7 +518,7 @@
             <form method="post" asp-page-handler="Share">
                 <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
                 <div class="modal-body px-4 pb-4">
-                    <p class="text-muted mb-4 small">Bu toplantı özetini e-posta olarak göndermek istediğiniz çalışma arkadaşlarınızı seçin.</p>
+                    <p class="text-muted mb-4 small">Bu toplantı özetini e-postayla göndermek istediğiniz ekip arkadaşlarınızı seçin.</p>
                     <div class="list-group rounded-4 border-0 gap-2">
                         @if (Model.WorkspaceMembers != null && Model.WorkspaceMembers.Any())
                         {
@@ -536,6 +536,12 @@
                                 </label>
                             }
                         }
+                    </div>
+
+                    <div class="mt-4">
+                        <label for="extraEmails" class="form-label small fw-bold text-dark">Ekip dışından birine de göndermek ister misiniz?</label>
+                        <input type="text" id="extraEmails" name="extraEmails" class="form-control rounded-4" placeholder="ornek@firma.com" autocomplete="off" />
+                        <div class="form-text">Birden fazla adresi virgülle ayırabilirsiniz (en fazla @MeetingWeb.Pages.DetailsModel.MaxExtraRecipients adres).</div>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
