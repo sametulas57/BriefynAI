@@ -5,11 +5,12 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject UserManager<IdentityUser> UserManager
 @inject ApplicationDbContext DbContext
+@inject MeetingWeb.Services.IActiveWorkspaceService ActiveWorkspace
 
 @{
-    // SECURITY & CONTEXT MANAGEMENT: Retrieve active tenant state from Session.
-    var activeWorkspaceId = HttpContextAccessor.HttpContext?.Session.GetInt32("ActiveWorkspaceId");
+    // SECURITY & CONTEXT MANAGEMENT (S7): the active tenant is the session's choice only if the user is still a member.
     var userId = UserManager.GetUserId(User);
+    var activeWorkspaceId = (await ActiveWorkspace.GetActiveMembershipAsync(userId))?.WorkspaceId;
     
     string currentUserRole = "";
     string activeWorkspaceName = "Çalışma Alanı";
@@ -25,14 +26,7 @@
             .Where(w => w.UserId == userId)
             .ToList();
 
-        // 2. AUTO-FALLBACK: If session drops, re-initialize context to the first available workspace.
-        if (activeWorkspaceId == null && userWorkspaces.Any())
-        {
-            activeWorkspaceId = userWorkspaces.First().WorkspaceId;
-            HttpContextAccessor.HttpContext?.Session.SetInt32("ActiveWorkspaceId", activeWorkspaceId.Value);
-        }
-
-        // 3. Extract metadata for the active workspace to render in the navigation bar.
+        // 2. Extract metadata for the active workspace to render in the navigation bar.
         var userRecord = userWorkspaces.FirstOrDefault(w => w.WorkspaceId == activeWorkspaceId);
             
         if (userRecord != null)

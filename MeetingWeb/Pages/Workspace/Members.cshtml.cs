@@ -1,5 +1,6 @@
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using MeetingWeb.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,8 +16,11 @@ namespace MeetingWeb.Pages.Workspace
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
 
-        public MembersModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        private readonly IActiveWorkspaceService _activeWorkspace;
+
+        public MembersModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IActiveWorkspaceService activeWorkspace)
         {
+            _activeWorkspace = activeWorkspace;
             _context = context;
             _userManager = userManager;
         }
@@ -37,29 +41,11 @@ namespace MeetingWeb.Pages.Workspace
         {
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
-            // 1. Context Resolution: Attempt to retrieve the active tenant from the session.
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
+            // 1. Context Resolution (S7): verified membership, falling back to an owned workspace when the session is stale.
+            int? activeWorkspaceId = (await _activeWorkspace.GetActiveMembershipAsync(CurrentUserId))?.WorkspaceId;
 
-            // 2. Fallback Mechanism: Auto-select the highest privileged workspace if session is empty.
-            if (activeWorkspaceId == null)
-            {
-                var userFirstWorkspace = await _context.WorkspaceUsers
-                    .Where(wu => wu.UserId == CurrentUserId)
-                    .OrderByDescending(wu => wu.Role) // Prioritize 'Owner' roles.
-                    .Select(wu => wu.WorkspaceId)
-                    .FirstOrDefaultAsync();
-
-                if (userFirstWorkspace != 0)
-                {
-                    activeWorkspaceId = userFirstWorkspace;
-                    HttpContext.Session.SetInt32("ActiveWorkspaceId", activeWorkspaceId.Value);
-                }
-                else
-                {
-                    // Redirect to onboarding if the user is completely orphaned.
-                    return RedirectToPage("/Workspace/Create");
-                }
-            }
+            // 2. Redirect to onboarding if the user is completely orphaned.
+            if (activeWorkspaceId == null) return RedirectToPage("/Workspace/Create");
 
             // Retrieve current workspace metadata.
             var workspace = await _context.Workspaces.FindAsync(activeWorkspaceId);

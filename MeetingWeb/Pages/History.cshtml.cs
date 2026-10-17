@@ -16,9 +16,12 @@ namespace MeetingWeb.Pages
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IAudioStorage _audioStorage;
+        private readonly IActiveWorkspaceService _activeWorkspace;
 
-        public HistoryModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage)
+        public HistoryModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage,
+            IActiveWorkspaceService activeWorkspace)
         {
+            _activeWorkspace = activeWorkspace;
             _context = context;
             _userManager = userManager;
             _audioStorage = audioStorage;
@@ -43,26 +46,9 @@ namespace MeetingWeb.Pages
             var userId = _userManager.GetUserId(User);
             if (userId == null) return;
 
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
-
-            // Session Authorization: Verify the user actively belongs to the queried tenant.
-            var workspaceUser = await _context.WorkspaceUsers
-                .FirstOrDefaultAsync(wu => wu.UserId == userId && wu.WorkspaceId == activeWorkspaceId);
-
-            // FALLBACK MECHANISM: Auto-resolve to the first available tenant if the session is empty/invalid.
-            if (activeWorkspaceId == null || workspaceUser == null)
-            {
-                var firstWorkspace = await _context.WorkspaceUsers
-                    .FirstOrDefaultAsync(wu => wu.UserId == userId);
-
-                activeWorkspaceId = firstWorkspace?.WorkspaceId;
-                workspaceUser = firstWorkspace;
-
-                if (activeWorkspaceId != null)
-                {
-                    HttpContext.Session.SetInt32("ActiveWorkspaceId", activeWorkspaceId.Value);
-                }
-            }
+            // Session Authorization (S7): verified membership, with fallback to the user's own default workspace.
+            var workspaceUser = await _activeWorkspace.GetActiveMembershipAsync(userId);
+            int? activeWorkspaceId = workspaceUser?.WorkspaceId;
 
             // Flag evaluation for privileged UI actions.
             if (workspaceUser != null && workspaceUser.Role == "Sahip")

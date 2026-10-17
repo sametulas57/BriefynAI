@@ -80,6 +80,7 @@ try
 
     // --- 6. Custom Services ---
     builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
+    builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();

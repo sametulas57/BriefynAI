@@ -18,9 +18,12 @@ namespace MeetingWeb.Pages
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IAudioStorage _audioStorage;
         private readonly IBackgroundJobClient _backgroundJobClient;
+        private readonly IActiveWorkspaceService _activeWorkspace;
 
-        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage, IBackgroundJobClient backgroundJobClient)
+        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage,
+            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace)
         {
+            _activeWorkspace = activeWorkspace;
             _context = context;
             _userManager = userManager;
             _audioStorage = audioStorage;
@@ -54,16 +57,8 @@ namespace MeetingWeb.Pages
 
             var userId = _userManager.GetUserId(User);
 
-            // 2. TENANT RESOLUTION: Retrieve active workspace from session or fallback to default.
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
-            if (activeWorkspaceId == null)
-            {
-                var firstWorkspace = _context.WorkspaceUsers.FirstOrDefault(wu => wu.UserId == userId);
-                if (firstWorkspace != null)
-                {
-                    activeWorkspaceId = firstWorkspace.WorkspaceId;
-                }
-            }
+            // 2. TENANT RESOLUTION (S7): the remembered workspace is re-checked against current membership.
+            int? activeWorkspaceId = (await _activeWorkspace.GetActiveMembershipAsync(userId))?.WorkspaceId;
 
             if (activeWorkspaceId == null)
             {
