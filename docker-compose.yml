@@ -51,9 +51,8 @@ services:
       # Sırlar .env dosyasından gelir (git\'e girmez); şablon: .env.example
       - EmailSettings__SenderEmail=${EMAIL_SENDER}
       - EmailSettings__Password=${EMAIL_PASSWORD}
-      - EncryptionSettings__Key=${ENCRYPTION_KEY}
-      - EncryptionSettings__IV=${ENCRYPTION_IV}
-      # S4: yeni biçim (v2) bu anahtarla yazılır; Key/IV yalnız eski kayıtları okumak için durur.
+      # S4: tüm veriler v2 (AES-256-GCM) biçiminde. Eski Key/IV artık uygulamaya verilmiyor (S4-D, 2026-10-17);
+      # .env'de yalnız 17 Ekim 2026 öncesi yedekleri açmak için saklanıyor.
       - EncryptionSettings__KeyV2=${ENCRYPTION_KEY_V2}
       # Hangfire paneli (/hangfire) yalnız bu e-postaya açılır; boşsa kimse giremez.
       - Hangfire__DashboardAdminEmails__0=${HANGFIRE_ADMIN_EMAIL:-}
