@@ -356,6 +356,15 @@
         </div>
     }
 
+    @if (!string.IsNullOrWhiteSpace(Model.Meeting.Transkript))
+    {
+        <details class="soft-card mt-5 p-4">
+            <summary class="fw-bold text-dark" style="cursor: pointer;"><i class="bi bi-file-text me-2 text-primary"></i>Toplantı dökümü</summary>
+            <p class="text-muted small mt-2 mb-3">Kaydın otomatik yazıya dökülmüş hâli. Küçük yazım hataları olabilir.</p>
+            <div class="text-dark" style="white-space: pre-wrap; line-height: 1.7;">@Model.Meeting.Transkript</div>
+        </details>
+    }
+
     <div class="d-flex align-items-center gap-3 mb-4 mt-5">
         <div class="icon-container bg-primary text-white shadow-sm">
             <i class="bi bi-chat-text fs-5"></i>

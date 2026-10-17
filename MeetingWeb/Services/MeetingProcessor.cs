@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Hangfire;
 using System.Net.Http.Headers;
@@ -14,6 +15,9 @@ namespace MeetingWeb.Services
     {
         [AutomaticRetry(Attempts = 0)]
         Task ProcessMeetingJob(int meetingId, string audioPath);
+
+        [AutomaticRetry(Attempts = 0)]
+        Task ResummarizeMeetingJob(int meetingId);
     }
 
     public class MeetingProcessor : IMeetingProcessor
@@ -46,44 +50,22 @@ namespace MeetingWeb.Services
         {
             _logger.LogInformation("Background job started. MeetingId: {MeetingId}, AudioPath: {AudioPath}", meetingId, audioPath);
 
-            var meeting = await _context.MeetingSummaries
-                                        .Include(m => m.AksiyonMaddeleri)
-                                        .FirstOrDefaultAsync(m => m.Id == meetingId);
-
-            if (meeting == null)
-            {
-                _logger.LogWarning("MeetingId: {MeetingId} not found in database. Aborting job.", meetingId);
-                return;
-            }
+            var meeting = await LoadAsync(meetingId);
+            if (meeting == null) return;
 
             string? completedAudio = null;
 
             try
             {
                 _logger.LogInformation("Dispatching audio file to Python AI API for MeetingId: {MeetingId}", meetingId);
+                var ai = await RunPythonPipelineAsync(audioPath);
 
-                // Execute the Python AI pipeline to retrieve the parsed summary DTO.
-                var aiSummaryData = await RunPythonPipelineAsync(audioPath);
+                // Faz 2: keep the transcript (encrypted) even when the summary failed, so a retry only redoes the summary.
+                if (!string.IsNullOrWhiteSpace(ai?.Transkript)) meeting.Transkript = ai.Transkript;
 
-                if (aiSummaryData != null)
+                if (ai is { Success: true, Summary: not null })
                 {
-                    _logger.LogInformation("Successfully received AI payload. Initiating database mapping.");
-
-                    // Map the validated DTO data to the EF Core entity model.
-                    meeting.ToplantiKonusu = aiSummaryData.ToplantiKonusu ?? "No Subject Found";
-                    meeting.GorusulenKonular = aiSummaryData.GorusulenKonular ?? new List<string>();
-                    meeting.AlinanKararlar = aiSummaryData.AlinanKararlar ?? new List<string>();
-                    meeting.AksiyonMaddeleri ??= new List<ActionItem>();
-
-                    if (aiSummaryData.AksiyonMaddeleri != null)
-                    {
-                        foreach (var taskText in aiSummaryData.AksiyonMaddeleri)
-                        {
-                            meeting.AksiyonMaddeleri.Add(new ActionItem { Text = taskText, IsDone = false });
-                        }
-                    }
-
-                    // Update meeting status upon successful processing.
+                    ApplySummary(meeting, ai.Summary);
                     meeting.Status = MeetingStatus.Completed;
 
                     // DATA MINIMIZATION (S2/KVKK): the recording has served its purpose once the summary exists.
@@ -108,25 +90,101 @@ namespace MeetingWeb.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Critical failure during processing for MeetingId: {MeetingId}", meetingId);
-
-                // Clear EF Core tracked entities to prevent saving corrupted states.
-                _context.ChangeTracker.Clear();
-
-                var errorMeeting = await _context.MeetingSummaries.FindAsync(meetingId);
-                if (errorMeeting != null)
-                {
-                    errorMeeting.Status = MeetingStatus.Failed;
-                    await _context.SaveChangesAsync();
-                    _logger.LogInformation("Status reverted to Failed for MeetingId: {MeetingId}", meetingId);
-
-                    // Push real-time error notification to the meeting's workspace members.
-                    await NotifyWorkspaceAsync(meetingId, errorMeeting.WorkspaceId);
-                }
-
+                await MarkFailedAsync(meetingId, ex);
                 // Rethrow to allow Hangfire to register the job as failed.
                 throw;
             }
+        }
+
+        // Retry path once the recording is gone: the stored transcript is summarised again; no new speech-to-text.
+        public async Task ResummarizeMeetingJob(int meetingId)
+        {
+            var meeting = await LoadAsync(meetingId);
+            if (meeting == null) return;
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(meeting.Transkript))
+                    throw new InvalidOperationException("No stored transcript to summarise.");
+
+                var summary = await RequestSummaryAsync(meeting.Transkript);
+                if (summary != null)
+                {
+                    ApplySummary(meeting, summary);
+                    meeting.Status = MeetingStatus.Completed;
+                }
+                else
+                {
+                    meeting.Status = MeetingStatus.Failed;
+                }
+
+                await _context.SaveChangesAsync();
+                await NotifyWorkspaceAsync(meetingId, meeting.WorkspaceId);
+            }
+            catch (Exception ex)
+            {
+                await MarkFailedAsync(meetingId, ex);
+                throw;
+            }
+        }
+
+        private async Task<MeetingSummary?> LoadAsync(int meetingId)
+        {
+            var meeting = await _context.MeetingSummaries
+                .Include(m => m.AksiyonMaddeleri)
+                .FirstOrDefaultAsync(m => m.Id == meetingId);
+            if (meeting == null)
+                _logger.LogWarning("MeetingId: {MeetingId} not found in database. Aborting job.", meetingId);
+            return meeting;
+        }
+
+        private async Task MarkFailedAsync(int meetingId, Exception ex)
+        {
+            _logger.LogError(ex, "Critical failure during processing for MeetingId: {MeetingId}", meetingId);
+
+            // Clear EF Core tracked entities to prevent saving corrupted states.
+            _context.ChangeTracker.Clear();
+
+            var errorMeeting = await _context.MeetingSummaries.FindAsync(meetingId);
+            if (errorMeeting != null)
+            {
+                errorMeeting.Status = MeetingStatus.Failed;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Status reverted to Failed for MeetingId: {MeetingId}", meetingId);
+
+                // Push real-time error notification to the meeting's workspace members.
+                await NotifyWorkspaceAsync(meetingId, errorMeeting.WorkspaceId);
+            }
+        }
+
+        // Entries users added by hand are stored as "text|~|authorId"; they survive a regenerated summary.
+        private static bool IsManual(string? value) => value != null && value.Contains("|~|");
+
+        private static void ApplySummary(MeetingSummary meeting, AiSummaryData data)
+        {
+            if (!string.IsNullOrWhiteSpace(data.ToplantiKonusu)) meeting.ToplantiKonusu = data.ToplantiKonusu;
+            meeting.GorusulenKonular = (data.GorusulenKonular ?? new()).Concat(meeting.GorusulenKonular.Where(IsManual)).ToList();
+            meeting.AlinanKararlar = (data.AlinanKararlar ?? new()).Concat(meeting.AlinanKararlar.Where(IsManual)).ToList();
+
+            // Earlier AI-generated tasks are replaced (removed items are deleted as orphans); manual ones stay.
+            meeting.AksiyonMaddeleri.RemoveAll(a => !IsManual(a.Text));
+            foreach (var taskText in data.AksiyonMaddeleri ?? new())
+            {
+                meeting.AksiyonMaddeleri.Add(new ActionItem { Text = taskText, IsDone = false });
+            }
+        }
+
+        private async Task<AiSummaryData?> RequestSummaryAsync(string transcript)
+        {
+            var client = _httpClientFactory.CreateClient("PythonApi");
+            var endpoint = _configuration["PythonApiSettings:SummarizeEndpoint"] ?? "api/summarize";
+
+            var response = await client.PostAsJsonAsync(endpoint, new { transkript = transcript });
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Python API Error: {response.StatusCode}");
+
+            var ai = await response.Content.ReadFromJsonAsync<AiApiResponse>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return ai is { Success: true } ? ai.Summary : null;
         }
 
         // S3: resolve recipients from current workspace membership at send time (not from hub groups),
@@ -144,7 +202,7 @@ namespace MeetingWeb.Services
         }
 
         // Handles secure HTTP multipart/form-data communication with the external Python API.
-        private async Task<AiSummaryData?> RunPythonPipelineAsync(string audioPath)
+        private async Task<AiApiResponse?> RunPythonPipelineAsync(string audioPath)
         {
             if (!System.IO.File.Exists(audioPath))
             {
@@ -181,7 +239,7 @@ namespace MeetingWeb.Services
                         PropertyNameCaseInsensitive = true
                     });
 
-                    return aiResponse is { Success: true } ? aiResponse.Summary : null;
+                    return aiResponse;
                 }
 
                 string errorDetail = await response.Content.ReadAsStringAsync();

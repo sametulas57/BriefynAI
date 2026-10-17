@@ -31,6 +31,10 @@ namespace MeetingWeb.Data
                 .Property(m => m.ToplantiKonusu)
                 .HasConversion(stringConverter);
 
+            builder.Entity<MeetingSummary>()
+                .Property(m => m.Transkript)
+                .HasConversion(stringConverter);
+
             // Encrypt sensitive lists (discussed topics and decisions).
             builder.Entity<MeetingSummary>()
                 .Property(m => m.GorusulenKonular)

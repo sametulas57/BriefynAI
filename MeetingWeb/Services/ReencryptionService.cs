@@ -34,6 +34,7 @@ namespace MeetingWeb.Services
             (typeof(MeetingSummary), nameof(MeetingSummary.ToplantiKonusu)),
             (typeof(MeetingSummary), nameof(MeetingSummary.GorusulenKonular)),
             (typeof(MeetingSummary), nameof(MeetingSummary.AlinanKararlar)),
+            (typeof(MeetingSummary), nameof(MeetingSummary.Transkript)),
             (typeof(ActionItem), nameof(ActionItem.Text)),
         };
 

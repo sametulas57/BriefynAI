@@ -24,6 +24,9 @@ namespace MeetingWeb.Models
 
         // Note: These lists are serialized and encrypted at rest via ApplicationDbContext.
         public List<string> GorusulenKonular { get; set; } = new();
+
+        // Full speech-to-text output (Faz 2, K4): encrypted at rest; lets a retry regenerate only the summary.
+        public string? Transkript { get; set; }
         public List<string> AlinanKararlar { get; set; } = new();
 
         // --- NAVIGATION PROPERTIES ---

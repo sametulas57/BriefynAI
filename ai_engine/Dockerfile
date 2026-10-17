@@ -4,7 +4,7 @@ FROM python:3.12.13-slim
 # 2. Konteyner içindeki çalışma klasörümüzü belirliyoruz
 WORKDIR /app
 
-# 3. İşletim Sistemi Bağımlılıkları (Whisper'ın çalışması için FFmpeg KURTARICIDIR)
+# 3. İşletim Sistemi Bağımlılıkları (FFmpeg: sesi mono'ya çevirip sessiz yerlerden parçalara bölmek için)
 RUN apt-get update && \
     apt-get install -y ffmpeg && \
     rm -rf /var/lib/apt/lists/*

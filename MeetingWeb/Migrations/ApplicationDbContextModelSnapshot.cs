@@ -138,6 +138,9 @@ namespace MeetingWeb.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Transkript")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("WorkspaceId")
                         .HasColumnType("int");
 

@@ -11,8 +11,9 @@ namespace MeetingWeb.Models
         [JsonPropertyName("transkript")]
         public string Transkript { get; set; } = string.Empty;
 
+        // Null when the summary step failed; the transcript may still be present (Faz 2).
         [JsonPropertyName("summary")]
-        public AiSummaryData Summary { get; set; } = new();
+        public AiSummaryData? Summary { get; set; }
     }
 
     // Nested DTO encapsulating the structured AI extraction results.

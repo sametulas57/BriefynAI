@@ -81,10 +81,31 @@ def test_internal_errors_are_not_leaked(client, monkeypatch):
 
 def test_llm_failure_is_reported_as_failure_not_as_an_empty_summary(monkeypatch):
     # Before: an exception produced a placeholder summary, the API said success and the meeting showed "Completed".
-    import summarize_text
+    # Now a provider error propagates; the endpoint answers success=false (see the transcript test below).
+    import providers.groq_summarizer as gs
 
-    def broken_chat(**kwargs):
-        raise RuntimeError("ollama down")
+    class Broken:
+        def chat_json(self, *args, **kwargs):
+            raise gs.GroqError("down")
 
-    monkeypatch.setattr(summarize_text.ollama, "chat", broken_chat)
-    assert summarize_text.generate_meeting_summary("metin") is None
+    with pytest.raises(gs.GroqError):
+        gs.GroqSummarizer(Broken()).summarize("metin")
+
+
+def test_summary_failure_still_returns_the_transcript(client, monkeypatch):
+    # The transcript is kept by the backend, so a retry only has to redo the summary.
+    def broken_summary(text):
+        raise RuntimeError("llm down")
+
+    monkeypatch.setattr(api_server, "generate_meeting_summary", broken_summary)
+    res = upload(client, {"X-Api-Key": KEY})
+    assert res.status_code == 200
+    assert res.json()["success"] is False
+    assert res.json()["transkript"] == "metin"
+
+
+def test_summarize_endpoint_requires_the_key_and_returns_a_summary(client):
+    assert client.post("/api/summarize", json={"transkript": "metin"}).status_code == 401
+    res = client.post("/api/summarize", headers={"X-Api-Key": KEY}, json={"transkript": "metin"})
+    assert res.status_code == 200
+    assert res.json() == {"success": True, "summary": SUMMARY}

@@ -139,7 +139,7 @@ namespace MeetingWeb.Pages
             if (meeting == null) return NotFound();
 
             // Recordings are deleted after a successful analysis and after the failed-retry window,
-            // so only flip the state machine when there is actually a file to re-process.
+            // so only flip the state machine when there is actually something to re-process.
             string? absolutePath = string.IsNullOrEmpty(meeting.AudioFilePath) ? null : _audioStorage.GetPath(meeting.AudioFilePath);
 
             if (absolutePath != null && System.IO.File.Exists(absolutePath))
@@ -149,7 +149,16 @@ namespace MeetingWeb.Pages
 
                 // Re-enqueue the AI pipeline job.
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ProcessMeetingJob(meeting.Id, absolutePath));
-                TempData["StatusMessage"] = "Yeniden analiz işlemi başlatıldı. Lütfen bekleyin...";
+                TempData["StatusMessage"] = "Kayıt yeniden analiz ediliyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
+            }
+            else if (!string.IsNullOrWhiteSpace(meeting.Transkript))
+            {
+                // Faz 2: the transcript is stored, so only the summary is generated again.
+                meeting.Status = MeetingStatus.Processing;
+                await _context.SaveChangesAsync();
+
+                _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ResummarizeMeetingJob(meeting.Id));
+                TempData["StatusMessage"] = "Özet, kayıtlı dökümden yeniden hazırlanıyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
             }
             else
             {
