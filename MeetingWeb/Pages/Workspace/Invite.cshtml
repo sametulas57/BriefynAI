@@ -23,6 +23,19 @@
                 </div>
                 
                 <div class="card-body text-center p-5 bg-white">
+                    @if (Model.IsPersonalWorkspace)
+                    {
+                        <div class="text-start bg-light rounded-4 p-3 mb-4 d-flex gap-3 align-items-start">
+                            <i class="bi bi-info-circle text-secondary fs-5"></i>
+                            <div class="text-secondary" style="line-height: 1.6;">
+                                Burası kişisel alanınız. Birlikte çalışacağınız kişiler için ayrı bir ekip kurmanızı öneririz;
+                                böylece kişisel özetleriniz yalnızca sizde kalır.
+                                <a href="/Workspace/Create" class="text-decoration-none">Yeni ekip oluşturun</a>.
+                                Yine de birini buraya davet etmek isterseniz aşağıdan bağlantı oluşturabilirsiniz.
+                            </div>
+                        </div>
+                    }
+
                     <p class="text-muted mb-4 fs-5" style="line-height: 1.7;">
                         Çalışma arkadaşlarını <b>Briefyn AI</b> sistemine dahil etmek için <strong class="text-dark">7 gün geçerli</strong> ve tek kullanımlık güvenli bir link oluştur.
                     </p>

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Workspace
 {
@@ -15,8 +16,14 @@ namespace MeetingWeb.Pages.Workspace
         private readonly ApplicationDbContext _context;
         private readonly UserManager<IdentityUser> _userManager;
 
-        public InviteModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        private readonly IActiveWorkspaceService _activeWorkspace;
+
+        // Inviting into a personal space is allowed but gently discouraged on the page.
+        public bool IsPersonalWorkspace { get; set; }
+
+        public InviteModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IActiveWorkspaceService activeWorkspace)
         {
+            _activeWorkspace = activeWorkspace;
             _context = context;
             _userManager = userManager;
         }
@@ -27,10 +34,11 @@ namespace MeetingWeb.Pages.Workspace
         // HTTP GET: Intercepts page load to verify UI-level access rights.
         public async Task<IActionResult> OnGetAsync()
         {
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
-            if (activeWorkspaceId == null) return RedirectToPage("/Index");
-
             var currentUserId = _userManager.GetUserId(User);
+            var membership = await _activeWorkspace.GetActiveMembershipAsync(currentUserId);
+            if (membership == null) return RedirectToPage("/Workspace/Create");
+            int? activeWorkspaceId = membership.WorkspaceId;
+            IsPersonalWorkspace = membership.Workspace.IsPersonal;
 
             // DEFENSE IN DEPTH - LAYER 1: UI VISIBILITY PROTECTION
             // Ensure the requesting user holds the 'Owner' role before rendering the invitation UI.
@@ -54,10 +62,11 @@ namespace MeetingWeb.Pages.Workspace
         // HTTP POST: Intercepts form submission to execute the invitation logic safely.
         public async Task<IActionResult> OnPostAsync()
         {
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
-            if (activeWorkspaceId == null) return RedirectToPage("/Index");
-
             var currentUserId = _userManager.GetUserId(User);
+            var membership = await _activeWorkspace.GetActiveMembershipAsync(currentUserId);
+            if (membership == null) return RedirectToPage("/Workspace/Create");
+            int? activeWorkspaceId = membership.WorkspaceId;
+            IsPersonalWorkspace = membership.Workspace.IsPersonal;
 
             // DEFENSE IN DEPTH - LAYER 2: BACKEND FIREWALL (API PROTECTION)
             // Re-verify the role to explicitly prevent bypass attacks via tools like Postman or cURL.

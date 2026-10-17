@@ -150,9 +150,9 @@ namespace MeetingWeb.Pages.Workspace
                 return Unauthorized();
 
             // Critical Guardrail: Prevent the deletion of the primary/default personal workspace.
-            if (caller.Workspace?.Name != null && (caller.Workspace.Name == "Kişisel" || caller.Workspace.Name.Contains("Kişisel")))
+            if (caller.Workspace?.IsPersonal == true)
             {
-                TempData["ErrorMessage"] = "Güvenlik İhlali: Varsayılan 'Kişisel' çalışma alanınız silinemez.";
+                TempData["ErrorMessage"] = "Kişisel alanınız silinemez; yalnız ekipler silinebilir.";
                 return RedirectToPage();
             }
 

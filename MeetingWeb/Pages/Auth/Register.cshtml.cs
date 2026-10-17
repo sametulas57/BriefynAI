@@ -97,7 +97,8 @@ namespace MeetingWeb.Pages.Auth
                     // ZERO-FRICTION ONBOARDING: Automatically provision a default isolated Workspace.
                     var personalWorkspace = new MeetingWeb.Models.Workspace
                     {
-                        Name = "Kişisel Alanım"
+                        Name = "Kişisel Alanım",
+                        IsPersonal = true
                     };
                     _context.Workspaces.Add(personalWorkspace);
                     await _context.SaveChangesAsync(); // Commit to DB to generate primary key (Id).
