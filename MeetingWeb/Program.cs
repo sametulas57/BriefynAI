@@ -7,6 +7,8 @@ using MeetingWeb.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 
 // 1. AŞAMA: Uygulama ayağa kalkarken kullanılacak geçici ve güvenli (Bootstrap) Logger
 Log.Logger = new LoggerConfiguration()
@@ -102,6 +104,27 @@ try
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
     });
+    // S8: sharing a report sends real email from our account, so each user gets a small hourly budget.
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        {
+            var isShare = HttpMethods.IsPost(context.Request.Method) &&
+                          context.Request.Path.Equals("/Details", StringComparison.OrdinalIgnoreCase) &&
+                          string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase);
+            if (!isShare) return RateLimitPartition.GetNoLimiter("unlimited");
+
+            var userKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+            return RateLimitPartition.GetFixedWindowLimiter("share:" + userKey, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailSettings:ShareLimitPerHour", 10),
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            });
+        });
+    });
+
     builder.Services.AddSignalR();
     builder.Services.AddRazorPages();
 
@@ -185,6 +208,7 @@ try
     app.UseSession();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseRateLimiter();
 
     if (!isTesting)
     {

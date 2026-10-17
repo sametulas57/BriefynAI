@@ -36,8 +36,34 @@ namespace MeetingWeb.Services
                 EnableSsl = true,
             };
 
-            // Construct the responsive HTML email template using inline CSS for mail client compatibility.
-            string htmlBody = $@"
+            string htmlBody = BuildSummaryHtml(meeting);
+
+            // Compose and dispatch the mail message.
+            using var mailMessage = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                Subject = BuildSubject(meeting),
+                IsBodyHtml = true,
+                Body = htmlBody
+            };
+
+            mailMessage.To.Add(toEmail);
+
+            await smtpClient.SendMailAsync(mailMessage);
+        }
+
+        // S8: line breaks in a subject could be used to smuggle extra mail headers; collapse them to spaces.
+        public static string BuildSubject(MeetingSummary meeting) =>
+            $"Briefyn AI Raporu: {string.Join(' ', (meeting.ToplantiKonusu ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))}";
+
+        // Manual entries carry "text|~|authorId"; only the text belongs in the email, HTML-encoded.
+        private static string Item(string value) => WebUtility.HtmlEncode(value.Split("|~|")[0]);
+
+        // Construct the responsive HTML email template using inline CSS for mail client compatibility.
+        // S8: every meeting value comes from the LLM or from users, so all of it is HTML-encoded.
+        public static string BuildSummaryHtml(MeetingSummary meeting)
+        {
+            return $@"
             <div style=""background-color: #f4f7f6; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"">
                 <div style=""max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); overflow: hidden;"">
                     
@@ -48,7 +74,7 @@ namespace MeetingWeb.Services
 
                     <div style=""padding: 35px 30px;"">
                         <h2 style=""color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 30px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"">
-                            {meeting.ToplantiKonusu}
+                            {WebUtility.HtmlEncode(meeting.ToplantiKonusu)}
                         </h2>
 
                         <div style=""margin-bottom: 30px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; border-radius: 6px;"">
@@ -56,7 +82,7 @@ namespace MeetingWeb.Services
                                 💬 Görüşülen Konular
                             </h3>
                             <ul style=""color: #334155; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
-                                {string.Join("", meeting.GorusulenKonular.Select(k => $"<li style='margin-bottom: 8px;'>{k.Split("|~|")[0]}</li>"))}
+                                {string.Join("", meeting.GorusulenKonular.Select(k => $"<li style='margin-bottom: 8px;'>{Item(k)}</li>"))}
                             </ul>
                         </div>
 
@@ -65,7 +91,7 @@ namespace MeetingWeb.Services
                                 🎯 Alınan Kararlar
                             </h3>
                             <ul style=""color: #15803d; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
-                                {string.Join("", meeting.AlinanKararlar.Select(k => $"<li style='margin-bottom: 8px;'>{k.Split("|~|")[0]}</li>"))}
+                                {string.Join("", meeting.AlinanKararlar.Select(k => $"<li style='margin-bottom: 8px;'>{Item(k)}</li>"))}
                             </ul>
                         </div>
 
@@ -74,7 +100,7 @@ namespace MeetingWeb.Services
                                 ⚡ Aksiyon Maddeleri
                             </h3>
                             <ul style=""color: #c2410c; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
-                                {string.Join("", meeting.AksiyonMaddeleri.Select(a => $"<li style='margin-bottom: 8px;'>{a.Text.Split("|~|")[0]}</li>"))}
+                                {string.Join("", meeting.AksiyonMaddeleri.Select(a => $"<li style='margin-bottom: 8px;'>{Item(a.Text)}</li>"))}
                             </ul>
                         </div>
 
@@ -91,19 +117,6 @@ namespace MeetingWeb.Services
 
                 </div>
             </div>";
-
-            // Compose and dispatch the mail message.
-            using var mailMessage = new MailMessage
-            {
-                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
-                Subject = $"Briefyn AI Raporu: {meeting.ToplantiKonusu}",
-                IsBodyHtml = true,
-                Body = htmlBody
-            };
-
-            mailMessage.To.Add(toEmail);
-
-            await smtpClient.SendMailAsync(mailMessage);
         }
     }
 }

@@ -84,33 +84,6 @@ namespace MeetingWeb.Pages.Workspace
             return Page();
         }
 
-        // --- INVITATION DISPATCH (Placeholder for Email Service) ---
-        public async Task<IActionResult> OnPostInviteAsync(string invitedEmail)
-        {
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
-            CurrentUserId = _userManager.GetUserId(User) ?? "";
-
-            // Authorization Firewall: Verify ownership privileges.
-            var caller = await _context.WorkspaceUsers
-                .FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
-
-            if (caller == null || caller.Role != "Sahip")
-            {
-                TempData["ErrorMessage"] = "Güvenlik İhlali: Sadece şirket kurucuları (Sahipler) yeni üye davet edebilir.";
-                return RedirectToPage();
-            }
-
-            if (string.IsNullOrWhiteSpace(invitedEmail))
-            {
-                TempData["ErrorMessage"] = "Lütfen geçerli bir e-posta adresi girin.";
-                return RedirectToPage();
-            }
-
-            // TODO: Integrate SMTP or third-party email provider (e.g., SendGrid) here.
-            TempData["StatusMessage"] = $"{invitedEmail} adresine davet başarıyla gönderildi!";
-            return RedirectToPage();
-        }
-
         // --- MEMBER EVICTION LOGIC ---
         public async Task<IActionResult> OnPostRemoveMemberAsync(string targetUserId)
         {
