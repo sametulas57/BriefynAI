@@ -11,6 +11,7 @@
     // SECURITY & CONTEXT MANAGEMENT (S7): the active tenant is the session's choice only if the user is still a member.
     var userId = UserManager.GetUserId(User);
     var activeWorkspaceId = (await ActiveWorkspace.GetActiveMembershipAsync(userId))?.WorkspaceId;
+    var openTaskCount = userId == null ? 0 : await MeetingWeb.Pages.AssignedToMeModel.OpenTasksFor(DbContext, userId).CountAsync();
     
     string currentUserRole = "";
     string activeWorkspaceName = "Ekip";
@@ -122,6 +123,15 @@
                             <li class="nav-item mb-2 mb-lg-0 ms-lg-2">
                                 <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-page="/History">
                                     <i class="bi bi-folder2-open text-primary me-1"></i> Geçmiş Özetler
+                                </a>
+                            </li>
+                            <li class="nav-item mb-2 mb-lg-0 ms-lg-2">
+                                <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-page="/AssignedToMe">
+                                    <i class="bi bi-list-check text-primary me-1"></i> Bana atananlar
+                                    @if (openTaskCount > 0)
+                                    {
+                                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary ms-1">@openTaskCount</span>
+                                    }
                                 </a>
                             </li>
                             <li class="nav-item mb-3 mb-lg-0 ms-lg-3">

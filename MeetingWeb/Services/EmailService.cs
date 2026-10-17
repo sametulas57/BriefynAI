@@ -14,12 +14,14 @@ namespace MeetingWeb.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly EmailSettings _emailSettings;
+        private readonly string _publicBaseUrl;
 
         // Constructor injection for DB context and configuration via Options Pattern.
-        public EmailService(ApplicationDbContext context, IOptions<EmailSettings> emailSettings)
+        public EmailService(ApplicationDbContext context, IOptions<EmailSettings> emailSettings, IConfiguration configuration)
         {
             _context = context;
             _emailSettings = emailSettings.Value;
+            _publicBaseUrl = (configuration["App:PublicBaseUrl"] ?? "http://localhost:8080").TrimEnd('/');
         }
 
         public async Task SendMeetingSummaryAsync(int meetingId, string toEmail)
@@ -54,6 +56,53 @@ namespace MeetingWeb.Services
             mailMessage.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildSummaryHtml(meeting), Encoding.UTF8, "text/html"));
 
             mailMessage.To.Add(toEmail);
+
+            await smtpClient.SendMailAsync(mailMessage);
+        }
+
+        public async Task SendActionReminderAsync(int actionItemId, string reminderKey)
+        {
+            // Re-check everything at send time: the task may have been finished, re-assigned or re-dated since the scan,
+            // or the assignee may have left the team. Reminders go only to the assignee's own account address.
+            var task = await _context.Set<ActionItem>()
+                .Include(a => a.MeetingSummary)
+                .Include(a => a.Assignee)
+                .FirstOrDefaultAsync(a => a.Id == actionItemId);
+            if (task == null || task.IsDone || task.DueDate == null || task.ReminderKey() != reminderKey) return;
+            if (string.IsNullOrWhiteSpace(task.Assignee?.Email)) return;
+            if (!await _context.WorkspaceUsers.AnyAsync(w => w.UserId == task.AssigneeUserId && w.WorkspaceId == task.MeetingSummary!.WorkspaceId)) return;
+
+            var taskText = task.Text.Split("|~|")[0];
+            var meetingTopic = task.MeetingSummary!.ToplantiKonusu;
+            var date = task.DueDate.Value.ToString("d MMMM yyyy, dddd", DisplayTime.Culture);
+            var link = $"{_publicBaseUrl}/AssignedToMe";
+
+            var text = $"Hatırlatma: yarın son gün.\n\n{taskText}\nToplantı: {meetingTopic}\nSon tarih: {date}\n\nGörevleriniz: {link}\n";
+            var html = $@"<div style=""font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; max-width: 560px;"">
+                <p style=""color:#64748b; margin:0 0 8px 0;"">Hatırlatma: yarın son gün.</p>
+                <p style=""font-size:17px; font-weight:600; margin:0 0 12px 0;"">{Html.Encode(taskText)}</p>
+                <p style=""margin:0;"">Toplantı: {Html.Encode(meetingTopic)}<br>Son tarih: {Html.Encode(date)}</p>
+                <p style=""margin:16px 0 0 0;""><a href=""{Html.Encode(link)}"" style=""color:#2563eb;"">Bana atananlar</a></p>
+            </div>";
+
+            using var smtpClient = new SmtpClient(_emailSettings.SmtpServer)
+            {
+                Port = _emailSettings.Port,
+                Credentials = new NetworkCredential(_emailSettings.SenderEmail, _emailSettings.Password),
+                EnableSsl = true,
+            };
+            using var mailMessage = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                Subject = $"Yarın son gün: {string.Join(' ', taskText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))}",
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = text
+            };
+            mailMessage.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html"));
+            mailMessage.To.Add(task.Assignee!.Email!);
 
             await smtpClient.SendMailAsync(mailMessage);
         }

@@ -105,6 +105,7 @@ try
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
     builder.Services.AddScoped<IReencryptionService, ReencryptionService>();
+    builder.Services.AddScoped<IActionReminderService, ActionReminderService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
@@ -265,6 +266,10 @@ try
         // Daily sweep of recordings left behind by failed analyses (see AudioCleanupService).
         app.Services.GetRequiredService<IRecurringJobManager>()
             .AddOrUpdate<IAudioCleanupService>("audio-cleanup", s => s.RunAsync(), Cron.Daily());
+
+        // Aksiyon takibi: hourly, so tasks dated "tomorrow" late in the day are still reminded (once).
+        app.Services.GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<IActionReminderService>("action-reminders", s => s.RunAsync(), Cron.Hourly());
     }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");

@@ -49,6 +49,15 @@ namespace MeetingWeb.Data
                 .Property(a => a.Text)
                 .HasConversion(stringConverter);
 
+            // Aksiyon takibi: deleting a user frees their tasks instead of deleting them.
+            builder.Entity<ActionItem>()
+                .HasOne(a => a.Assignee)
+                .WithMany()
+                .HasForeignKey(a => a.AssigneeUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            builder.Entity<ActionItem>().HasIndex(a => new { a.AssigneeUserId, a.IsDone });
+            builder.Entity<ActionItem>().HasIndex(a => a.DueDate);
+
             // Configure composite primary key for the many-to-many Workspace-User relationship.
             builder.Entity<WorkspaceUser>()
                 .HasKey(wu => new { wu.WorkspaceId, wu.UserId });

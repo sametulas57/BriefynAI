@@ -166,8 +166,9 @@ namespace MeetingWeb.Services
             meeting.GorusulenKonular = (data.GorusulenKonular ?? new()).Concat(meeting.GorusulenKonular.Where(IsManual)).ToList();
             meeting.AlinanKararlar = (data.AlinanKararlar ?? new()).Concat(meeting.AlinanKararlar.Where(IsManual)).ToList();
 
-            // Earlier AI-generated tasks are replaced (removed items are deleted as orphans); manual ones stay.
-            meeting.AksiyonMaddeleri.RemoveAll(a => !IsManual(a.Text));
+            // Earlier AI-generated tasks are replaced (removed items are deleted as orphans); manual ones stay,
+            // and so do AI tasks someone has assigned or dated (aksiyon takibi).
+            meeting.AksiyonMaddeleri.RemoveAll(a => !IsManual(a.Text) && !a.IsTracked);
             foreach (var taskText in data.AksiyonMaddeleri ?? new())
             {
                 meeting.AksiyonMaddeleri.Add(new ActionItem { Text = taskText, IsDone = false });

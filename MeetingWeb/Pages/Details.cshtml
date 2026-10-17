@@ -316,7 +316,7 @@
                                 var text = parts[0];
                                 var addedBy = parts.Length > 1 ? parts[1] : null;
 
-                                <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
+                                <li class="d-flex flex-wrap align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <div class="form-check mt-1 flex-shrink-0">
                                         <input class="form-check-input border-secondary shadow-sm" type="checkbox" id="task_@task.Id" @(task.IsDone ? "checked" : "") onchange="toggleTask(@task.Id)" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
                                     </div>
@@ -339,6 +339,47 @@
                                             }
                                         </div>
                                     }
+
+                                    @* Aksiyon takibi: who and until when; the form stays folded until needed. *@
+                                    <div class="w-100 ps-4 ms-2">
+                                        @{
+                                            var assigneeName = task.AssigneeUserId != null && Model.UserProfiles.TryGetValue(task.AssigneeUserId, out var assigneeProfile)
+                                                ? assigneeProfile.FullName : null;
+                                            var suggested = Model.SuggestedAssignees.TryGetValue(task.Id, out var s) ? s : null;
+                                            var overdue = !task.IsDone && task.DueDate != null && task.DueDate < MeetingWeb.Services.DisplayTime.Today();
+                                        }
+                                        <div class="d-flex flex-wrap align-items-center gap-2 small">
+                                            @if (assigneeName != null)
+                                            {
+                                                <span class="badge bg-soft-light text-dark border rounded-pill fw-medium"><i class="bi bi-person me-1"></i>@assigneeName</span>
+                                            }
+                                            @if (task.DueDate != null)
+                                            {
+                                                <span class="badge @(overdue ? "bg-warning bg-opacity-25 text-dark" : "bg-soft-light text-dark") border rounded-pill fw-medium">
+                                                    <i class="bi bi-calendar-event me-1"></i>@task.DueDate.Value.ToString("d MMMM", MeetingWeb.Services.DisplayTime.Culture)@(overdue ? " · gecikti" : "")
+                                                </span>
+                                            }
+                                            <a class="text-decoration-none text-muted" data-bs-toggle="collapse" href="#assign_@task.Id" role="button" aria-expanded="false">
+                                                <i class="bi bi-pencil-square me-1"></i>@(task.IsTracked ? "Düzenle" : "Sorumlu ve tarih ata")
+                                            </a>
+                                        </div>
+                                        <div class="collapse mt-2" id="assign_@task.Id">
+                                            <form method="post" asp-page-handler="AssignAction" class="d-flex flex-wrap gap-2 align-items-center">
+                                                <input type="hidden" name="taskId" value="@task.Id" />
+                                                <select name="assigneeUserId" class="form-select form-select-sm rounded-pill" style="max-width: 190px;" aria-label="Sorumlu">
+                                                    <option value="">Sorumlu yok</option>
+                                                    @foreach (var member in Model.WorkspaceMembers)
+                                                    {
+                                                        var memberName = Model.UserProfiles.TryGetValue(member.UserId, out var mp) ? mp.FullName : member.User.Email;
+                                                        var isSuggested = member.UserId == suggested;
+                                                        <option value="@member.UserId" selected="@(member.UserId == task.AssigneeUserId || isSuggested)">@memberName@(isSuggested ? " (önerilen)" : "")</option>
+                                                    }
+                                                </select>
+                                                <input type="date" name="dueDate" value="@task.DueDate?.ToString("yyyy-MM-dd")" min="@MeetingWeb.Services.DisplayTime.Today().ToString("yyyy-MM-dd")" class="form-control form-control-sm rounded-pill" style="max-width: 160px;" aria-label="Son tarih" />
+                                                <button type="submit" class="btn btn-sm btn-primary btn-soft rounded-pill px-3">Kaydet</button>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </li>
                             }
                         </ul>

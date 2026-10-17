@@ -12,6 +12,10 @@ namespace MeetingWeb.Services
         public static string Format(DateTime utc, string format) =>
             TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone).ToString(format, Culture);
 
+        // Today's calendar date in Türkiye (due dates are plain dates in Turkish time).
+        public static DateOnly Today(DateTimeOffset? utcNow = null) =>
+            DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(utcNow ?? DateTimeOffset.UtcNow, Zone).DateTime);
+
         private static TimeZoneInfo FindTurkeyZone()
         {
             foreach (var id in new[] { "Europe/Istanbul", "Turkey Standard Time" })
