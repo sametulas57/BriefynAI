@@ -320,9 +320,42 @@
                                     <div class="form-check mt-1 flex-shrink-0">
                                         <input class="form-check-input border-secondary shadow-sm" type="checkbox" id="task_@task.Id" @(task.IsDone ? "checked" : "") onchange="toggleTask(@task.Id)" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
                                     </div>
-                                    <label class="form-check-label flex-grow-1 text-break @(task.IsDone ? "text-decoration-line-through text-muted" : "text-dark fw-medium")" for="task_@task.Id" style="cursor: pointer; line-height: 1.5; font-size: 0.95rem;">
-                                        @text
-                                    </label>
+                                    @{
+                                        string NameOf(string? uid) => uid == null ? "" : Model.UserProfiles.GetValueOrDefault(uid)?.FullName ?? "İsimsiz Üye";
+                                        var assignee = task.AssigneeUserId != null ? NameOf(task.AssigneeUserId) : null;
+                                        var completer = task.CompletedByUserId != null ? NameOf(task.CompletedByUserId) : null;
+                                    }
+                                    <div class="flex-grow-1">
+                                        <label class="form-check-label text-break @(task.IsDone ? "text-decoration-line-through text-muted" : "text-dark fw-medium")" for="task_@task.Id" style="cursor: pointer; line-height: 1.5; font-size: 0.95rem;">
+                                            @text
+                                        </label>
+                                        <div class="small text-muted mt-1 d-flex flex-wrap gap-2">
+                                            @if (assignee != null)
+                                            {
+                                                <span><i class="bi bi-person me-1"></i>@assignee</span>
+                                            }
+                                            @if (task.DueDate != null)
+                                            {
+                                                <span><i class="bi bi-calendar-event me-1"></i>@task.DueDate.Value.ToString("d MMMM yyyy", MeetingWeb.Services.DisplayTime.Culture)</span>
+                                            }
+                                            <span id="done_@task.Id" class="text-success fw-medium @(task.IsDone ? "" : "d-none")"><i class="bi bi-check2-circle me-1"></i><span class="done-text">Tamamlandı@(completer != null ? $" · Tamamlayan: {completer}" : "")</span></span>
+                                        </div>
+                                        <details class="mt-1">
+                                            <summary class="small text-primary" style="cursor: pointer;">@(assignee == null ? "Birine ata" : "Atamayı değiştir")</summary>
+                                            <form method="post" asp-page-handler="AssignAction" class="d-flex flex-column gap-2 mt-2">
+                                                <input type="hidden" name="taskId" value="@task.Id" />
+                                                <select name="assigneeUserId" class="form-select form-select-sm rounded-pill" aria-label="Kime atansın">
+                                                    <option value="">Kimseye (atamayı kaldır)</option>
+                                                    @foreach (var member in Model.WorkspaceMembers)
+                                                    {
+                                                        <option value="@member.UserId" selected="@(member.UserId == task.AssigneeUserId)">@NameOf(member.UserId)</option>
+                                                    }
+                                                </select>
+                                                <input type="date" name="dueDate" class="form-control form-control-sm rounded-pill" aria-label="Son tarih" value="@task.DueDate?.ToString("yyyy-MM-dd")" />
+                                                <button type="submit" class="btn btn-sm btn-primary rounded-pill">Kaydet</button>
+                                            </form>
+                                        </details>
+                                    </div>
                                     
                                     @if (addedBy != null && Model.UserProfiles.TryGetValue(addedBy, out var profile))
                                     {
@@ -603,6 +636,9 @@
             .then(data => {
                 if(data.success) {
                     var label = document.querySelector(`label[for='task_${id}']`);
+                    var done = document.getElementById(`done_${id}`);
+                    done.querySelector('.done-text').textContent = data.completedBy ? `Tamamlandı · Tamamlayan: ${data.completedBy}` : 'Tamamlandı';
+                    done.classList.toggle('d-none', !data.isDone);
                     // Dynamically mutate DOM classes based on new state
                     if(data.isDone) {
                         label.classList.remove('text-dark', 'fw-medium');
