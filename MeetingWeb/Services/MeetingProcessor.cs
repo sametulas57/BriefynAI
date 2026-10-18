@@ -160,16 +160,21 @@ namespace MeetingWeb.Services
         // Entries users added by hand are stored as "text|~|authorId"; they survive a regenerated summary.
         private static bool IsManual(string? value) => value != null && value.Contains("|~|");
 
+        private static bool IsTracked(ActionItem a) => a.AssigneeUserId != null || a.DueDate != null || a.CompletedByUserId != null;
+
         private static void ApplySummary(MeetingSummary meeting, AiSummaryData data)
         {
             if (!string.IsNullOrWhiteSpace(data.ToplantiKonusu)) meeting.ToplantiKonusu = data.ToplantiKonusu;
             meeting.GorusulenKonular = (data.GorusulenKonular ?? new()).Concat(meeting.GorusulenKonular.Where(IsManual)).ToList();
             meeting.AlinanKararlar = (data.AlinanKararlar ?? new()).Concat(meeting.AlinanKararlar.Where(IsManual)).ToList();
 
-            // Earlier AI-generated tasks are replaced (removed items are deleted as orphans); manual ones stay.
-            meeting.AksiyonMaddeleri.RemoveAll(a => !IsManual(a.Text));
+            // Earlier AI-generated tasks are replaced (removed items are deleted as orphans). Manual ones stay, and so
+            // do tasks someone has assigned or completed: regenerating the summary must not erase that work.
+            meeting.AksiyonMaddeleri.RemoveAll(a => !IsManual(a.Text) && !IsTracked(a));
+            var kept = meeting.AksiyonMaddeleri.Select(a => a.Text).ToHashSet();
             foreach (var taskText in data.AksiyonMaddeleri ?? new())
             {
+                if (kept.Contains(taskText)) continue;
                 meeting.AksiyonMaddeleri.Add(new ActionItem { Text = taskText, IsDone = false });
             }
         }

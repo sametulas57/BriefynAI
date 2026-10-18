@@ -49,6 +49,10 @@ namespace MeetingWeb.Data
                 .Property(a => a.Text)
                 .HasConversion(stringConverter);
 
+            // "Bana atananlar" looks tasks up by assignee.
+            builder.Entity<ActionItem>()
+                .HasIndex(a => a.AssigneeUserId);
+
             // Configure composite primary key for the many-to-many Workspace-User relationship.
             builder.Entity<WorkspaceUser>()
                 .HasKey(wu => new { wu.WorkspaceId, wu.UserId });

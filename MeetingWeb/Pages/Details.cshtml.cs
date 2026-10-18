@@ -105,6 +105,11 @@ namespace MeetingWeb.Pages
                 .Select(t => t.Split("|~|")[1]);
 
             allRelevantUserIds.AddRange(manualIds);
+
+            // Assignees and completers may have left the team since; their names are still shown.
+            allRelevantUserIds.AddRange(Meeting.AksiyonMaddeleri
+                .SelectMany(a => new[] { a.AssigneeUserId, a.CompletedByUserId })
+                .OfType<string>());
             allRelevantUserIds = allRelevantUserIds.Distinct().ToList();
 
             // Execute a single batched query to retrieve all required Identity Claims.
@@ -341,14 +346,59 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnPostToggleTaskAsync(int taskId)
         {
             if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return NotFound();
+            var userId = _userManager.GetUserId(User);
             var task = await _context.Set<ActionItem>().FindAsync(taskId);
             if (task != null)
             {
-                task.IsDone = !task.IsDone;
+                task.SetDone(!task.IsDone, userId);
                 await _context.SaveChangesAsync();
-                return new JsonResult(new { success = true, isDone = task.IsDone });
+
+                var completedBy = task.IsDone ? await FullNameAsync(userId) : null;
+                return new JsonResult(new { success = true, isDone = task.IsDone, completedBy });
             }
             return new JsonResult(new { success = false });
+        }
+
+        private async Task<string> FullNameAsync(string? userId) =>
+            await _context.UserClaims
+                .Where(c => c.UserId == userId && c.ClaimType == "FullName")
+                .Select(c => c.ClaimValue)
+                .FirstOrDefaultAsync() ?? "İsimsiz Üye";
+
+        // Assigns a task to a member of the meeting's team, with an optional due date.
+        // An empty assignee clears the assignment.
+        public async Task<IActionResult> OnPostAssignActionAsync(int taskId, string? assigneeUserId, DateOnly? dueDate)
+        {
+            if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return MeetingUnavailable();
+
+            var task = await _context.Set<ActionItem>()
+                .Include(a => a.MeetingSummary)
+                .FirstAsync(a => a.Id == taskId);
+            var meetingId = task.MeetingSummaryId;
+
+            if (string.IsNullOrEmpty(assigneeUserId))
+            {
+                task.AssigneeUserId = null;
+                task.DueDate = null;
+                await _context.SaveChangesAsync();
+                TempData["StatusMessage"] = "Görevin ataması kaldırıldı.";
+                return RedirectToPage(new { id = meetingId });
+            }
+
+            var isTeammate = await _context.WorkspaceUsers
+                .AnyAsync(wu => wu.WorkspaceId == task.MeetingSummary!.WorkspaceId && wu.UserId == assigneeUserId);
+            if (!isTeammate)
+            {
+                TempData["ErrorMessage"] = "Görev yalnız bu toplantının ekibindeki birine atanabilir.";
+                return RedirectToPage(new { id = meetingId });
+            }
+
+            task.AssigneeUserId = assigneeUserId;
+            task.DueDate = dueDate;
+            await _context.SaveChangesAsync();
+
+            TempData["StatusMessage"] = $"Görev atandı: {await FullNameAsync(assigneeUserId)}.";
+            return RedirectToPage(new { id = meetingId });
         }
 
         // Hangfire Integration: Dispatches background jobs to transmit reports via email.
