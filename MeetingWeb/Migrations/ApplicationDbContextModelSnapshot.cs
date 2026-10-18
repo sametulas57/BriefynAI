@@ -30,24 +30,11 @@ namespace MeetingWeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AssigneeUserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime?>("CompletedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateOnly?>("DueDate")
-                        .HasColumnType("date");
-
                     b.Property<bool>("IsDone")
                         .HasColumnType("bit");
 
                     b.Property<int>("MeetingSummaryId")
                         .HasColumnType("int");
-
-                    b.Property<string>("ReminderSentFor")
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
 
                     b.Property<string>("Text")
                         .IsRequired()
@@ -55,11 +42,7 @@ namespace MeetingWeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DueDate");
-
                     b.HasIndex("MeetingSummaryId");
-
-                    b.HasIndex("AssigneeUserId", "IsDone");
 
                     b.ToTable("ActionItem");
                 });
@@ -451,18 +434,11 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("MeetingWeb.Models.ActionItem", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "Assignee")
-                        .WithMany()
-                        .HasForeignKey("AssigneeUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MeetingWeb.Models.MeetingSummary", "MeetingSummary")
                         .WithMany("AksiyonMaddeleri")
                         .HasForeignKey("MeetingSummaryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Assignee");
 
                     b.Navigation("MeetingSummary");
                 });

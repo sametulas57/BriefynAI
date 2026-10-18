@@ -59,10 +59,6 @@ namespace MeetingWeb.Pages
             public string AvatarUrl { get; set; } = "";
         }
 
-        // Suggested assignee per action item: AI lines look like "Name: task"; if exactly one teammate's display
-        // name starts with that name, the form preselects them (the user still has to press "Kaydet").
-        public Dictionary<int, string> SuggestedAssignees { get; } = new();
-
         // O(1) Lookup dictionary to prevent N+1 Database Query problems in the View.
         public Dictionary<string, UserProfileData> UserProfiles { get; set; } = new();
 
@@ -132,59 +128,7 @@ namespace MeetingWeb.Pages
                 UserProfiles[uid] = new UserProfileData { FullName = fullName, Initials = initials, AvatarUrl = avatarUrl };
             }
 
-            foreach (var task in Meeting.AksiyonMaddeleri.Where(t => t.AssigneeUserId == null))
-            {
-                var suggestion = SuggestAssignee(task.Text);
-                if (suggestion != null) SuggestedAssignees[task.Id] = suggestion;
-            }
-
             return Page();
-        }
-
-        private string? SuggestAssignee(string text)
-        {
-            var colon = text.IndexOf(':');
-            if (colon <= 0 || colon > 40 || text.Contains("|~|")) return null;
-            var name = text[..colon].Trim();
-
-            var matches = WorkspaceMembers
-                .Where(m => UserProfiles.TryGetValue(m.UserId, out var p) &&
-                            (p.FullName.Equals(name, StringComparison.CurrentCultureIgnoreCase) ||
-                             p.FullName.StartsWith(name + " ", StringComparison.CurrentCultureIgnoreCase)))
-                .Select(m => m.UserId)
-                .Distinct()
-                .ToList();
-            return matches.Count == 1 ? matches[0] : null;
-        }
-
-        // --- AKSIYON TAKIBI: ASSIGNEE & DUE DATE ---
-        public async Task<IActionResult> OnPostAssignActionAsync(int taskId, string? assigneeUserId, DateOnly? dueDate)
-        {
-            if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return MeetingUnavailable();
-            var task = await _context.Set<ActionItem>().Include(a => a.MeetingSummary).SingleAsync(a => a.Id == taskId);
-            var back = RedirectToPage(new { id = task.MeetingSummaryId });
-            assigneeUserId = string.IsNullOrWhiteSpace(assigneeUserId) ? null : assigneeUserId;
-
-            if (assigneeUserId != null && !await _context.WorkspaceUsers.AnyAsync(w =>
-                    w.WorkspaceId == task.MeetingSummary!.WorkspaceId && w.UserId == assigneeUserId))
-            {
-                TempData["ErrorMessage"] = "Sorumlu yalnız bu ekibin üyelerinden biri olabilir.";
-                return back;
-            }
-            if (dueDate != null && dueDate < DisplayTime.Today())
-            {
-                TempData["ErrorMessage"] = "Son tarih bugünden önce olamaz.";
-                return back;
-            }
-
-            task.AssigneeUserId = assigneeUserId;
-            task.DueDate = dueDate;
-            await _context.SaveChangesAsync();
-
-            TempData["StatusMessage"] = assigneeUserId == null && dueDate == null
-                ? "Görevin sorumlusu ve son tarihi kaldırıldı."
-                : "Görev güncellendi.";
-            return back;
         }
 
         // --- FAULT TOLERANCE: RETRY MECHANISM ---
@@ -401,7 +345,6 @@ namespace MeetingWeb.Pages
             if (task != null)
             {
                 task.IsDone = !task.IsDone;
-                task.CompletedAtUtc = task.IsDone ? DateTime.UtcNow : null;
                 await _context.SaveChangesAsync();
                 return new JsonResult(new { success = true, isDone = task.IsDone });
             }
