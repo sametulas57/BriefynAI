@@ -11,3 +11,9 @@ $SQLCMD -S "$HOST" -U sa -C -b -I \
   -v DB_NAME="${DB_NAME:-BriefynDB}" APP_DB_USER="${APP_DB_USER:-briefyn_app}" APP_DB_PASSWORD="$APP_DB_PASSWORD" \
   -i /db/init-app-user.sql
 echo "db-init: ${APP_DB_USER:-briefyn_app} hazır"
+if [ -n "${READONLY_DB_PASSWORD:-}" ]; then
+  $SQLCMD -S "$HOST" -U sa -C -b -I \
+    -v DB_NAME="${DB_NAME:-BriefynDB}" RO_DB_USER="${RO_DB_USER:-briefyn_okur}" RO_DB_PASSWORD="$READONLY_DB_PASSWORD" \
+    -i /db/init-readonly-user.sql
+  echo "db-init: ${RO_DB_USER:-briefyn_okur} (salt okunur) hazır"
+fi
