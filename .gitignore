@@ -397,3 +397,4 @@ MeetingWeb/wwwroot/uploads/
 
 # Private meeting recordings (S2): stored outside wwwroot, never committed
 MeetingWeb/App_Data/
+
