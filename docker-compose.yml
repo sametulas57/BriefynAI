@@ -25,6 +25,7 @@ services:
     environment:
       - SQLCMDPASSWORD=${MSSQL_SA_PASSWORD}
       - APP_DB_PASSWORD=${APP_DB_PASSWORD}
+      - READONLY_DB_PASSWORD=${READONLY_DB_PASSWORD:-}
     volumes:
       - ./db:/db:ro
     entrypoint: ["/bin/bash", "/db/init-app-user.sh"]
