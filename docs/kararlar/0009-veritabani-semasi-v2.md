@@ -17,7 +17,7 @@ Tarama (iç proje notu): konu/kararlar tek kolonda JSON, profil claim tablosunda
 - Hangfire işleri yalnız kimlik ya da şifreli değer taşır: analiz işi toplantı numarası, e-posta işi toplantı numarası + şifreli alıcı adresi (ekip dışı alıcının kullanıcı numarası olmadığı için).
 
 ## Sonuçlar
-Eski veriler silinir (yedek `~/Yedekler/briefyn-db-2026-10-21/`). Yeni şema değişikliği yeni migration'la, `migrate` servisiyle uygulanır. ADR-0006'daki "uygulama şema değiştirebilir" kısmının yerini aldı.
+Eski veriler silindi, 2026-10-21 (yedek `~/Yedekler/briefyn-db-2026-10-21/`). Yeni şema değişikliği yeni migration'la, `migrate` servisiyle uygulanır. ADR-0006'daki "uygulama şema değiştirebilir" kısmının yerini aldı.
 
 ## Kaynak
 iç proje notu, iç proje notu
