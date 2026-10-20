@@ -29,7 +29,7 @@
         </h2>
         
         <div class="d-flex gap-2">
-            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && !Model.WorkspaceName.Contains("Kişisel"))
+            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && !Model.IsPersonalWorkspace)
             {
                 <button type="button" class="btn btn-outline-danger fw-bold shadow-sm rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#deleteWorkspaceModal">
                     <i class="bi bi-trash3 me-1"></i> Ekibi Sil
@@ -58,7 +58,7 @@
             <ul class="list-group list-group-flush">
                 @foreach (var member in Model.TeamMembers)
                 {
-                    var fullName = Model.UserNames.ContainsKey(member.UserId) ? Model.UserNames[member.UserId] : "İsimsiz Kullanıcı";
+                    var fullName = Model.UserNames.ContainsKey(member.UserId) ? Model.UserNames[member.UserId] : MeetingWeb.Services.UserDisplay.UnknownName;
                     var avatarUrl = Model.UserAvatars.ContainsKey(member.UserId) ? Model.UserAvatars[member.UserId] : null;
 
                     var initials = MeetingWeb.Services.UserDisplay.Initials(fullName);
@@ -134,7 +134,7 @@
     </div>
 </div>
 
-@if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && !Model.WorkspaceName.Contains("Kişisel"))
+@if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && !Model.IsPersonalWorkspace)
 {
     <div class="modal fade" id="deleteWorkspaceModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

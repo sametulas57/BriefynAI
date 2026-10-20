@@ -3,9 +3,10 @@ using MeetingWeb.Models;
 using MeetingWeb.Services;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
-namespace MeetingWeb.Tests.Security
+namespace MeetingWeb.Tests.Features
 {
     public class UserFacingFixture : IAsyncLifetime
     {
@@ -116,6 +117,38 @@ namespace MeetingWeb.Tests.Security
             Assert.Equal(HttpStatusCode.Redirect, last.StatusCode);
             var page = await PageTextAsync(bob, last.Headers.Location!.ToString());
             Assert.Contains("çok fazla rapor", page);
+        }
+
+        // The cookie's "access denied" path pointed at a page that did not exist.
+        [Fact]
+        public async Task Access_denied_goes_to_an_existing_page_with_a_clear_message()
+        {
+            var options = _app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>>()
+                .Get(Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme);
+            var page = await PageTextAsync(_app.ClientFor(S.AliceId), options.AccessDeniedPath.Value!);
+
+            Assert.Contains("erişim izniniz yok", page);
+        }
+
+        // Members without a name used to be called "İsimsiz", "İsimsiz Üye" or "İsimsiz Kullanıcı" depending on the page.
+        [Fact]
+        public async Task A_member_without_a_name_is_called_the_same_everywhere()
+        {
+            var members = await PageTextAsync(_app.ClientFor(S.AliceId), "/Workspace/Members");
+
+            Assert.Contains(UserDisplay.UnknownName, members);
+            Assert.DoesNotContain("İsimsiz Kullanıcı", members);
+        }
+
+        // The privacy text still described the old offline models; recordings now go to Groq with zero data retention.
+        [Fact]
+        public async Task Privacy_text_describes_the_current_ai_provider()
+        {
+            var page = await PageTextAsync(_app.ClientFor(S.AliceId), "/Privacy");
+
+            Assert.Contains("Groq", page);
+            Assert.DoesNotContain("offline", page);
+            Assert.DoesNotContain("yerel sunucularımızda", page);
         }
     }
 }

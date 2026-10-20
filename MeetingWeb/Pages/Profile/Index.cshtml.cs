@@ -78,7 +78,7 @@ namespace MeetingWeb.Pages.Profile
             ProfileInput.PhoneNumber = user.PhoneNumber ?? "";
 
             var claims = await _userManager.GetClaimsAsync(user);
-            ProfileInput.FullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? "İsimsiz";
+            ProfileInput.FullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? UserDisplay.UnknownName;
 
             return Page();
         }
@@ -225,7 +225,7 @@ namespace MeetingWeb.Pages.Profile
             Username = user.Email ?? "";
 
             var claims = await _userManager.GetClaimsAsync(user);
-            var fullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? "İsimsiz";
+            var fullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? UserDisplay.UnknownName;
 
             ProfilePictureUrl = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl)?.Value ?? "";
 

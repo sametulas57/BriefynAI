@@ -121,7 +121,7 @@ namespace MeetingWeb.Pages
             foreach (var uid in allRelevantUserIds)
             {
                 var userClaims = claims.Where(c => c.UserId == uid).ToList();
-                var fullName = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.FullName)?.ClaimValue ?? "İsimsiz Üye";
+                var fullName = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.FullName)?.ClaimValue ?? UserDisplay.UnknownName;
                 var avatarUrl = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.AvatarUrl)?.ClaimValue ?? "";
 
                 UserProfiles[uid] = new UserProfileData { FullName = fullName, Initials = UserDisplay.Initials(fullName), AvatarUrl = avatarUrl };
@@ -357,7 +357,7 @@ namespace MeetingWeb.Pages
             await _context.UserClaims
                 .Where(c => c.UserId == userId && c.ClaimType == UserClaimTypes.FullName)
                 .Select(c => c.ClaimValue)
-                .FirstOrDefaultAsync() ?? "İsimsiz Üye";
+                .FirstOrDefaultAsync() ?? UserDisplay.UnknownName;
 
         // Assigns a task to a member of the meeting's team, with an optional due date.
         // An empty assignee clears the assignment.

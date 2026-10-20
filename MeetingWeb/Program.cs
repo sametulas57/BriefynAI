@@ -57,7 +57,7 @@ try
     builder.Services.ConfigureApplicationCookie(options =>
     {
         options.LoginPath = "/Auth/Login";
-        options.AccessDeniedPath = "/Auth/AccessDenied";
+        options.AccessDeniedPath = "/Durum/403";
     });
 
     // --- 3. Application Settings ---

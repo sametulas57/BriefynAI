@@ -78,6 +78,34 @@ namespace MeetingWeb.Tests.Security
             Assert.True(personal.IsPersonal);
         }
 
+        // The delete button used to be hidden by the name ("Kişisel"), so such a team looked undeletable.
+        [Fact]
+        public async Task A_team_named_kisisel_can_be_deleted_from_the_members_page()
+        {
+            var teamId = _app.WithDb(db =>
+            {
+                var team = new Workspace { Name = "Kişisel Gelişim" };
+                db.Workspaces.Add(team);
+                db.SaveChanges();
+                db.WorkspaceUsers.Add(new WorkspaceUser { WorkspaceId = team.Id, UserId = _app.Seed.CarolId, Role = WorkspaceRoles.Owner });
+                db.SaveChanges();
+                return team.Id;
+            });
+            var carol = _app.ClientFor(_app.Seed.CarolId);
+            await carol.GetAsync($"/Workspace/Switch?workspaceId={teamId}&returnUrl=/Workspace/Members");
+
+            Assert.Contains("Ekibi Sil", await PageTextAsync(carol, "/Workspace/Members"));
+        }
+
+        [Fact]
+        public async Task A_personal_space_offers_no_delete_button()
+        {
+            var carol = _app.ClientFor(_app.Seed.CarolId);
+            await carol.GetAsync($"/Workspace/Switch?workspaceId={_fx.CarolPersonal}&returnUrl=/Workspace/Members");
+
+            Assert.DoesNotContain("Ekibi Sil", await PageTextAsync(carol, "/Workspace/Members"));
+        }
+
         [Fact]
         public void A_team_whose_name_contains_kisisel_is_not_treated_as_personal()
         {

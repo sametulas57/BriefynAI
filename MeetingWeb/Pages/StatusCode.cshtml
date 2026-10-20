@@ -1,16 +1,21 @@
 @page "/Durum/{code:int}"
 @model MeetingWeb.Pages.StatusCodeModel
 @{
-    ViewData["Title"] = Model.Code == 404 ? "Sayfa bulunamadı" : "Bir şeyler ters gitti";
+    ViewData["Title"] = Model.Code switch { 404 => "Sayfa bulunamadı", 403 => "Erişim izni yok", _ => "Bir şeyler ters gitti" };
 }
 
 <div class="container py-5">
     <div class="soft-card mx-auto text-center p-5" style="max-width: 560px;">
-        <i class="bi @(Model.Code == 404 ? "bi-signpost-split" : "bi-cloud-slash") text-primary" style="font-size: 3rem;"></i>
+        <i class="bi @(Model.Code switch { 404 => "bi-signpost-split", 403 => "bi-shield-lock", _ => "bi-cloud-slash" }) text-primary" style="font-size: 3rem;"></i>
         @if (Model.Code == 404)
         {
             <h3 class="fw-bold mt-3">Aradığınız sayfa bulunamadı</h3>
             <p class="text-muted mb-4">Bağlantı eskimiş ya da sayfa taşınmış olabilir.</p>
+        }
+        else if (Model.Code == 403)
+        {
+            <h3 class="fw-bold mt-3">Bu sayfaya erişim izniniz yok</h3>
+            <p class="text-muted mb-4">Bu bölüm yalnız yetkili kişilere açık. Bir yanlışlık olduğunu düşünüyorsanız ekip kurucusuna sorabilirsiniz.</p>
         }
         else
         {

@@ -87,7 +87,7 @@
                     </ul>
                     @if (User.Identity!.IsAuthenticated)
                     {
-                        var fullName = User.Claims.FirstOrDefault(c => c.Type == MeetingWeb.Models.UserClaimTypes.FullName)?.Value ?? User.Identity?.Name ?? "İsimsiz";
+                        var fullName = User.Claims.FirstOrDefault(c => c.Type == MeetingWeb.Models.UserClaimTypes.FullName)?.Value ?? User.Identity?.Name ?? MeetingWeb.Services.UserDisplay.UnknownName;
                         var avatarUrl = User.Claims.FirstOrDefault(c => c.Type == MeetingWeb.Models.UserClaimTypes.AvatarUrl)?.Value;
                         var initials = MeetingWeb.Services.UserDisplay.Initials(fullName);
                         <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 gap-lg-3 ms-lg-auto mt-3 mt-lg-0">
