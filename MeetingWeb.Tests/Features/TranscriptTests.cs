@@ -104,6 +104,20 @@ namespace MeetingWeb.Tests.Features
             Assert.Equal(MeetingStatus.Processing, Load(id).Status);
         }
 
+        // Found in review: a second retry while the first one was running queued the same meeting twice.
+        [Fact]
+        public async Task Second_retry_while_processing_does_not_queue_another_job()
+        {
+            var id = NewMeeting(MeetingStatus.Failed, audio: null, transcript: "kayıtlı döküm");
+            var alice = _app.ClientFor(S.AliceId);
+            var token = await GetAntiforgeryTokenAsync(alice, $"/Details?id={id}");
+
+            await PostFormAsync(alice, $"/Details?id={id}&handler=RetryProcessing", token, ("id", $"{id}"));
+            await PostFormAsync(alice, $"/Details?id={id}&handler=RetryProcessing", token, ("id", $"{id}"));
+
+            Assert.Equal(1, _app.Jobs.CountFor("ResummarizeMeetingJob", a => (int)a[0]! == id));
+        }
+
         [Fact]
         public async Task Regenerated_summary_replaces_ai_items_and_keeps_manual_ones()
         {

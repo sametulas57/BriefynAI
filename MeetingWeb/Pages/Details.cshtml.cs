@@ -132,7 +132,7 @@ namespace MeetingWeb.Pages
 
             if (absolutePath != null && System.IO.File.Exists(absolutePath))
             {
-                if (!await TryMarkProcessingAsync(meeting)) return RedirectToPage(new { id = meeting.Id });
+                if (!await TryMarkProcessingAsync(meeting.Id)) return RedirectToPage(new { id = meeting.Id });
 
                 // Re-enqueue the AI pipeline job.
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ProcessMeetingJob(meeting.Id));
@@ -141,7 +141,7 @@ namespace MeetingWeb.Pages
             else if (!string.IsNullOrWhiteSpace(meeting.Transcript?.Text))
             {
                 // Faz 2: the transcript is stored, so only the summary is generated again.
-                if (!await TryMarkProcessingAsync(meeting)) return RedirectToPage(new { id = meeting.Id });
+                if (!await TryMarkProcessingAsync(meeting.Id)) return RedirectToPage(new { id = meeting.Id });
 
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ResummarizeMeetingJob(meeting.Id));
                 TempData["StatusMessage"] = "Özet, kayıtlı dökümden yeniden hazırlanıyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
@@ -154,20 +154,17 @@ namespace MeetingWeb.Pages
             return RedirectToPage(new { id = meeting.Id });
         }
 
-        // Two members pressing "retry" together: the first one starts the job, the second is told it is already running.
-        private async Task<bool> TryMarkProcessingAsync(Meeting meeting)
+        // Only a failed meeting can be retried, switched with one conditional update: when two retries arrive (double
+        // click, two members), the first starts the job and the second is told it is already running.
+        private async Task<bool> TryMarkProcessingAsync(int meetingId)
         {
-            meeting.Status = MeetingStatus.Processing;
-            try
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                TempData["StatusMessage"] = "Bu toplantı zaten yeniden işleniyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
-                return false;
-            }
+            var started = await _context.Meetings
+                .Where(m => m.Id == meetingId && m.Status == MeetingStatus.Failed)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, MeetingStatus.Processing));
+            if (started == 1) return true;
+
+            TempData["StatusMessage"] = "Bu toplantı zaten yeniden işleniyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
+            return false;
         }
 
         // --- COLLABORATION & INTERACTION HANDLERS ---
