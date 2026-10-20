@@ -139,6 +139,26 @@ namespace MeetingWeb.Tests.Features
             Assert.Contains(Load(id).Points, p => p.Text == "araya giren karar");
         }
 
+        // Found in review: a task assigned while the AI was working was judged by its stale, unassigned copy.
+        [Fact]
+        public async Task Task_assigned_while_the_summary_is_regenerated_is_kept()
+        {
+            var id = NewMeeting(MeetingStatus.Processing, audio: null, transcript: "kayıtlı döküm");
+            using var scope = _app.Services.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService<IMeetingProcessor>();
+            _app.PythonApi.BeforeRespond = () => _app.WithDb(db =>
+            {
+                db.ActionItems.Where(a => a.MeetingId == id).AsEnumerable().Single(a => a.Text == "eski görev").AssigneeUserId = S.CarolId;
+                return db.SaveChanges();
+            });
+            try { await processor.ResummarizeMeetingJob(id); }
+            finally { _app.PythonApi.BeforeRespond = null; }
+
+            var meeting = Load(id);
+            Assert.Equal(MeetingStatus.Completed, meeting.Status);
+            Assert.Contains(meeting.ActionItems, a => a.Text == "eski görev" && a.AssigneeUserId == S.CarolId);
+        }
+
         [Fact]
         public async Task Meeting_page_offers_the_transcript()
         {
