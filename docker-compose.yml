@@ -16,7 +16,8 @@ services:
     volumes:
       - sql_data:/var/opt/mssql
 
-  # S9a: uygulamanın kendi veritabanı kullanıcısını (briefyn_app) her açılışta hazırlar; sa yalnız burada kullanılır.
+  # S9a / ADR-0009: veritabanını ve iki girişi her açılışta hazırlar: briefyn_app (uygulama, yalnız okur/yazar) ve
+  # briefyn_migrator (yalnız migrate servisi, şemayı kurar). sa yalnız burada ve db-readonly'de kullanılır.
   db-init:
     image: mcr.microsoft.com/mssql/server:2022-latest
     platform: linux/amd64
@@ -25,10 +26,42 @@ services:
     environment:
       - SQLCMDPASSWORD=${MSSQL_SA_PASSWORD}
       - APP_DB_PASSWORD=${APP_DB_PASSWORD}
-      - READONLY_DB_PASSWORD=${READONLY_DB_PASSWORD:-}
+      - MIGRATOR_DB_PASSWORD=${MIGRATOR_DB_PASSWORD}
     volumes:
       - ./db:/db:ro
     entrypoint: ["/bin/bash", "/db/init-app-user.sh"]
+    restart: "no"
+
+  # ADR-0009: şemayı (EF migration'ları, Hangfire ve log tabloları) kurar ve çıkar. Web bu adım bitmeden başlamaz.
+  migrate:
+    build:
+      context: ./MeetingWeb
+    entrypoint: ["dotnet", "run", "--", "migrate"]
+    environment:
+      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=briefyn_migrator;Password=${MIGRATOR_DB_PASSWORD};TrustServerCertificate=True;
+      - EncryptionSettings__KeyV2=${ENCRYPTION_KEY_V2}
+    volumes:
+      - ./MeetingWeb:/app
+      - /app/bin
+      - /app/obj
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # Salt okunur giriş; tablolar kurulduktan sonra çalışır ki parola sütunlarını kapatabilsin.
+  db-readonly:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - SQLCMDPASSWORD=${MSSQL_SA_PASSWORD}
+      - READONLY_DB_PASSWORD=${READONLY_DB_PASSWORD:-}
+    volumes:
+      - ./db:/db:ro
+    entrypoint: ["/bin/bash", "/db/init-app-user.sh", "readonly"]
     restart: "no"
 
   # ==========================================
@@ -69,8 +102,8 @@ services:
       # Sırlar .env dosyasından gelir (git'e girmez).
       - EmailSettings__SenderEmail=${EMAIL_SENDER}
       - EmailSettings__Password=${EMAIL_PASSWORD}
-      # S4: tüm veriler v2 (AES-256-GCM) biçiminde. Eski Key/IV artık uygulamaya verilmiyor (S4-D, 2026-10-17);
-      # .env'de yalnız 17 Ekim 2026 öncesi yedekleri açmak için saklanıyor.
+      # ADR-0010: veriler v3 (AES-256-GCM, kolona bağlı), anahtar numarası 1 = ENCRYPTION_KEY_V2. Eski Key/IV
+      # uygulamaya verilmiyor; .env'de yalnız 17 Ekim 2026 öncesi yedekler için saklanıyor.
       - EncryptionSettings__KeyV2=${ENCRYPTION_KEY_V2}
       # Hangfire paneli (/hangfire) yalnız bu e-postaya açılır; boşsa kimse giremez.
       - Hangfire__DashboardAdminEmails__0=${HANGFIRE_ADMIN_EMAIL:-}
@@ -90,7 +123,7 @@ services:
       - /app/obj
       
     depends_on:
-      db-init:
+      migrate:
         condition: service_completed_successfully
       ai_engine:
         condition: service_started

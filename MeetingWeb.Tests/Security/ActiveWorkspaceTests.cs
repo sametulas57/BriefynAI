@@ -31,9 +31,9 @@ namespace MeetingWeb.Tests.Security
             await client.PostAsync("/Upload", form);
         }
 
-        // ToplantiKonusu is encrypted with a random nonce (S4), so it cannot be compared in SQL; filter after decryption.
-        private int? WorkspaceOfUpload(string fileName) => _app.WithDb(db => db.MeetingSummaries.AsNoTracking()
-            .AsEnumerable().Where(m => m.ToplantiKonusu == fileName).Select(m => m.WorkspaceId).SingleOrDefault());
+        // Title is encrypted with a random nonce (S4), so it cannot be compared in SQL; filter after decryption.
+        private int? WorkspaceOfUpload(string fileName) => _app.WithDb(db => db.Meetings.AsNoTracking()
+            .AsEnumerable().Where(m => m.Title == fileName).Select(m => (int?)m.WorkspaceId).SingleOrDefault());
 
         [Fact]
         public async Task Removed_member_cannot_keep_uploading_into_the_old_workspace()
@@ -41,9 +41,9 @@ namespace MeetingWeb.Tests.Security
             // Dave joins workspace A, opens a page (session remembers A), then gets removed from the team.
             var daveId = _app.WithDb(db =>
             {
-                var dave = new Microsoft.AspNetCore.Identity.IdentityUser { UserName = "dave@a.test", Email = "dave@a.test", SecurityStamp = "s" };
+                var dave = new ApplicationUser { FullName = "Dave", UserName = "dave@a.test", Email = "dave@a.test", SecurityStamp = "s" };
                 db.Users.Add(dave);
-                db.WorkspaceUsers.Add(new WorkspaceUser { WorkspaceId = S.WorkspaceA, UserId = dave.Id, Role = "Üye" });
+                db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = S.WorkspaceA, UserId = dave.Id, Role = WorkspaceRole.Member });
                 db.SaveChanges();
                 return dave.Id;
             });
@@ -53,7 +53,7 @@ namespace MeetingWeb.Tests.Security
 
             _app.WithDb(db =>
             {
-                db.WorkspaceUsers.Remove(db.WorkspaceUsers.Single(wu => wu.UserId == daveId));
+                db.WorkspaceMembers.Remove(db.WorkspaceMembers.Single(wu => wu.UserId == daveId));
                 return db.SaveChanges();
             });
 

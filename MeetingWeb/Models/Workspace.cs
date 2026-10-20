@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace MeetingWeb.Models
 {
@@ -12,17 +12,18 @@ namespace MeetingWeb.Models
         [Display(Name = "Çalışma Alanı Adı")]
         public string Name { get; set; } = string.Empty;
 
-        // The private space created at registration. It cannot be deleted, and inviting people into it is
-        // possible but discouraged (a separate team keeps personal summaries private). Decided by this flag, not by the name.
+        // The private space created at registration (one per user, enforced in the database). It cannot be deleted,
+        // and inviting people into it is possible but discouraged. Decided by this flag, not by the name.
         public bool IsPersonal { get; set; }
 
-        // Standardize timestamps using UTC to prevent server timezone anomalies.
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        [MaxLength(450)]
+        public string? CreatedByUserId { get; set; }
+        public ApplicationUser? CreatedBy { get; set; }
 
-        // Navigation property: One-to-many relationship with Workspace members.
-        public ICollection<WorkspaceUser> WorkspaceUsers { get; set; } = new List<WorkspaceUser>();
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-        // Navigation property: One-to-many relationship with Meeting summaries.
-        public ICollection<MeetingSummary> Meetings { get; set; } = new List<MeetingSummary>();
+        public ICollection<WorkspaceMember> Members { get; set; } = new List<WorkspaceMember>();
+
+        public ICollection<Meeting> Meetings { get; set; } = new List<Meeting>();
     }
 }

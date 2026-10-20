@@ -20,7 +20,7 @@ namespace MeetingWeb.Tests.Security
                 var personal = new Workspace { Name = "Kişisel Alanım", IsPersonal = true };
                 db.Workspaces.Add(personal);
                 db.SaveChanges();
-                db.WorkspaceUsers.Add(new WorkspaceUser { WorkspaceId = personal.Id, UserId = Factory.Seed.CarolId, Role = "Sahip" });
+                db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = personal.Id, UserId = Factory.Seed.CarolId, Role = WorkspaceRole.Owner });
                 db.SaveChanges();
                 return personal.Id;
             });
@@ -73,7 +73,7 @@ namespace MeetingWeb.Tests.Security
                 ("Input.Password", "Guclu-Parola-123"), ("Input.ConfirmPassword", "Guclu-Parola-123"),
                 ("Input.IsKvkkAccepted", "true"));
 
-            var personal = _app.WithDb(db => db.WorkspaceUsers.Include(wu => wu.Workspace).AsNoTracking()
+            var personal = _app.WithDb(db => db.WorkspaceMembers.Include(wu => wu.Workspace).AsNoTracking()
                 .Single(wu => wu.User.Email == "yeni@kisi.test").Workspace);
             Assert.True(personal.IsPersonal);
         }
@@ -87,7 +87,7 @@ namespace MeetingWeb.Tests.Security
                 var team = new Workspace { Name = "Kişisel Gelişim" };
                 db.Workspaces.Add(team);
                 db.SaveChanges();
-                db.WorkspaceUsers.Add(new WorkspaceUser { WorkspaceId = team.Id, UserId = _app.Seed.CarolId, Role = WorkspaceRoles.Owner });
+                db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = team.Id, UserId = _app.Seed.CarolId, Role = WorkspaceRole.Owner });
                 db.SaveChanges();
                 return team.Id;
             });

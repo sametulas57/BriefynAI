@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 
@@ -6,21 +7,19 @@ namespace MeetingWeb.Services
 {
     // Static utility class for at-rest encryption of meeting content (used by the EF Core value converters).
     //
-    // S4: current format is "v2:" + Base64(nonce[12] | ciphertext | tag[16]) using AES-256-GCM with a random nonce
-    // per value, so equal plaintexts no longer produce equal ciphertexts and any modification is detected.
-    // Values without the prefix are the legacy format (AES-CBC with a static IV); they stay readable with the old
-    // key until the "reencrypt" command has converted them.
+    // ADR-0010: format is "v3:<key id>:" + Base64(nonce[12] | ciphertext | tag[16]) using AES-256-GCM with a random
+    // nonce per value. The value is bound to its purpose (e.g. "Meetings.Title") as associated data, so ciphertext
+    // copied into another column does not decrypt. The key id leaves room for a future key change.
     public static class EncryptionHelper
     {
-        public const string CurrentPrefix = "v2:";
+        public const string Prefix = "v3:";
+        public const int CurrentKeyId = 1;
         public const string DecryptionFailedMarker = "⚠️ şifre çözülemedi";
 
         private const int NonceSize = 12;
         private const int TagSize = 16;
 
-        private static byte[] _keyV2 = null!;
-        private static byte[]? _legacyKey;
-        private static byte[]? _legacyIv;
+        private static readonly Dictionary<int, byte[]> Keys = new();
 
         // Reads encryption keys from configuration during application startup.
         public static void Initialize(IConfiguration configuration)
@@ -31,26 +30,19 @@ namespace MeetingWeb.Services
                 throw new InvalidOperationException("CRITICAL: EncryptionSettings:KeyV2 (ENCRYPTION_KEY_V2) is missing!");
             }
 
-            _keyV2 = Convert.FromBase64String(keyV2);
-            if (_keyV2.Length != 32)
+            var key = Convert.FromBase64String(keyV2);
+            if (key.Length != 32)
             {
                 throw new InvalidOperationException("CRITICAL: EncryptionSettings:KeyV2 must be 32 random bytes, Base64 encoded.");
             }
 
-            // Legacy key/IV are only needed while old rows exist; without them those rows show the failure marker.
-            string? keyString = configuration["EncryptionSettings:Key"];
-            string? ivString = configuration["EncryptionSettings:IV"];
-            _legacyKey = string.IsNullOrEmpty(keyString) ? null : Encoding.UTF8.GetBytes(keyString);
-            _legacyIv = string.IsNullOrEmpty(ivString) ? null : Encoding.UTF8.GetBytes(ivString);
+            Keys[CurrentKeyId] = key;
         }
 
-        public static bool IsCurrentFormat(string? value) => value != null && value.StartsWith(CurrentPrefix, StringComparison.Ordinal);
-
-        // Encrypts plain text into the current "v2:" format.
-        public static string Encrypt(string plainText)
+        public static string Encrypt(string plainText, string purpose)
         {
             if (string.IsNullOrEmpty(plainText)) return plainText;
-            if (_keyV2 == null) throw new InvalidOperationException("EncryptionHelper is not initialized.");
+            if (!Keys.TryGetValue(CurrentKeyId, out var key)) throw new InvalidOperationException("EncryptionHelper is not initialized.");
 
             var plainBytes = Encoding.UTF8.GetBytes(plainText);
             var payload = new byte[NonceSize + plainBytes.Length + TagSize];
@@ -59,32 +51,31 @@ namespace MeetingWeb.Services
             var tag = payload.AsSpan(NonceSize + plainBytes.Length, TagSize);
 
             RandomNumberGenerator.Fill(nonce);
-            using var aes = new AesGcm(_keyV2, TagSize);
-            aes.Encrypt(nonce, plainBytes, cipher, tag);
+            using var aes = new AesGcm(key, TagSize);
+            aes.Encrypt(nonce, plainBytes, cipher, tag, Encoding.UTF8.GetBytes(purpose));
 
-            return CurrentPrefix + Convert.ToBase64String(payload);
+            return $"{Prefix}{CurrentKeyId}:{Convert.ToBase64String(payload)}";
         }
 
-        // Decrypts either format. Unreadable values (wrong key, tampering, corruption) are logged and replaced by
-        // a visible marker instead of leaking ciphertext into the UI or failing the whole page.
-        public static string Decrypt(string cipherText)
+        // Unreadable values (wrong key, wrong column, tampering) are logged and replaced by a visible marker instead of
+        // leaking ciphertext into the UI or failing the whole page.
+        public static string Decrypt(string cipherText, string purpose)
         {
             if (string.IsNullOrEmpty(cipherText)) return cipherText;
-            if (TryDecrypt(cipherText, out var plainText)) return plainText;
+            if (TryDecrypt(cipherText, purpose, out var plainText)) return plainText;
 
-            Serilog.Log.Warning("Encrypted value could not be decrypted (format: {Format}).",
-                IsCurrentFormat(cipherText) ? "v2" : "legacy");
+            Serilog.Log.Warning("Encrypted value could not be decrypted ({Purpose}).", purpose);
             return DecryptionFailedMarker;
         }
 
-        public static bool TryDecrypt(string cipherText, out string plainText)
+        public static bool TryDecrypt(string cipherText, string purpose, out string plainText)
         {
             plainText = cipherText;
             if (string.IsNullOrEmpty(cipherText)) return true;
 
             try
             {
-                plainText = IsCurrentFormat(cipherText) ? DecryptV2(cipherText) : DecryptLegacy(cipherText);
+                plainText = DecryptCore(cipherText, purpose);
                 return true;
             }
             catch (Exception ex) when (ex is CryptographicException or FormatException or InvalidOperationException)
@@ -94,30 +85,22 @@ namespace MeetingWeb.Services
             }
         }
 
-        private static string DecryptV2(string value)
+        private static string DecryptCore(string value, string purpose)
         {
-            var payload = Convert.FromBase64String(value.Substring(CurrentPrefix.Length));
+            var parts = value.Split(':', 3);
+            if (parts.Length != 3 || parts[0] + ":" != Prefix) throw new FormatException("Not an encrypted value.");
+            var keyId = int.Parse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture);
+            if (!Keys.TryGetValue(keyId, out var key)) throw new InvalidOperationException($"Unknown key id {keyId}.");
+
+            var payload = Convert.FromBase64String(parts[2]);
             if (payload.Length < NonceSize + TagSize) throw new CryptographicException("Payload too short.");
 
             var cipherLength = payload.Length - NonceSize - TagSize;
             var plainBytes = new byte[cipherLength];
-            using var aes = new AesGcm(_keyV2, TagSize);
+            using var aes = new AesGcm(key, TagSize);
             aes.Decrypt(payload.AsSpan(0, NonceSize), payload.AsSpan(NonceSize, cipherLength),
-                payload.AsSpan(NonceSize + cipherLength, TagSize), plainBytes);
+                payload.AsSpan(NonceSize + cipherLength, TagSize), plainBytes, Encoding.UTF8.GetBytes(purpose));
 
-            return Encoding.UTF8.GetString(plainBytes);
-        }
-
-        private static string DecryptLegacy(string value)
-        {
-            if (_legacyKey == null || _legacyIv == null) throw new InvalidOperationException("Legacy key is not configured.");
-
-            using Aes aes = Aes.Create();
-            aes.Key = _legacyKey;
-            aes.IV = _legacyIv;
-
-            var cipherBytes = Convert.FromBase64String(value);
-            var plainBytes = aes.CreateDecryptor().TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
             return Encoding.UTF8.GetString(plainBytes);
         }
     }

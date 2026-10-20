@@ -1,3 +1,4 @@
+using MeetingWeb.Services;
 using System.Net;
 using MeetingWeb.Models;
 using MeetingWeb.Tests.Infrastructure;
@@ -35,8 +36,8 @@ namespace MeetingWeb.Tests.Security
             Assert.Equal("/History", res.Headers.Location!.OriginalString);
         }
 
-        private MeetingSummary MeetingA() => _app.WithDb(db => db.MeetingSummaries
-            .Include(m => m.AksiyonMaddeleri).AsNoTracking().Single(m => m.Id == S.MeetingA));
+        private Meeting MeetingA() => _app.WithDb(db => db.Meetings
+            .Include(m => m.Points).Include(m => m.ActionItems).AsNoTracking().Single(m => m.Id == S.MeetingA));
 
         // --- Reading ---
 
@@ -78,9 +79,8 @@ namespace MeetingWeb.Tests.Security
 
             Assert.All(new[] { topic, decision, action }, AssertSentToHistory);
             var after = MeetingA();
-            Assert.Equal(before.GorusulenKonular, after.GorusulenKonular);
-            Assert.Equal(before.AlinanKararlar, after.AlinanKararlar);
-            Assert.Equal(before.AksiyonMaddeleri.Count, after.AksiyonMaddeleri.Count);
+            Assert.Equal(before.Points.Select(p => p.Text), after.Points.Select(p => p.Text));
+            Assert.Equal(before.ActionItems.Count, after.ActionItems.Count);
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace MeetingWeb.Tests.Security
 
             AssertSentToHistory(comment);
             Assert.Equal(HttpStatusCode.NotFound, reaction.StatusCode); // AJAX handler: no page to redirect to
-            Assert.False(_app.WithDb(db => db.MeetingComments.AsEnumerable().Any(c => c.Content == "bob-yorum")));
+            Assert.False(_app.WithDb(db => db.Comments.AsEnumerable().Any(c => c.Content == "bob-yorum")));
             Assert.False(_app.WithDb(db => db.CommentReactions.Any(r => r.CommentId == S.CommentA && r.UserId == S.BobId)));
         }
 
@@ -120,7 +120,7 @@ namespace MeetingWeb.Tests.Security
                 ("meetingId", $"{S.MeetingB}"), ("content", "bob-sizma-yaniti"), ("parentCommentId", $"{S.CommentA}"));
 
             AssertSentToHistory(res);
-            Assert.False(_app.WithDb(db => db.MeetingComments.AsEnumerable().Any(c => c.Content == "bob-sizma-yaniti")));
+            Assert.False(_app.WithDb(db => db.Comments.AsEnumerable().Any(c => c.Content == "bob-sizma-yaniti")));
         }
 
         [Fact]
@@ -157,8 +157,10 @@ namespace MeetingWeb.Tests.Security
             await PostFormAsync(alice, $"/Details?id={S.MeetingA}&handler=Share", token,
                 ("meetingId", $"{S.MeetingA}"), ("selectedEmails", SeedData.CarolEmail), ("selectedEmails", "outsider@evil.test"));
 
-            Assert.Equal(1, _app.Jobs.CountFor("SendMeetingSummaryAsync", a => (int)a[0]! == S.MeetingA && (string)a[1]! == SeedData.CarolEmail));
-            Assert.Equal(0, _app.Jobs.CountFor("SendMeetingSummaryAsync", a => (string)a[1]! == "outsider@evil.test"));
+            Assert.Equal(1, _app.Jobs.CountFor("SendMeetingSummaryAsync", a => (int)a[0]! == S.MeetingA && EmailService.UnprotectRecipient((string)a[1]!) == SeedData.CarolEmail));
+            Assert.Equal(0, _app.Jobs.CountFor("SendMeetingSummaryAsync", a => EmailService.UnprotectRecipient((string)a[1]!) == "outsider@evil.test"));
+            // ADR-0009: Hangfire stores job arguments; the address must not be readable there.
+            Assert.Equal(0, _app.Jobs.CountFor("SendMeetingSummaryAsync", a => ((string)a[1]!).Contains('@')));
         }
     }
 }

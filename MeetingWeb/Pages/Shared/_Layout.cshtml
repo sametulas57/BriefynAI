@@ -3,7 +3,7 @@
 @using MeetingWeb.Data
 @using Microsoft.EntityFrameworkCore
 @inject IHttpContextAccessor HttpContextAccessor
-@inject UserManager<IdentityUser> UserManager
+@inject UserManager<MeetingWeb.Models.ApplicationUser> UserManager
 @inject ApplicationDbContext DbContext
 @inject MeetingWeb.Services.IActiveWorkspaceService ActiveWorkspace
 
@@ -12,16 +12,16 @@
     var userId = UserManager.GetUserId(User);
     var activeWorkspaceId = (await ActiveWorkspace.GetActiveMembershipAsync(userId))?.WorkspaceId;
     
-    string currentUserRole = "";
+    MeetingWeb.Models.WorkspaceRole? currentUserRole = null;
     string activeWorkspaceName = "Ekip";
     
     // Initialize collection to hold the user's authorized workspaces.
-    var userWorkspaces = new List<MeetingWeb.Models.WorkspaceUser>();
+    var userWorkspaces = new List<MeetingWeb.Models.WorkspaceMember>();
 
     if (userId != null)
     {
         // 1. Eager load all workspaces where the current user holds membership.
-        userWorkspaces = DbContext.WorkspaceUsers
+        userWorkspaces = DbContext.WorkspaceMembers
             .Include(w => w.Workspace)
             .Where(w => w.UserId == userId)
             .ToList();
@@ -111,7 +111,7 @@
                                     {
                                         <li><hr class="dropdown-divider"><h6 class="dropdown-header">@activeWorkspaceName</h6></li>
                                         <li><a class="dropdown-item py-2" asp-page="/Workspace/Members"><i class="bi bi-people me-2" aria-hidden="true"></i>Ekibi Görüntüle</a></li>
-                                        @if (currentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner) { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
+                                        @if (currentUserRole == MeetingWeb.Models.WorkspaceRole.Owner) { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
                                     }
                                     <li><a class="dropdown-item py-2" asp-page="/Workspace/Create"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>Yeni Ekip Oluştur</a></li>
                                     @if (userWorkspaces.Count > 0)

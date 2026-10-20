@@ -41,13 +41,28 @@ namespace MeetingWeb.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<DateOnly?>("DueDate")
                         .HasColumnType("date");
 
-                    b.Property<bool>("IsDone")
-                        .HasColumnType("bit");
+                    b.Property<int>("MeetingId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("MeetingSummaryId")
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Source")
                         .HasColumnType("int");
 
                     b.Property<string>("Text")
@@ -58,9 +73,135 @@ namespace MeetingWeb.Migrations
 
                     b.HasIndex("AssigneeUserId");
 
-                    b.HasIndex("MeetingSummaryId");
+                    b.HasIndex("CompletedByUserId");
 
-                    b.ToTable("ActionItem");
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("MeetingId");
+
+                    b.ToTable("ActionItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_ActionItems_Source", "[Source] IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.ApplicationUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AvatarFileName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique()
+                        .HasFilter("[PhoneNumber] IS NOT NULL AND [PhoneNumber] <> ''");
+
+                    b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MeetingId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ParentCommentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MeetingId");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.CommentReaction", b =>
@@ -79,52 +220,20 @@ namespace MeetingWeb.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CommentId");
-
-                    b.ToTable("CommentReactions");
-                });
-
-            modelBuilder.Entity("MeetingWeb.Models.MeetingComment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("MeetingId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ParentCommentId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MeetingId");
-
-                    b.HasIndex("ParentCommentId");
-
                     b.HasIndex("UserId");
 
-                    b.ToTable("MeetingComments");
+                    b.HasIndex("CommentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CommentReactions");
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.MeetingSummary", b =>
+            modelBuilder.Entity("MeetingWeb.Models.Meeting", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -132,38 +241,109 @@ namespace MeetingWeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AlinanKararlar")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("AudioFileName")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("AudioFilePath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedDate")
+                    b.Property<DateTime?>("CompletedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("GorusulenKonular")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<string>("ToplantiKonusu")
+                    b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Transkript")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("WorkspaceId")
+                    b.Property<int>("WorkspaceId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkspaceId");
+                    b.HasIndex("CreatedByUserId");
 
-                    b.ToTable("MeetingSummaries");
+                    b.HasIndex("WorkspaceId", "CreatedAtUtc");
+
+                    b.ToTable("Meetings", t =>
+                        {
+                            t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1)");
+
+                            t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.MeetingPoint", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MeetingId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("MeetingId");
+
+                    b.ToTable("MeetingPoints", t =>
+                        {
+                            t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_MeetingPoints_Source", "[Source] IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.MeetingTranscript", b =>
+                {
+                    b.Property<int>("MeetingId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("MeetingId");
+
+                    b.ToTable("MeetingTranscripts");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.Workspace", b =>
@@ -174,8 +354,12 @@ namespace MeetingWeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("IsPersonal")
                         .HasColumnType("bit");
@@ -186,6 +370,11 @@ namespace MeetingWeb.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Workspaces_PersonalPerUser")
+                        .HasFilter("[IsPersonal] = 1");
 
                     b.ToTable("Workspaces");
                 });
@@ -198,35 +387,46 @@ namespace MeetingWeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("ExpiresAt")
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("InviteeEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("IsUsed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Token")
+                    b.Property<string>("TokenHash")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("UsedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UsedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("WorkspaceId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsedByUserId");
+
                     b.HasIndex("WorkspaceId");
 
                     b.ToTable("WorkspaceInvitations");
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.WorkspaceUser", b =>
+            modelBuilder.Entity("MeetingWeb.Models.WorkspaceMember", b =>
                 {
                     b.Property<int>("WorkspaceId")
                         .HasColumnType("int");
@@ -234,16 +434,20 @@ namespace MeetingWeb.Migrations
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<DateTime>("JoinedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
 
                     b.HasKey("WorkspaceId", "UserId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("WorkspaceUsers");
+                    b.ToTable("WorkspaceMembers", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -296,71 +500,6 @@ namespace MeetingWeb.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.ToTable("AspNetUsers", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -450,43 +589,50 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("MeetingWeb.Models.ActionItem", b =>
                 {
-                    b.HasOne("MeetingWeb.Models.MeetingSummary", "MeetingSummary")
-                        .WithMany("AksiyonMaddeleri")
-                        .HasForeignKey("MeetingSummaryId")
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "Assignee")
+                        .WithMany()
+                        .HasForeignKey("AssigneeUserId");
+
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CompletedBy")
+                        .WithMany()
+                        .HasForeignKey("CompletedByUserId");
+
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.HasOne("MeetingWeb.Models.Meeting", "Meeting")
+                        .WithMany("ActionItems")
+                        .HasForeignKey("MeetingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("MeetingSummary");
+                    b.Navigation("Assignee");
+
+                    b.Navigation("CompletedBy");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Meeting");
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.CommentReaction", b =>
+            modelBuilder.Entity("MeetingWeb.Models.Comment", b =>
                 {
-                    b.HasOne("MeetingWeb.Models.MeetingComment", "Comment")
-                        .WithMany("Reactions")
-                        .HasForeignKey("CommentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Comment");
-                });
-
-            modelBuilder.Entity("MeetingWeb.Models.MeetingComment", b =>
-                {
-                    b.HasOne("MeetingWeb.Models.MeetingSummary", "Meeting")
+                    b.HasOne("MeetingWeb.Models.Meeting", "Meeting")
                         .WithMany("Comments")
                         .HasForeignKey("MeetingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MeetingWeb.Models.MeetingComment", "ParentComment")
+                    b.HasOne("MeetingWeb.Models.Comment", "ParentComment")
                         .WithMany("Replies")
                         .HasForeignKey("ParentCommentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.ClientCascade);
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.Navigation("Meeting");
@@ -496,36 +642,112 @@ namespace MeetingWeb.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.MeetingSummary", b =>
+            modelBuilder.Entity("MeetingWeb.Models.CommentReaction", b =>
                 {
+                    b.HasOne("MeetingWeb.Models.Comment", "Comment")
+                        .WithMany("Reactions")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .IsRequired();
+
+                    b.Navigation("Comment");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.Meeting", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
                     b.HasOne("MeetingWeb.Models.Workspace", "Workspace")
                         .WithMany("Meetings")
-                        .HasForeignKey("WorkspaceId");
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
 
                     b.Navigation("Workspace");
                 });
 
+            modelBuilder.Entity("MeetingWeb.Models.MeetingPoint", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.HasOne("MeetingWeb.Models.Meeting", "Meeting")
+                        .WithMany("Points")
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Meeting");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.MeetingTranscript", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.Meeting", "Meeting")
+                        .WithOne("Transcript")
+                        .HasForeignKey("MeetingWeb.Models.MeetingTranscript", "MeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Meeting");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.Workspace", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.Navigation("CreatedBy");
+                });
+
             modelBuilder.Entity("MeetingWeb.Models.WorkspaceInvitation", b =>
                 {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "UsedBy")
+                        .WithMany()
+                        .HasForeignKey("UsedByUserId");
+
                     b.HasOne("MeetingWeb.Models.Workspace", "Workspace")
                         .WithMany()
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("UsedBy");
+
                     b.Navigation("Workspace");
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.WorkspaceUser", b =>
+            modelBuilder.Entity("MeetingWeb.Models.WorkspaceMember", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MeetingWeb.Models.Workspace", "Workspace")
-                        .WithMany("WorkspaceUsers")
+                        .WithMany("Members")
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -546,7 +768,7 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -555,7 +777,7 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -570,7 +792,7 @@ namespace MeetingWeb.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -579,32 +801,36 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.MeetingComment", b =>
+            modelBuilder.Entity("MeetingWeb.Models.Comment", b =>
                 {
                     b.Navigation("Reactions");
 
                     b.Navigation("Replies");
                 });
 
-            modelBuilder.Entity("MeetingWeb.Models.MeetingSummary", b =>
+            modelBuilder.Entity("MeetingWeb.Models.Meeting", b =>
                 {
-                    b.Navigation("AksiyonMaddeleri");
+                    b.Navigation("ActionItems");
 
                     b.Navigation("Comments");
+
+                    b.Navigation("Points");
+
+                    b.Navigation("Transcript");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.Workspace", b =>
                 {
                     b.Navigation("Meetings");
 
-                    b.Navigation("WorkspaceUsers");
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

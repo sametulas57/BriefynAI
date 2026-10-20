@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
 
@@ -14,19 +13,18 @@ namespace MeetingWeb.Pages.Profile
     [Authorize]
     public class ProfileModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IWebHostEnvironment _env;
 
-        public ProfileModel(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, IWebHostEnvironment env)
+        public ProfileModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IWebHostEnvironment env)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _env = env;
         }
 
-        // Avatars are the only public uploads (see the /uploads guard in Program.cs); one file per user id.
-        private const string AvatarUrlPath = "/uploads/avatars";
+        // Avatars are the only public uploads (see the /uploads guard in Program.cs); one current file per user.
         private string AvatarFolder => Path.Combine(_env.WebRootPath, "uploads", "avatars");
 
         public string Username { get; set; } = "";
@@ -76,9 +74,7 @@ namespace MeetingWeb.Pages.Profile
 
             await LoadProfileDataAsync(user);
             ProfileInput.PhoneNumber = user.PhoneNumber ?? "";
-
-            var claims = await _userManager.GetClaimsAsync(user);
-            ProfileInput.FullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? UserDisplay.UnknownName;
+            ProfileInput.FullName = user.FullName;
 
             return Page();
         }
@@ -110,19 +106,11 @@ namespace MeetingWeb.Pages.Profile
                 }
             }
 
-            await _userManager.SetPhoneNumberAsync(user, ProfileInput.PhoneNumber);
+            user.PhoneNumber = string.IsNullOrWhiteSpace(ProfileInput.PhoneNumber) ? null : ProfileInput.PhoneNumber;
+            user.FullName = ProfileInput.FullName;
+            await _userManager.UpdateAsync(user);
 
-            // Update custom identity Claims to reflect name changes across the application.
-            var claims = await _userManager.GetClaimsAsync(user);
-            var oldFullNameClaim = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName);
-
-            if (oldFullNameClaim != null)
-            {
-                await _userManager.RemoveClaimAsync(user, oldFullNameClaim);
-            }
-            await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.FullName, ProfileInput.FullName));
-
-            // Invalidate and refresh the authentication cookie to apply claim modifications.
+            // Refresh the authentication cookie so the new name shows in the layout.
             await _signInManager.RefreshSignInAsync(user);
             TempData["StatusMessage"] = "Profil bilgileriniz başarıyla güncellendi.";
             return RedirectToPage();
@@ -173,22 +161,17 @@ namespace MeetingWeb.Pages.Profile
                 var uploadsFolder = AvatarFolder;
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-                // Persist the image. Using User.Id guarantees a single file per user, preventing storage bloat.
-                var fileName = $"{user.Id}.jpg";
-                var filePath = Path.Combine(uploadsFolder, fileName);
-                await System.IO.File.WriteAllBytesAsync(filePath, bytes);
+                // A new name per upload busts the browser cache; the previous file is removed so each user keeps one.
+                var fileName = $"{user.Id}-{DateTime.UtcNow.Ticks:x}.jpg";
+                await System.IO.File.WriteAllBytesAsync(Path.Combine(uploadsFolder, fileName), bytes);
 
-                // Update the user's Avatar Claim.
-                var claims = await _userManager.GetClaimsAsync(user);
-                var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl);
-                if (oldAvatarClaim != null) await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
-
-                // Implement Cache Busting via URL parameters (Ticks) to force browser refresh.
-                var newAvatarUrl = $"{AvatarUrlPath}/{fileName}?t={DateTime.UtcNow.Ticks}";
-                await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.AvatarUrl, newAvatarUrl));
+                var previous = user.AvatarFileName;
+                user.AvatarFileName = fileName;
+                await _userManager.UpdateAsync(user);
+                DeleteAvatarFile(previous);
 
                 await _signInManager.RefreshSignInAsync(user);
-                return new JsonResult(new { success = true, avatarUrl = newAvatarUrl });
+                return new JsonResult(new { success = true, avatarUrl = UserDisplay.AvatarUrl(fileName) });
             }
             catch (Exception)
             {
@@ -202,16 +185,11 @@ namespace MeetingWeb.Pages.Profile
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return RedirectToPage();
 
-            // Perform hard deletion from the physical file system.
-            var filePath = Path.Combine(AvatarFolder, $"{user.Id}.jpg");
-            if (System.IO.File.Exists(filePath)) System.IO.File.Delete(filePath);
-
-            // Strip the Avatar Claim from the user's identity profile.
-            var claims = await _userManager.GetClaimsAsync(user);
-            var avatarClaim = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl);
-            if (avatarClaim != null)
+            if (user.AvatarFileName != null)
             {
-                await _userManager.RemoveClaimAsync(user, avatarClaim);
+                DeleteAvatarFile(user.AvatarFileName);
+                user.AvatarFileName = null;
+                await _userManager.UpdateAsync(user);
                 await _signInManager.RefreshSignInAsync(user);
             }
 
@@ -220,16 +198,20 @@ namespace MeetingWeb.Pages.Profile
         }
 
         // --- HELPER METOD ---
-        private async Task LoadProfileDataAsync(IdentityUser user)
+        private Task LoadProfileDataAsync(ApplicationUser user)
         {
             Username = user.Email ?? "";
+            ProfilePictureUrl = UserDisplay.AvatarUrl(user.AvatarFileName);
+            Initials = UserDisplay.Initials(user.FullName);
+            return Task.CompletedTask;
+        }
 
-            var claims = await _userManager.GetClaimsAsync(user);
-            var fullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? UserDisplay.UnknownName;
-
-            ProfilePictureUrl = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl)?.Value ?? "";
-
-            Initials = UserDisplay.Initials(fullName);
+        // File names come from our own column, but Path.GetFileName keeps the delete inside the avatar folder.
+        private void DeleteAvatarFile(string? fileName)
+        {
+            if (string.IsNullOrEmpty(fileName)) return;
+            var path = Path.Combine(AvatarFolder, Path.GetFileName(fileName));
+            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
         }
     }
 }

@@ -1,8 +1,6 @@
 using System.Net;
-using MeetingWeb.Services;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
 namespace MeetingWeb.Tests.Security
@@ -23,14 +21,7 @@ namespace MeetingWeb.Tests.Security
         public CommentEncryptionTests(CommentEncryptionFixture fixture) => _app = fixture.Factory;
 
         private string RawContent(int id) => _app.WithDb(db => db.Database
-            .SqlQueryRaw<string>("SELECT \"Content\" AS \"Value\" FROM \"MeetingComments\" WHERE \"Id\" = {0}", id).AsEnumerable().Single());
-
-        private int InsertPlainComment(string text) => _app.WithDb(db =>
-        {
-            db.Database.ExecuteSqlRaw("INSERT INTO \"MeetingComments\" (\"MeetingId\", \"UserId\", \"Content\", \"CreatedAt\") VALUES ({0}, {1}, {2}, {3})",
-                S.MeetingA, S.AliceId, text, DateTime.UtcNow);
-            return db.Database.SqlQueryRaw<int>("SELECT MAX(\"Id\") AS \"Value\" FROM \"MeetingComments\"").AsEnumerable().Single();
-        });
+            .SqlQueryRaw<string>("SELECT \"Content\" AS \"Value\" FROM \"Comments\" WHERE \"Id\" = {0}", id).AsEnumerable().Single());
 
         private async Task<string> PageAsync() =>
             WebUtility.HtmlDecode(await _app.ClientFor(S.AliceId).GetStringAsync($"/Details?id={S.MeetingA}"));
@@ -43,29 +34,9 @@ namespace MeetingWeb.Tests.Security
             await PostFormAsync(alice, $"/Details?id={S.MeetingA}&handler=AddComment", token,
                 ("meetingId", $"{S.MeetingA}"), ("content", "Fiyat 1499 TL kalsın"));
 
-            var id = _app.WithDb(db => db.MeetingComments.AsNoTracking().AsEnumerable().Single(c => c.Content == "Fiyat 1499 TL kalsın").Id);
-            Assert.StartsWith("v2:", RawContent(id));
+            var id = _app.WithDb(db => db.Comments.AsNoTracking().AsEnumerable().Single(c => c.Content == "Fiyat 1499 TL kalsın").Id);
+            Assert.StartsWith("v3:1:", RawContent(id));
             Assert.Contains("Fiyat 1499 TL kalsın", await PageAsync());
-        }
-
-        [Fact]
-        public async Task Comments_written_before_encryption_stay_readable()
-        {
-            InsertPlainComment("eski düz yorum");
-
-            Assert.Contains("eski düz yorum", await PageAsync());
-        }
-
-        [Fact]
-        public async Task Reencryption_encrypts_old_plain_comments()
-        {
-            var id = InsertPlainComment("taşınacak yorum");
-
-            using (var scope = _app.Services.CreateScope())
-                await scope.ServiceProvider.GetRequiredService<IReencryptionService>().RunAsync(apply: true);
-
-            Assert.StartsWith("v2:", RawContent(id));
-            Assert.Equal("taşınacak yorum", _app.WithDb(db => db.MeetingComments.AsNoTracking().Single(c => c.Id == id).Content));
         }
 
         [Fact]
@@ -78,7 +49,7 @@ namespace MeetingWeb.Tests.Security
 
             var page = WebUtility.HtmlDecode(await alice.GetStringAsync(res.Headers.Location!.ToString()));
             Assert.Contains("en fazla 2000 karakter", page);
-            Assert.False(_app.WithDb(db => db.MeetingComments.AsEnumerable().Any(c => c.Content.Length > 2000)));
+            Assert.False(_app.WithDb(db => db.Comments.AsEnumerable().Any(c => c.Content.Length > 2000)));
         }
     }
 }

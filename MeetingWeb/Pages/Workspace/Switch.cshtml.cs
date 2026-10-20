@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using MeetingWeb.Data;
+using MeetingWeb.Models;
 using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Workspace
@@ -13,9 +14,9 @@ namespace MeetingWeb.Pages.Workspace
     public class SwitchModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public SwitchModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public SwitchModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _userManager = userManager;
@@ -29,7 +30,7 @@ namespace MeetingWeb.Pages.Workspace
 
             // IDOR PROTECTION: Validate that the requesting user actively belongs to the target tenant.
             // Executing an optimal O(1) boolean check via AnyAsync to preserve server resources.
-            var hasAccess = await _context.WorkspaceUsers
+            var hasAccess = await _context.WorkspaceMembers
                 .AnyAsync(wu => wu.UserId == userId && wu.WorkspaceId == workspaceId);
 
             if (hasAccess)

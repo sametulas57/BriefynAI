@@ -40,9 +40,10 @@ try
     builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
     // --- 2. Identity & Security ---
-    builder.Services.AddDefaultIdentity<IdentityUser>(options =>
+    builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
         options.SignIn.RequireConfirmedAccount = false)
-        .AddEntityFrameworkStores<ApplicationDbContext>();
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>();
 
     // S9b: Data Protection keys sign the login cookie, antiforgery tokens and TempData. Inside the container they
     // vanished on every rebuild (everyone logged out, open forms failed). They now live in a persistent folder:
@@ -90,7 +91,8 @@ try
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UseSqlServerStorage(connectionString));
+            // ADR-0009: Hangfire tables are installed by the "migrate" step; the app user cannot change the schema.
+            .UseSqlServerStorage(connectionString, new SqlServerStorageOptions { PrepareSchemaIfNecessary = false }));
 
         builder.Services.AddHangfireServer(options =>
         {
@@ -103,7 +105,7 @@ try
     builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
-    builder.Services.AddScoped<IReencryptionService, ReencryptionService>();
+    builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
@@ -161,27 +163,29 @@ try
     var app = builder.Build();
 
     // =========================================================================
-    // 2. AŞAMA: Veritabanını Otomatik Oluşturma (Migration) ve Tam Loglamaya Geçiş
+    // 2. AŞAMA: Şema kurulumu ayrı adımda (ADR-0009), sonra tam loglamaya geçiş
     // =========================================================================
+    //   dotnet run -- migrate   -> EF migration'ları ve Hangfire tablolarını kurar, çıkar (compose "migrate" servisi,
+    //                              şema yetkili briefyn_migrator ile). Web (briefyn_app) yalnız okur/yazar.
+    if (args.Contains("migrate"))
+    {
+        using var scope = app.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+        // Creating the storage with PrepareSchemaIfNecessary installs (or upgrades) Hangfire's tables.
+        _ = new SqlServerStorage(connectionString, new SqlServerStorageOptions { PrepareSchemaIfNecessary = true });
+        Log.Information("migrate: veritabanı şeması hazır.");
+        return;
+    }
+
     // Testler veritabanını kendisi kurar (SQLite, EnsureCreated) ve SQL Server log hedefini kullanmaz.
     if (!isTesting)
     {
         using (var scope = app.Services.CreateScope())
         {
-            var services = scope.ServiceProvider;
-            try
+            var pending = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.GetPendingMigrations().ToList();
+            if (pending.Count > 0)
             {
-                var context = services.GetRequiredService<ApplicationDbContext>();
-                Log.Information("Veritabanı kontrol ediliyor ve gerekiyorsa oluşturuluyor (Migration)...");
-            
-                // Eğer veritabanı hiç yoksa oluşturur, varsa son migration'ları uygular.
-                context.Database.Migrate(); 
-                Log.Information("Veritabanı hazır!");
-            }
-            catch (Exception ex)
-            {
-                Log.Fatal(ex, "Veritabanı oluşturulurken kritik bir hata meydana geldi!");
-                throw;
+                throw new InvalidOperationException($"Veritabanı şeması eski ({string.Join(", ", pending)}). Önce migrate adımını çalıştırın.");
             }
         }
 
@@ -189,8 +193,12 @@ try
         Log.Information("MSSQL Loglama sistemine geçiş yapılıyor...");
         Log.CloseAndFlush(); // Geçici logger'ı kapat ve belleği boşalt
 
+        // ADR-0009: framework ayrıntısı (istek adresleri ve davet bağlantıları, SQL komutları) yalnız uyarıdan itibaren;
+        // veritabanına yalnız uyarı ve hata yazılır (30 gün tutulur, LogCleanupService). Logs tablosu migration'da kurulur.
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
             .WriteTo.Console() // Docker terminali için konsol AÇIK kalmalı
             .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // Dosya yedeği (senin talebin)
             .WriteTo.MSSqlServer(
@@ -198,22 +206,12 @@ try
                 sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
                 {
                     TableName = "Logs",
-                    AutoCreateSqlTable = true // Tablo yoksa oluşturur
-                })
+                    AutoCreateSqlTable = false
+                },
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning)
             .CreateLogger();
     }
     // =========================================================================
-
-    // S4 maintenance command (run by hand, never on normal startup):
-    //   dotnet run -- reencrypt            -> dry run: counts legacy and unreadable values, changes nothing
-    //   dotnet run -- reencrypt --apply    -> converts legacy values to the v2 format, verifying each one
-    if (args.Contains("reencrypt"))
-    {
-        using var scope = app.Services.CreateScope();
-        var report = await scope.ServiceProvider.GetRequiredService<IReencryptionService>().RunAsync(apply: args.Contains("--apply"));
-        Console.WriteLine($"reencrypt {(args.Contains("--apply") ? "--apply" : "(dry run)")}: {report}");
-        return;
-    }
 
     // --- HTTP REQUEST PIPELINE (MIDDLEWARE) ---
     if (app.Environment.IsDevelopment())
@@ -264,6 +262,8 @@ try
         // Daily sweep of recordings left behind by failed analyses (see AudioCleanupService).
         app.Services.GetRequiredService<IRecurringJobManager>()
             .AddOrUpdate<IAudioCleanupService>("audio-cleanup", s => s.RunAsync(), Cron.Daily());
+        app.Services.GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<ILogCleanupService>("log-cleanup", s => s.RunAsync(), Cron.Daily());
     }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");

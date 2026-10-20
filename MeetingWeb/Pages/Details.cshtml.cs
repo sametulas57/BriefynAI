@@ -15,7 +15,7 @@ namespace MeetingWeb.Pages
     public class DetailsModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IAudioStorage _audioStorage;
         private readonly IMeetingAccessService _access;
@@ -23,7 +23,7 @@ namespace MeetingWeb.Pages
         // Constructor injection for required services and physical path resolution.
         public DetailsModel(
             ApplicationDbContext context,
-            UserManager<IdentityUser> userManager,
+            UserManager<ApplicationUser> userManager,
             IBackgroundJobClient backgroundJobClient,
             IAudioStorage audioStorage,
             IMeetingAccessService access)
@@ -47,9 +47,9 @@ namespace MeetingWeb.Pages
             return RedirectToPage("/History");
         }
 
-        public MeetingSummary Meeting { get; set; } = default!;
-        public List<WorkspaceUser> WorkspaceMembers { get; set; } = new();
-        public List<MeetingComment> Comments { get; set; } = new();
+        public Meeting Meeting { get; set; } = default!;
+        public List<WorkspaceMember> WorkspaceMembers { get; set; } = new();
+        public List<Comment> Comments { get; set; } = new();
 
         // Data Transfer Object (DTO) to hold cached user metadata for UI rendering.
         public class UserProfileData
@@ -67,64 +67,53 @@ namespace MeetingWeb.Pages
         {
             if (id == null || !await CanAccessAsync(id.Value)) return MeetingUnavailable();
 
-            // Eager load the core meeting entity and its actionable tasks.
-            var meeting = await _context.MeetingSummaries
-                .Include(m => m.AksiyonMaddeleri)
+            // Eager load the core meeting entity, its summary lines, tasks and transcript.
+            var meeting = await _context.Meetings
+                .Include(m => m.Points)
+                .Include(m => m.ActionItems)
+                .Include(m => m.Transcript)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (meeting == null) return MeetingUnavailable();
             Meeting = meeting;
 
             // Fetch the members of the meeting's own workspace for the sharing/collaboration module.
-            WorkspaceMembers = await _context.WorkspaceUsers
+            WorkspaceMembers = await _context.WorkspaceMembers
                 .Include(wu => wu.User)
                 .Where(wu => wu.WorkspaceId == meeting.WorkspaceId)
                 .ToListAsync();
 
             // Eager load root comments, nested replies, and associated user reactions.
-            Comments = await _context.MeetingComments
-                .Include(c => c.User)
+            Comments = await _context.Comments
                 .Include(c => c.Reactions)
-                .Include(c => c.Replies).ThenInclude(r => r.User)
                 .Include(c => c.Replies).ThenInclude(r => r.Reactions)
                 .Where(c => c.MeetingId == id && c.ParentCommentId == null)
-                .OrderByDescending(c => c.CreatedAt)
+                .OrderByDescending(c => c.CreatedAtUtc)
+                .AsSplitQuery()
                 .ToListAsync();
 
             // --- BULK METADATA RESOLUTION PIPELINE ---
-            // Aggregate all unique user IDs across members, comments, and manual tasks.
-            var allRelevantUserIds = WorkspaceMembers.Select(w => w.UserId).ToList();
-            allRelevantUserIds.AddRange(Comments.Select(c => c.UserId));
-            allRelevantUserIds.AddRange(Comments.SelectMany(c => c.Replies).Select(r => r.UserId));
+            // Everyone shown on the page: members, comment authors, authors of manual lines, assignees and completers
+            // (who may have left the team since; their names are still shown).
+            var allRelevantUserIds = WorkspaceMembers.Select(w => w.UserId)
+                .Concat(Comments.Select(c => c.UserId))
+                .Concat(Comments.SelectMany(c => c.Replies).Select(r => r.UserId))
+                .Concat(Meeting.Points.Select(p => p.CreatedByUserId).OfType<string>())
+                .Concat(Meeting.ActionItems.SelectMany(a => new[] { a.CreatedByUserId, a.AssigneeUserId, a.CompletedByUserId }).OfType<string>())
+                .Distinct()
+                .ToList();
 
-            // Extract embedded user IDs from manually added string properties using the '|~|' delimiter.
-            var manualIds = Meeting.GorusulenKonular
-                .Concat(Meeting.AlinanKararlar)
-                .Concat(Meeting.AksiyonMaddeleri.Select(a => a.Text))
-                .Where(ManualEntry.IsManual)
-                .Select(t => ManualEntry.AuthorOf(t)!);
-
-            allRelevantUserIds.AddRange(manualIds);
-
-            // Assignees and completers may have left the team since; their names are still shown.
-            allRelevantUserIds.AddRange(Meeting.AksiyonMaddeleri
-                .SelectMany(a => new[] { a.AssigneeUserId, a.CompletedByUserId })
-                .OfType<string>());
-            allRelevantUserIds = allRelevantUserIds.Distinct().ToList();
-
-            // Execute a single batched query to retrieve all required Identity Claims.
-            var claims = await _context.UserClaims
-                .Where(c => allRelevantUserIds.Contains(c.UserId))
+            // A single batched query for names and photos.
+            var users = await _context.Users
+                .Where(u => allRelevantUserIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.FullName, u.AvatarFileName })
                 .ToListAsync();
 
-            // Populate the lookup dictionary.
-            foreach (var uid in allRelevantUserIds)
+            foreach (var u in users)
             {
-                var userClaims = claims.Where(c => c.UserId == uid).ToList();
-                var fullName = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.FullName)?.ClaimValue ?? UserDisplay.UnknownName;
-                var avatarUrl = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.AvatarUrl)?.ClaimValue ?? "";
-
-                UserProfiles[uid] = new UserProfileData { FullName = fullName, Initials = UserDisplay.Initials(fullName), AvatarUrl = avatarUrl };
+                var fullName = string.IsNullOrWhiteSpace(u.FullName) ? UserDisplay.UnknownName : u.FullName;
+                UserProfiles[u.Id] = new UserProfileData { FullName = fullName, Initials = UserDisplay.Initials(fullName), AvatarUrl = UserDisplay.AvatarUrl(u.AvatarFileName) };
             }
 
             return Page();
@@ -134,12 +123,12 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnPostRetryProcessingAsync(int id)
         {
             if (!await CanAccessAsync(id)) return MeetingUnavailable();
-            var meeting = await _context.MeetingSummaries.FindAsync(id);
+            var meeting = await _context.Meetings.Include(m => m.Transcript).FirstOrDefaultAsync(m => m.Id == id);
             if (meeting == null) return NotFound();
 
             // Recordings are deleted after a successful analysis and after the failed-retry window,
             // so only flip the state machine when there is actually something to re-process.
-            string? absolutePath = string.IsNullOrEmpty(meeting.AudioFilePath) ? null : _audioStorage.GetPath(meeting.AudioFilePath);
+            string? absolutePath = string.IsNullOrEmpty(meeting.AudioFileName) ? null : _audioStorage.GetPath(meeting.AudioFileName);
 
             if (absolutePath != null && System.IO.File.Exists(absolutePath))
             {
@@ -147,10 +136,10 @@ namespace MeetingWeb.Pages
                 await _context.SaveChangesAsync();
 
                 // Re-enqueue the AI pipeline job.
-                _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ProcessMeetingJob(meeting.Id, absolutePath));
+                _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ProcessMeetingJob(meeting.Id));
                 TempData["StatusMessage"] = "Kayıt yeniden analiz ediliyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
             }
-            else if (!string.IsNullOrWhiteSpace(meeting.Transkript))
+            else if (!string.IsNullOrWhiteSpace(meeting.Transcript?.Text))
             {
                 // Faz 2: the transcript is stored, so only the summary is generated again.
                 meeting.Status = MeetingStatus.Processing;
@@ -175,27 +164,26 @@ namespace MeetingWeb.Pages
             if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
             if (userId == null || string.IsNullOrWhiteSpace(content))
                 return RedirectToPage(new { id = meetingId });
-            if (content.Length > MeetingComment.MaxContentLength)
+            if (content.Length > Comment.MaxContentLength)
             {
-                TempData["ErrorMessage"] = $"Yorum en fazla {MeetingComment.MaxContentLength} karakter olabilir.";
+                TempData["ErrorMessage"] = $"Yorum en fazla {Comment.MaxContentLength} karakter olabilir.";
                 return RedirectToPage(new { id = meetingId });
             }
 
             // A reply must belong to the same meeting; otherwise it could be attached to another tenant's thread.
             if (parentCommentId != null &&
-                !await _context.MeetingComments.AnyAsync(c => c.Id == parentCommentId && c.MeetingId == meetingId))
+                !await _context.Comments.AnyAsync(c => c.Id == parentCommentId && c.MeetingId == meetingId))
                 return MeetingUnavailable();
 
-            var newComment = new MeetingComment
+            var newComment = new Comment
             {
                 MeetingId = meetingId,
                 UserId = userId,
                 Content = content,
-                ParentCommentId = parentCommentId,
-                CreatedAt = DateTime.UtcNow
+                ParentCommentId = parentCommentId
             };
 
-            _context.MeetingComments.Add(newComment);
+            _context.Comments.Add(newComment);
             await _context.SaveChangesAsync();
 
             // Track the newly created comment ID for UI highlighting.
@@ -209,9 +197,8 @@ namespace MeetingWeb.Pages
             var currentUserId = _userManager.GetUserId(User);
             if (!await _access.CanAccessCommentAsync(currentUserId, commentId)) return MeetingUnavailable();
 
-            var comment = await _context.MeetingComments
+            var comment = await _context.Comments
                 .Include(c => c.Replies)
-                .Include(c => c.Reactions)
                 .FirstOrDefaultAsync(c => c.Id == commentId);
 
             if (comment == null) return NotFound();
@@ -223,13 +210,8 @@ namespace MeetingWeb.Pages
                 return RedirectToPage(new { id = meetingId });
             }
 
-            // Cascade Delete: Wipe nested replies before removing the parent.
-            if (comment.Replies.Any())
-            {
-                _context.MeetingComments.RemoveRange(comment.Replies);
-            }
-
-            _context.MeetingComments.Remove(comment);
+            // Replies are loaded above and removed with the parent (reactions cascade in the database).
+            _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();
 
             TempData["StatusMessage"] = "Yorum başarıyla silindi.";
@@ -269,46 +251,25 @@ namespace MeetingWeb.Pages
 
         // --- MANUAL METADATA INJECTION HANDLERS ---
 
-        public async Task<IActionResult> OnPostAddTopicAsync(int meetingId, string topic)
+        public Task<IActionResult> OnPostAddTopicAsync(int meetingId, string topic) => AddPointAsync(meetingId, MeetingPointKind.Topic, topic);
+
+        public Task<IActionResult> OnPostAddDecisionAsync(int meetingId, string decision) => AddPointAsync(meetingId, MeetingPointKind.Decision, decision);
+
+        // A manual line is its own row, so it never races with a summary being regenerated.
+        private async Task<IActionResult> AddPointAsync(int meetingId, MeetingPointKind kind, string text)
         {
             if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
             var userId = _userManager.GetUserId(User);
-            if (string.IsNullOrWhiteSpace(topic) || userId == null) return RedirectToPage(new { id = meetingId });
+            if (string.IsNullOrWhiteSpace(text) || userId == null) return RedirectToPage(new { id = meetingId });
 
-            var meeting = await _context.MeetingSummaries.FindAsync(meetingId);
-            if (meeting != null)
+            var nextOrder = await _context.MeetingPoints
+                .Where(p => p.MeetingId == meetingId && p.Kind == kind && p.Source == EntrySource.Manual)
+                .Select(p => (int?)p.SortOrder).MaxAsync() + 1 ?? 0;
+            _context.MeetingPoints.Add(new MeetingPoint
             {
-                meeting.GorusulenKonular ??= new List<string>();
-                var updatedList = meeting.GorusulenKonular.ToList();
-
-                // Append the user ID using the delimiter for future author resolution.
-                updatedList.Add(ManualEntry.Create(topic, userId));
-
-                meeting.GorusulenKonular = updatedList;
-                _context.MeetingSummaries.Update(meeting);
-                await _context.SaveChangesAsync();
-            }
-            return RedirectToPage(new { id = meetingId });
-        }
-
-        public async Task<IActionResult> OnPostAddDecisionAsync(int meetingId, string decision)
-        {
-            if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
-            var userId = _userManager.GetUserId(User);
-            if (string.IsNullOrWhiteSpace(decision) || userId == null) return RedirectToPage(new { id = meetingId });
-
-            var meeting = await _context.MeetingSummaries.FindAsync(meetingId);
-            if (meeting != null)
-            {
-                meeting.AlinanKararlar ??= new List<string>();
-                var updatedList = meeting.AlinanKararlar.ToList();
-
-                updatedList.Add(ManualEntry.Create(decision, userId));
-
-                meeting.AlinanKararlar = updatedList;
-                _context.MeetingSummaries.Update(meeting);
-                await _context.SaveChangesAsync();
-            }
+                MeetingId = meetingId, Kind = kind, Text = text, Source = EntrySource.Manual, CreatedByUserId = userId, SortOrder = nextOrder
+            });
+            await _context.SaveChangesAsync();
             return RedirectToPage(new { id = meetingId });
         }
 
@@ -318,15 +279,14 @@ namespace MeetingWeb.Pages
             var userId = _userManager.GetUserId(User);
             if (string.IsNullOrWhiteSpace(actionText) || userId == null) return RedirectToPage(new { id = meetingId });
 
-            var meeting = await _context.MeetingSummaries
-                .Include(m => m.AksiyonMaddeleri)
-                .FirstOrDefaultAsync(m => m.Id == meetingId);
-
-            if (meeting != null)
+            var nextOrder = await _context.ActionItems
+                .Where(a => a.MeetingId == meetingId)
+                .Select(a => (int?)a.SortOrder).MaxAsync() + 1 ?? 0;
+            _context.ActionItems.Add(new ActionItem
             {
-                meeting.AksiyonMaddeleri.Add(new ActionItem { Text = ManualEntry.Create(actionText, userId), IsDone = false });
-                await _context.SaveChangesAsync();
-            }
+                MeetingId = meetingId, Text = actionText, Source = EntrySource.Manual, CreatedByUserId = userId, SortOrder = nextOrder
+            });
+            await _context.SaveChangesAsync();
             return RedirectToPage(new { id = meetingId });
         }
 
@@ -341,11 +301,19 @@ namespace MeetingWeb.Pages
         {
             if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return NotFound();
             var userId = _userManager.GetUserId(User);
-            var task = await _context.Set<ActionItem>().FindAsync(taskId);
+            var task = await _context.ActionItems.FindAsync(taskId);
             if (task != null)
             {
                 task.SetDone(!task.IsDone, userId);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Someone changed the task at the same moment; the page reloads to show their change.
+                    return new JsonResult(new { success = false, reload = true });
+                }
 
                 var completedBy = task.IsDone ? await FullNameAsync(userId) : null;
                 return new JsonResult(new { success = true, isDone = task.IsDone, completedBy });
@@ -354,10 +322,10 @@ namespace MeetingWeb.Pages
         }
 
         private async Task<string> FullNameAsync(string? userId) =>
-            await _context.UserClaims
-                .Where(c => c.UserId == userId && c.ClaimType == UserClaimTypes.FullName)
-                .Select(c => c.ClaimValue)
-                .FirstOrDefaultAsync() ?? UserDisplay.UnknownName;
+            await _context.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync() is { Length: > 0 } name ? name : UserDisplay.UnknownName;
 
         // Assigns a task to a member of the meeting's team, with an optional due date.
         // An empty assignee clears the assignment.
@@ -365,22 +333,22 @@ namespace MeetingWeb.Pages
         {
             if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return MeetingUnavailable();
 
-            var task = await _context.Set<ActionItem>()
-                .Include(a => a.MeetingSummary)
+            var task = await _context.ActionItems
+                .Include(a => a.Meeting)
                 .FirstAsync(a => a.Id == taskId);
-            var meetingId = task.MeetingSummaryId;
+            var meetingId = task.MeetingId;
 
             if (string.IsNullOrEmpty(assigneeUserId))
             {
                 task.AssigneeUserId = null;
                 task.DueDate = null;
-                await _context.SaveChangesAsync();
+                if (!await TrySaveTaskAsync()) return RedirectToPage(new { id = meetingId });
                 TempData["StatusMessage"] = "Görevin ataması kaldırıldı.";
                 return RedirectToPage(new { id = meetingId });
             }
 
-            var isTeammate = await _context.WorkspaceUsers
-                .AnyAsync(wu => wu.WorkspaceId == task.MeetingSummary!.WorkspaceId && wu.UserId == assigneeUserId);
+            var isTeammate = await _context.WorkspaceMembers
+                .AnyAsync(wu => wu.WorkspaceId == task.Meeting!.WorkspaceId && wu.UserId == assigneeUserId);
             if (!isTeammate)
             {
                 TempData["ErrorMessage"] = "Görev yalnız bu toplantının ekibindeki birine atanabilir.";
@@ -389,10 +357,25 @@ namespace MeetingWeb.Pages
 
             task.AssigneeUserId = assigneeUserId;
             task.DueDate = dueDate;
-            await _context.SaveChangesAsync();
+            if (!await TrySaveTaskAsync()) return RedirectToPage(new { id = meetingId });
 
             TempData["StatusMessage"] = $"Görev atandı: {await FullNameAsync(assigneeUserId)}.";
             return RedirectToPage(new { id = meetingId });
+        }
+
+        // RowVersion: when someone else changed the task meanwhile, nothing is overwritten and the user is told why.
+        private async Task<bool> TrySaveTaskAsync()
+        {
+            try
+            {
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                TempData["ErrorMessage"] = "Bu görev siz düzenlerken başka biri tarafından değiştirildi. Güncel hâli aşağıda; isterseniz tekrar deneyin.";
+                return false;
+            }
         }
 
         // Hangfire Integration: Dispatches background jobs to transmit reports via email.
@@ -421,7 +404,7 @@ namespace MeetingWeb.Pages
             }
 
             // Reports may only go to members of the meeting's workspace, never to arbitrary addresses.
-            var memberEmails = await _context.WorkspaceUsers
+            var memberEmails = await _context.WorkspaceMembers
                 .Where(wu => wu.Workspace.Meetings.Any(m => m.Id == meetingId))
                 .Select(wu => wu.User.Email)
                 .ToListAsync();
@@ -439,7 +422,8 @@ namespace MeetingWeb.Pages
 
             foreach (var email in recipients)
             {
-                _backgroundJobClient.Enqueue<IEmailService>(x => x.SendMeetingSummaryAsync(meetingId, email));
+                var recipient = EmailService.ProtectRecipient(email);
+                _backgroundJobClient.Enqueue<IEmailService>(x => x.SendMeetingSummaryAsync(meetingId, recipient));
             }
             TempData["StatusMessage"] = "Rapor e-postayla gönderiliyor. Birkaç dakika içinde seçtiğiniz kişilerin gelen kutusunda olur.";
             return RedirectToPage(new { id = meetingId });

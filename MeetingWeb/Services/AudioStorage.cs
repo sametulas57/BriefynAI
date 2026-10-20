@@ -1,7 +1,7 @@
 namespace MeetingWeb.Services
 {
     // Private store for meeting recordings. Files live OUTSIDE wwwroot, so the static file middleware can never serve them.
-    // MeetingSummary.AudioFilePath holds only the stored file name; the absolute path is resolved here.
+    // Meeting.AudioFileName holds only the stored file name; the absolute path is resolved here.
     public interface IAudioStorage
     {
         string RootPath { get; }

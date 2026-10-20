@@ -43,8 +43,8 @@ namespace MeetingWeb.Tests.Features
             var created = new DateTime(2026, 10, 17, 21, 30, 0, DateTimeKind.Utc);
             var id = _app.WithDb(db =>
             {
-                var m = new MeetingSummary { WorkspaceId = S.WorkspaceA, ToplantiKonusu = "Saat testi", Status = MeetingStatus.Completed, CreatedDate = created };
-                db.MeetingSummaries.Add(m);
+                var m = new Meeting { WorkspaceId = S.WorkspaceA, Title = "Saat testi", Status = MeetingStatus.Completed, CreatedAtUtc = created };
+                db.Meetings.Add(m);
                 db.SaveChanges();
                 return m.Id;
             });
@@ -57,10 +57,14 @@ namespace MeetingWeb.Tests.Features
         [Fact]
         public void Email_keeps_turkish_letters_readable_and_still_blocks_html()
         {
-            var meeting = new MeetingSummary
+            var meeting = new Meeting
             {
-                ToplantiKonusu = "Lansman öncesi değerlendirme",
-                GorusulenKonular = new List<string> { "Tedarikçi değişti", "<script>x</script>" }
+                Title = "Lansman öncesi değerlendirme",
+                Points = new List<MeetingPoint>
+                {
+                    new() { Kind = MeetingPointKind.Topic, Text = "Tedarikçi değişti" },
+                    new() { Kind = MeetingPointKind.Topic, Text = "<script>x</script>" }
+                }
             };
 
             var html = EmailService.BuildSummaryHtml(meeting);
@@ -73,11 +77,11 @@ namespace MeetingWeb.Tests.Features
         [Fact]
         public void Email_has_a_plain_text_version()
         {
-            var meeting = new MeetingSummary
+            var meeting = new Meeting
             {
-                ToplantiKonusu = "Sprint",
-                AlinanKararlar = new List<string> { "Release salıya kaldı|~|user-1" },
-                AksiyonMaddeleri = new List<ActionItem> { new() { Text = "Deniz: hotfix" } }
+                Title = "Sprint",
+                Points = new List<MeetingPoint> { new() { Kind = MeetingPointKind.Decision, Text = "Release salıya kaldı", Source = EntrySource.Manual, CreatedByUserId = "user-1" } },
+                ActionItems = new List<ActionItem> { new() { Text = "Deniz: hotfix" } }
             };
 
             var text = EmailService.BuildSummaryText(meeting);

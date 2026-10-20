@@ -27,11 +27,11 @@ namespace MeetingWeb.Tests.Security
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var audio = Path.Combine(_app.AudioRoot, "anahtar.m4a");
             File.WriteAllBytes(audio, new byte[] { 1 });
-            var meeting = new MeetingSummary { WorkspaceId = _app.Seed.WorkspaceA, ToplantiKonusu = "anahtar", AudioFilePath = "anahtar.m4a" };
-            db.MeetingSummaries.Add(meeting);
+            var meeting = new Meeting { WorkspaceId = _app.Seed.WorkspaceA, Title = "anahtar", AudioFileName = "anahtar.m4a" };
+            db.Meetings.Add(meeting);
             await db.SaveChangesAsync();
 
-            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meeting.Id, audio);
+            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meeting.Id);
 
             Assert.Equal(BriefynFactory.AiEngineApiKey, _app.PythonApi.LastApiKey);
         }

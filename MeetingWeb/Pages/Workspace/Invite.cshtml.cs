@@ -14,14 +14,14 @@ namespace MeetingWeb.Pages.Workspace
     public class InviteModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         private readonly IActiveWorkspaceService _activeWorkspace;
 
         // Inviting into a personal space is allowed but gently discouraged on the page.
         public bool IsPersonalWorkspace { get; set; }
 
-        public InviteModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IActiveWorkspaceService activeWorkspace)
+        public InviteModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IActiveWorkspaceService activeWorkspace)
         {
             _activeWorkspace = activeWorkspace;
             _context = context;
@@ -42,12 +42,12 @@ namespace MeetingWeb.Pages.Workspace
 
             // DEFENSE IN DEPTH - LAYER 1: UI VISIBILITY PROTECTION
             // Ensure the requesting user holds the 'Owner' role before rendering the invitation UI.
-            var userRole = await _context.WorkspaceUsers
+            var userRole = await _context.WorkspaceMembers
                 .Where(wu => wu.WorkspaceId == activeWorkspaceId && wu.UserId == currentUserId)
                 .Select(wu => wu.Role)
                 .FirstOrDefaultAsync();
 
-            if (userRole != WorkspaceRoles.Owner)
+            if (userRole != WorkspaceRole.Owner)
             {
                 TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu oluşturabilir.";
                 return RedirectToPage("/Workspace/Members");
@@ -70,25 +70,24 @@ namespace MeetingWeb.Pages.Workspace
 
             // DEFENSE IN DEPTH - LAYER 2: BACKEND FIREWALL (API PROTECTION)
             // Re-verify the role to explicitly prevent bypass attacks via tools like Postman or cURL.
-            var userRole = await _context.WorkspaceUsers
+            var userRole = await _context.WorkspaceMembers
                 .Where(wu => wu.WorkspaceId == activeWorkspaceId && wu.UserId == currentUserId)
                 .Select(wu => wu.Role)
                 .FirstOrDefaultAsync();
 
-            if (userRole != WorkspaceRoles.Owner)
+            if (userRole != WorkspaceRole.Owner)
             {
                 TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu oluşturabilir.";
                 return RedirectToPage("/Workspace/Members");
             }
 
-            // 1. Token Generation: Create a cryptographically secure, single-use invitation.
+            // 1. Token Generation: a random, single-use token; only its hash is stored (ADR-0009).
+            var token = WorkspaceInvitation.NewToken();
             var invitation = new WorkspaceInvitation
             {
                 WorkspaceId = activeWorkspaceId.Value,
-                Token = Guid.NewGuid().ToString(), // High-entropy GUID
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(7), // Time-To-Live (TTL) set to 7 days
-                IsUsed = false
+                TokenHash = WorkspaceInvitation.HashOf(token),
+                CreatedByUserId = currentUserId
             };
 
             _context.WorkspaceInvitations.Add(invitation);
@@ -96,7 +95,7 @@ namespace MeetingWeb.Pages.Workspace
 
             // 2. Dynamic Routing: Construct the absolute URL matching the current host environment.
             var request = HttpContext.Request;
-            GeneratedLink = $"{request.Scheme}://{request.Host}/Workspace/Join?token={invitation.Token}";
+            GeneratedLink = $"{request.Scheme}://{request.Host}/Workspace/Join?token={token}";
 
             var workspace = await _context.Workspaces.FindAsync(activeWorkspaceId);
             WorkspaceName = workspace?.Name ?? "Ekip";

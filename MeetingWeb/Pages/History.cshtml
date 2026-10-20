@@ -99,7 +99,7 @@
         </div>
     </div>
 
-    @if (Model.MeetingSummaries == null || !Model.MeetingSummaries.Any())
+    @if (Model.Meetings == null || !Model.Meetings.Any())
     {
         <div class="text-center py-5">
             <div class="icon-container bg-soft-light mx-auto mb-3" style="width: 80px; height: 80px;">
@@ -112,7 +112,7 @@
     else
     {
         <div class="row g-4">
-            @foreach (var item in Model.MeetingSummaries)
+            @foreach (var item in Model.Meetings)
             {
                 <div class="col-md-6 col-lg-4" id="meeting-card-@item.Id">
                     
@@ -141,31 +141,31 @@
                                     @Html.Raw(iconHtml)
                                 </div>
                                 <span class="badge bg-white text-secondary border fw-medium rounded-pill px-3 py-2 shadow-sm" style="font-size: 0.75rem;">
-                                    @MeetingWeb.Services.DisplayTime.Format(item.CreatedDate, "dd MMM yyyy")
+                                    @MeetingWeb.Services.DisplayTime.Format(item.CreatedAtUtc, "dd MMM yyyy")
                                 </span>
                             </div>
 
                             @if (item.Status == MeetingWeb.Models.MeetingStatus.Processing)
                             {
                                 <h5 class="card-title text-primary fw-bold mb-1" style="letter-spacing: -0.3px;">Analiz Ediliyor</h5>
-                                <div class="text-muted small fst-italic text-truncate mb-3" title="@item.ToplantiKonusu">Dosya: @item.ToplantiKonusu</div>
+                                <div class="text-muted small fst-italic text-truncate mb-3" title="@item.Title">Dosya: @item.Title</div>
                                 <p class="text-secondary small mb-0" style="line-height: 1.6;">Yapay zekâ kaydınızı yazıya döküp özetliyor. Bittiğinde bu sayfa kendiliğinden yenilenir.</p>
                             }
                             else if (item.Status == MeetingWeb.Models.MeetingStatus.Failed)
                             {
                                 <h5 class="card-title text-danger fw-bold mb-1" style="letter-spacing: -0.3px;">İşlem Başarısız</h5>
-                                <div class="text-muted small text-decoration-line-through text-truncate mb-3" title="@item.ToplantiKonusu">Dosya: @item.ToplantiKonusu</div>
+                                <div class="text-muted small text-decoration-line-through text-truncate mb-3" title="@item.Title">Dosya: @item.Title</div>
                                 <p class="text-danger opacity-75 small mb-0" style="line-height: 1.6;">Sunucu kaynaklı bir hata oluştu. Yeniden denemek için detay sayfasına gidebilirsiniz.</p>
                             }
                             else
                             {
-                                <h5 class="card-title text-dark fw-bold mb-3 text-truncate" title="@item.ToplantiKonusu" style="letter-spacing: -0.3px;">@item.ToplantiKonusu</h5>
+                                <h5 class="card-title text-dark fw-bold mb-3 text-truncate" title="@item.Title" style="letter-spacing: -0.3px;">@item.Title</h5>
                                 
                                 <div class="border-top pt-3 mt-auto">
                                     <span class="text-muted" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Görüşülenler</span>
                                     <p class="text-dark small mt-1 mb-0" style="line-height: 1.5; font-weight: 500;">
-                                        @(item.GorusulenKonular != null && item.GorusulenKonular.Count > 0
-                                            ? string.Join(", ", item.GorusulenKonular.Take(2)) + "..."
+                                        @(item.Points.Any(p => p.Kind == MeetingWeb.Models.MeetingPointKind.Topic)
+                                            ? string.Join(", ", item.PointsOf(MeetingWeb.Models.MeetingPointKind.Topic).Take(2).Select(p => p.Text)) + "..."
                                             : "Henüz konu eklenmedi.")
                                     </p>
                                 </div>

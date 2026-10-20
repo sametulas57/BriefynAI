@@ -27,18 +27,30 @@ namespace MeetingWeb.Tests.Features
 
         private int NewMeeting(MeetingStatus status, string? audio, string? transcript = null) => _app.WithDb(db =>
         {
-            var m = new MeetingSummary
+            var m = new Meeting
             {
-                WorkspaceId = S.WorkspaceA, ToplantiKonusu = "döküm testi", Status = status, AudioFilePath = audio, Transkript = transcript,
-                GorusulenKonular = new List<string> { "eski yapay zekâ konusu", "elle eklenen konu|~|" + S.AliceId },
-                AksiyonMaddeleri = new List<ActionItem> { new() { Text = "eski görev" }, new() { Text = "elle görev|~|" + S.AliceId } }
+                WorkspaceId = S.WorkspaceA, Title = "döküm testi", Status = status, AudioFileName = audio,
+                Transcript = transcript == null ? null : new MeetingTranscript { Text = transcript },
+                Points = new List<MeetingPoint>
+                {
+                    new() { Kind = MeetingPointKind.Topic, Text = "eski yapay zekâ konusu" },
+                    new() { Kind = MeetingPointKind.Topic, Text = "elle eklenen konu", Source = EntrySource.Manual, CreatedByUserId = S.AliceId }
+                },
+                ActionItems = new List<ActionItem>
+                {
+                    new() { Text = "eski görev" },
+                    new() { Text = "elle görev", Source = EntrySource.Manual, CreatedByUserId = S.AliceId }
+                }
             };
-            db.MeetingSummaries.Add(m);
+            db.Meetings.Add(m);
             db.SaveChanges();
             return m.Id;
         });
 
-        private MeetingSummary Load(int id) => _app.WithDb(db => db.MeetingSummaries.Include(m => m.AksiyonMaddeleri).AsNoTracking().Single(m => m.Id == id));
+        private Meeting Load(int id) => _app.WithDb(db => db.Meetings
+            .Include(m => m.Transcript).Include(m => m.Points).Include(m => m.ActionItems).AsNoTracking().Single(m => m.Id == id));
+
+        private static List<string> Topics(Meeting m) => m.PointsOf(MeetingPointKind.Topic).Select(p => p.Text).ToList();
 
         private async Task ProcessAsync(Func<IMeetingProcessor, Task> run)
         {
@@ -54,12 +66,12 @@ namespace MeetingWeb.Tests.Features
             File.WriteAllBytes(audio, new byte[] { 1 });
             var id = NewMeeting(MeetingStatus.Processing, "doküm.m4a");
 
-            await ProcessAsync(p => p.ProcessMeetingJob(id, audio));
+            await ProcessAsync(p => p.ProcessMeetingJob(id));
 
-            Assert.Equal("test", Load(id).Transkript); // stub answers transkript = "test"
+            Assert.Equal("test", Load(id).Transcript!.Text); // stub answers transkript = "test"
             var raw = _app.WithDb(db => db.Database
-                .SqlQueryRaw<string>("SELECT \"Transkript\" AS \"Value\" FROM \"MeetingSummaries\" WHERE \"Id\" = {0}", id).AsEnumerable().Single());
-            Assert.StartsWith("v2:", raw);
+                .SqlQueryRaw<string>("SELECT \"Text\" AS \"Value\" FROM \"MeetingTranscripts\" WHERE \"MeetingId\" = {0}", id).AsEnumerable().Single());
+            Assert.StartsWith("v3:1:", raw);
         }
 
         [Fact]
@@ -70,12 +82,12 @@ namespace MeetingWeb.Tests.Features
             var id = NewMeeting(MeetingStatus.Processing, "ozetsiz.m4a");
             var previous = _app.PythonApi.Body;
             _app.PythonApi.Body = """{"success": false, "transkript": "yalnız döküm", "summary": null}""";
-            try { await ProcessAsync(p => p.ProcessMeetingJob(id, audio)); }
+            try { await ProcessAsync(p => p.ProcessMeetingJob(id)); }
             finally { _app.PythonApi.Body = previous; }
 
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Failed, meeting.Status);
-            Assert.Equal("yalnız döküm", meeting.Transkript);
+            Assert.Equal("yalnız döküm", meeting.Transcript!.Text);
         }
 
         [Fact]
@@ -102,11 +114,29 @@ namespace MeetingWeb.Tests.Features
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Completed, meeting.Status);
             Assert.Equal("api/summarize", _app.PythonApi.LastPath);
-            Assert.Contains("a", meeting.GorusulenKonular);                          // new AI topic from the stub
-            Assert.Contains(meeting.GorusulenKonular, k => k.StartsWith("elle eklenen konu|~|"));
-            Assert.DoesNotContain("eski yapay zekâ konusu", meeting.GorusulenKonular);
-            Assert.Contains(meeting.AksiyonMaddeleri, a => a.Text.StartsWith("elle görev|~|"));
-            Assert.DoesNotContain(meeting.AksiyonMaddeleri, a => a.Text == "eski görev");
+            Assert.Contains("a", Topics(meeting));                          // new AI topic from the stub
+            Assert.Equal("elle eklenen konu", Topics(meeting).Last());     // manual lines follow the AI ones
+            Assert.DoesNotContain("eski yapay zekâ konusu", Topics(meeting));
+            Assert.Contains(meeting.ActionItems, a => a.Text == "elle görev" && a.CreatedByUserId == S.AliceId);
+            Assert.DoesNotContain(meeting.ActionItems, a => a.Text == "eski görev");
+        }
+
+        [Fact]
+        public async Task Manual_line_added_while_the_summary_is_regenerated_survives()
+        {
+            // The summary job loads the meeting, then a user adds a decision before the job saves.
+            var id = NewMeeting(MeetingStatus.Processing, audio: null, transcript: "kayıtlı döküm");
+            using var scope = _app.Services.CreateScope();
+            var processor = scope.ServiceProvider.GetRequiredService<IMeetingProcessor>();
+            _app.PythonApi.BeforeRespond = () => _app.WithDb(db =>
+            {
+                db.MeetingPoints.Add(new MeetingPoint { MeetingId = id, Kind = MeetingPointKind.Decision, Text = "araya giren karar", Source = EntrySource.Manual, CreatedByUserId = S.AliceId });
+                return db.SaveChanges();
+            });
+            try { await processor.ResummarizeMeetingJob(id); }
+            finally { _app.PythonApi.BeforeRespond = null; }
+
+            Assert.Contains(Load(id).Points, p => p.Text == "araya giren karar");
         }
 
         [Fact]

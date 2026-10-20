@@ -26,17 +26,16 @@ namespace MeetingWeb.Services
         {
             if (string.IsNullOrEmpty(userId)) return Task.FromResult(false);
 
-            return _context.MeetingSummaries.AnyAsync(m =>
+            return _context.Meetings.AnyAsync(m =>
                 m.Id == meetingId &&
-                m.WorkspaceId != null &&
-                _context.WorkspaceUsers.Any(wu => wu.WorkspaceId == m.WorkspaceId && wu.UserId == userId));
+                _context.WorkspaceMembers.Any(wm => wm.WorkspaceId == m.WorkspaceId && wm.UserId == userId));
         }
 
         public async Task<bool> CanAccessActionItemAsync(string? userId, int actionItemId)
         {
-            var meetingId = await _context.Set<Models.ActionItem>()
+            var meetingId = await _context.ActionItems
                 .Where(a => a.Id == actionItemId)
-                .Select(a => (int?)a.MeetingSummaryId)
+                .Select(a => (int?)a.MeetingId)
                 .FirstOrDefaultAsync();
 
             return meetingId != null && await CanAccessMeetingAsync(userId, meetingId.Value);
@@ -44,7 +43,7 @@ namespace MeetingWeb.Services
 
         public async Task<bool> CanAccessCommentAsync(string? userId, int commentId)
         {
-            var meetingId = await _context.MeetingComments
+            var meetingId = await _context.Comments
                 .Where(c => c.Id == commentId)
                 .Select(c => (int?)c.MeetingId)
                 .FirstOrDefaultAsync();

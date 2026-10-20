@@ -10,6 +10,9 @@ namespace MeetingWeb.Tests.Infrastructure
         public string? LastApiKey { get; private set; }
         public string? LastPath { get; private set; }
 
+        // Runs while the "AI" is working, e.g. to simulate a user editing the meeting at the same time.
+        public Action? BeforeRespond { get; set; }
+
         public string Body { get; set; } = """
             {"success": true, "transkript": "test",
              "summary": {"toplanti_konusu": "Konu", "gorusulen_konular": ["a"], "alinan_kararlar": ["b"], "aksiyon_maddeleri": ["c"]}}
@@ -19,6 +22,7 @@ namespace MeetingWeb.Tests.Infrastructure
         {
             LastApiKey = request.Headers.TryGetValues("X-Api-Key", out var values) ? values.Single() : null;
             LastPath = request.RequestUri!.AbsolutePath.TrimStart('/');
+            BeforeRespond?.Invoke();
             return Task.FromResult(new HttpResponseMessage(Status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") });
         }
     }

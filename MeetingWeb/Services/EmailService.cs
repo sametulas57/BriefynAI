@@ -22,11 +22,22 @@ namespace MeetingWeb.Services
             _emailSettings = emailSettings.Value;
         }
 
-        public async Task SendMeetingSummaryAsync(int meetingId, string toEmail)
+        private const string RecipientPurpose = "HangFire.Job.Recipient";
+
+        public static string ProtectRecipient(string email) => EncryptionHelper.Encrypt(email, RecipientPurpose);
+
+        public static string? UnprotectRecipient(string protectedRecipient) =>
+            EncryptionHelper.TryDecrypt(protectedRecipient, RecipientPurpose, out var email) ? email : null;
+
+        public async Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient)
         {
-            // Eagerly load the meeting data and its associated action items.
-            var meeting = await _context.MeetingSummaries
-                .Include(m => m.AksiyonMaddeleri)
+            if (UnprotectRecipient(protectedRecipient) is not { } toEmail) return;
+
+            // Eagerly load the meeting data and its summary lines.
+            var meeting = await _context.Meetings
+                .Include(m => m.Points)
+                .Include(m => m.ActionItems)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(m => m.Id == meetingId);
 
             if (meeting == null) return;
@@ -59,24 +70,24 @@ namespace MeetingWeb.Services
         }
 
         // S8: line breaks in a subject could be used to smuggle extra mail headers; collapse them to spaces.
-        public static string BuildSubject(MeetingSummary meeting) =>
-            $"Briefyn AI Raporu: {string.Join(' ', (meeting.ToplantiKonusu ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))}";
+        public static string BuildSubject(Meeting meeting) =>
+            $"Briefyn AI Raporu: {string.Join(' ', (meeting.Title ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))}";
 
-        public static string BuildSummaryText(MeetingSummary meeting)
+        public static string BuildSummaryText(Meeting meeting)
         {
             var text = new StringBuilder();
             text.AppendLine("Briefyn AI · Toplantı ve Karar Raporu").AppendLine();
-            text.AppendLine(meeting.ToplantiKonusu).AppendLine();
-            Section("Görüşülen Konular", meeting.GorusulenKonular);
-            Section("Alınan Kararlar", meeting.AlinanKararlar);
-            Section("Aksiyon Maddeleri", meeting.AksiyonMaddeleri.Select(a => a.Text));
-            text.AppendLine($"Bu e-posta Briefyn AI tarafından {DisplayTime.Format(meeting.CreatedDate, "dd MMMM yyyy HH:mm")} tarihli toplantı için oluşturulmuştur.");
+            text.AppendLine(meeting.Title).AppendLine();
+            Section("Görüşülen Konular", meeting.PointsOf(MeetingPointKind.Topic).Select(p => p.Text));
+            Section("Alınan Kararlar", meeting.PointsOf(MeetingPointKind.Decision).Select(p => p.Text));
+            Section("Aksiyon Maddeleri", meeting.OrderedActionItems.Select(a => a.Text));
+            text.AppendLine($"Bu e-posta Briefyn AI tarafından {DisplayTime.Format(meeting.CreatedAtUtc, "dd MMMM yyyy HH:mm")} tarihli toplantı için oluşturulmuştur.");
             return text.ToString();
 
             void Section(string title, IEnumerable<string> items)
             {
                 text.AppendLine(title);
-                foreach (var item in items) text.AppendLine("- " + ManualEntry.TextOf(item));
+                foreach (var item in items) text.AppendLine("- " + item);
                 text.AppendLine();
             }
         }
@@ -85,12 +96,11 @@ namespace MeetingWeb.Services
         // WebUtility.HtmlEncode turned "ç" into "&#231;", which made the mail look obfuscated to spam filters.
         private static readonly HtmlEncoder Html = HtmlEncoder.Create(UnicodeRanges.All);
 
-        // Manual entries carry "text|~|authorId"; only the text belongs in the email, HTML-encoded.
-        private static string Item(string value) => Html.Encode(ManualEntry.TextOf(value));
+        private static string Item(string value) => Html.Encode(value);
 
         // Construct the responsive HTML email template using inline CSS for mail client compatibility.
         // S8: every meeting value comes from the LLM or from users, so all of it is HTML-encoded.
-        public static string BuildSummaryHtml(MeetingSummary meeting)
+        public static string BuildSummaryHtml(Meeting meeting)
         {
             return $@"
             <div style=""background-color: #f4f7f6; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;"">
@@ -103,7 +113,7 @@ namespace MeetingWeb.Services
 
                     <div style=""padding: 35px 30px;"">
                         <h2 style=""color: #1e293b; font-size: 22px; margin-top: 0; margin-bottom: 30px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;"">
-                            {Html.Encode(meeting.ToplantiKonusu)}
+                            {Html.Encode(meeting.Title)}
                         </h2>
 
                         <div style=""margin-bottom: 30px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 20px; border-radius: 6px;"">
@@ -111,7 +121,7 @@ namespace MeetingWeb.Services
                                 💬 Görüşülen Konular
                             </h3>
                             <ul style=""color: #334155; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
-                                {string.Join("", meeting.GorusulenKonular.Select(k => $"<li style='margin-bottom: 8px;'>{Item(k)}</li>"))}
+                                {string.Join("", meeting.PointsOf(MeetingPointKind.Topic).Select(k => $"<li style='margin-bottom: 8px;'>{Item(k.Text)}</li>"))}
                             </ul>
                         </div>
 
@@ -120,7 +130,7 @@ namespace MeetingWeb.Services
                                 🎯 Alınan Kararlar
                             </h3>
                             <ul style=""color: #15803d; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
-                                {string.Join("", meeting.AlinanKararlar.Select(k => $"<li style='margin-bottom: 8px;'>{Item(k)}</li>"))}
+                                {string.Join("", meeting.PointsOf(MeetingPointKind.Decision).Select(k => $"<li style='margin-bottom: 8px;'>{Item(k.Text)}</li>"))}
                             </ul>
                         </div>
 
@@ -129,7 +139,7 @@ namespace MeetingWeb.Services
                                 ⚡ Aksiyon Maddeleri
                             </h3>
                             <ul style=""color: #c2410c; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
-                                {string.Join("", meeting.AksiyonMaddeleri.Select(a => $"<li style='margin-bottom: 8px;'>{Item(a.Text)}</li>"))}
+                                {string.Join("", meeting.OrderedActionItems.Select(a => $"<li style='margin-bottom: 8px;'>{Item(a.Text)}</li>"))}
                             </ul>
                         </div>
 
@@ -137,7 +147,7 @@ namespace MeetingWeb.Services
 
                     <div style=""background-color: #f8fafc; padding: 25px 20px; text-align: center; border-top: 1px solid #e2e8f0;"">
                         <p style=""color: #64748b; font-size: 13px; margin: 0; line-height: 1.5;"">
-                            Bu e-posta <strong>Briefyn AI</strong> asistanı tarafından <br> {DisplayTime.Format(meeting.CreatedDate, "dd MMMM yyyy HH:mm")} tarihinde otomatik olarak oluşturulmuştur.
+                            Bu e-posta <strong>Briefyn AI</strong> asistanı tarafından <br> {DisplayTime.Format(meeting.CreatedAtUtc, "dd MMMM yyyy HH:mm")} tarihinde otomatik olarak oluşturulmuştur.
                         </p>
                         <p style=""color: #94a3b8; font-size: 12px; margin-top: 15px; margin-bottom: 0;"">
                             © {DateTime.Now.Year} Briefyn AI. Tüm hakları saklıdır.

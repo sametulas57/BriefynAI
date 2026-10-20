@@ -36,20 +36,20 @@ namespace MeetingWeb.Services
             var deleted = 0;
 
             // 1. Failed meetings whose retry window has passed.
-            var expired = await _context.MeetingSummaries
-                .Where(m => m.Status == MeetingStatus.Failed && m.AudioFilePath != null && m.CreatedDate < cutoff)
+            var expired = await _context.Meetings
+                .Where(m => m.Status == MeetingStatus.Failed && m.AudioFileName != null && m.CreatedAtUtc < cutoff)
                 .ToListAsync();
             foreach (var meeting in expired)
             {
-                if (_storage.Delete(meeting.AudioFilePath)) deleted++;
-                meeting.AudioFilePath = null;
+                if (_storage.Delete(meeting.AudioFileName)) deleted++;
+                meeting.AudioFileName = null;
             }
             await _context.SaveChangesAsync();
 
             // 2. Files in the private store that no meeting points to, once they are older than the window.
-            var referenced = (await _context.MeetingSummaries
-                    .Where(m => m.AudioFilePath != null)
-                    .Select(m => m.AudioFilePath!)
+            var referenced = (await _context.Meetings
+                    .Where(m => m.AudioFileName != null)
+                    .Select(m => m.AudioFileName!)
                     .ToListAsync())
                 .Select(Path.GetFileName)
                 .ToHashSet(StringComparer.Ordinal);

@@ -30,6 +30,9 @@ namespace MeetingWeb.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    AvatarFileName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -38,7 +41,7 @@ namespace MeetingWeb.Migrations
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     SecurityStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     PhoneNumberConfirmed = table.Column<bool>(type: "bit", nullable: false),
                     TwoFactorEnabled = table.Column<bool>(type: "bit", nullable: false),
                     LockoutEnd = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
@@ -48,20 +51,6 @@ namespace MeetingWeb.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Workspaces",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Workspaces", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -171,27 +160,58 @@ namespace MeetingWeb.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "MeetingSummaries",
+                name: "Workspaces",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    AudioFilePath = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ToplantiKonusu = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    GorusulenKonular = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AlinanKararlar = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    WorkspaceId = table.Column<int>(type: "int", nullable: true)
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsPersonal = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_MeetingSummaries", x => x.Id);
+                    table.PrimaryKey("PK_Workspaces", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_MeetingSummaries_Workspaces_WorkspaceId",
+                        name: "FK_Workspaces_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Meetings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WorkspaceId = table.Column<int>(type: "int", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    Source = table.Column<int>(type: "int", nullable: false),
+                    AudioFileName = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true),
+                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CompletedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Meetings", x => x.Id);
+                    table.CheckConstraint("CK_Meetings_Source", "[Source] IN (1)");
+                    table.CheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
+                    table.ForeignKey(
+                        name: "FK_Meetings_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Meetings_Workspaces_WorkspaceId",
                         column: x => x.WorkspaceId,
                         principalTable: "Workspaces",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -201,15 +221,26 @@ namespace MeetingWeb.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     WorkspaceId = table.Column<int>(type: "int", nullable: false),
-                    Token = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    InviteeEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    IsUsed = table.Column<bool>(type: "bit", nullable: false)
+                    TokenHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiresAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    UsedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UsedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_WorkspaceInvitations", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WorkspaceInvitations_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_WorkspaceInvitations_AspNetUsers_UsedByUserId",
+                        column: x => x.UsedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_WorkspaceInvitations_Workspaces_WorkspaceId",
                         column: x => x.WorkspaceId,
@@ -219,24 +250,26 @@ namespace MeetingWeb.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "WorkspaceUsers",
+                name: "WorkspaceMembers",
                 columns: table => new
                 {
                     WorkspaceId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                    Role = table.Column<int>(type: "int", nullable: false),
+                    JoinedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WorkspaceUsers", x => new { x.WorkspaceId, x.UserId });
+                    table.PrimaryKey("PK_WorkspaceMembers", x => new { x.WorkspaceId, x.UserId });
+                    table.CheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)");
                     table.ForeignKey(
-                        name: "FK_WorkspaceUsers_AspNetUsers_UserId",
+                        name: "FK_WorkspaceMembers_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_WorkspaceUsers_Workspaces_WorkspaceId",
+                        name: "FK_WorkspaceMembers_Workspaces_WorkspaceId",
                         column: x => x.WorkspaceId,
                         principalTable: "Workspaces",
                         principalColumn: "Id",
@@ -244,57 +277,129 @@ namespace MeetingWeb.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ActionItem",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Text = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    IsDone = table.Column<bool>(type: "bit", nullable: false),
-                    MeetingSummaryId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ActionItem", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ActionItem_MeetingSummaries_MeetingSummaryId",
-                        column: x => x.MeetingSummaryId,
-                        principalTable: "MeetingSummaries",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "MeetingComments",
+                name: "ActionItems",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     MeetingId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Content = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Source = table.Column<int>(type: "int", nullable: false),
+                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    AssigneeUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    DueDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    CompletedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    CompletedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SortOrder = table.Column<int>(type: "int", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ActionItems", x => x.Id);
+                    table.CheckConstraint("CK_ActionItems_Source", "[Source] IN (1, 2)");
+                    table.ForeignKey(
+                        name: "FK_ActionItems_AspNetUsers_AssigneeUserId",
+                        column: x => x.AssigneeUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ActionItems_AspNetUsers_CompletedByUserId",
+                        column: x => x.CompletedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ActionItems_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ActionItems_Meetings_MeetingId",
+                        column: x => x.MeetingId,
+                        principalTable: "Meetings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Comments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MeetingId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ParentCommentId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_MeetingComments", x => x.Id);
+                    table.PrimaryKey("PK_Comments", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_MeetingComments_AspNetUsers_UserId",
+                        name: "FK_Comments_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Comments_Comments_ParentCommentId",
+                        column: x => x.ParentCommentId,
+                        principalTable: "Comments",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Comments_Meetings_MeetingId",
+                        column: x => x.MeetingId,
+                        principalTable: "Meetings",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MeetingPoints",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MeetingId = table.Column<int>(type: "int", nullable: false),
+                    Kind = table.Column<int>(type: "int", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Source = table.Column<int>(type: "int", nullable: false),
+                    CreatedByUserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: true),
+                    SortOrder = table.Column<int>(type: "int", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MeetingPoints", x => x.Id);
+                    table.CheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2)");
+                    table.CheckConstraint("CK_MeetingPoints_Source", "[Source] IN (1, 2)");
                     table.ForeignKey(
-                        name: "FK_MeetingComments_MeetingComments_ParentCommentId",
-                        column: x => x.ParentCommentId,
-                        principalTable: "MeetingComments",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        name: "FK_MeetingPoints_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_MeetingComments_MeetingSummaries_MeetingId",
+                        name: "FK_MeetingPoints_Meetings_MeetingId",
                         column: x => x.MeetingId,
-                        principalTable: "MeetingSummaries",
+                        principalTable: "Meetings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MeetingTranscripts",
+                columns: table => new
+                {
+                    MeetingId = table.Column<int>(type: "int", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MeetingTranscripts", x => x.MeetingId);
+                    table.ForeignKey(
+                        name: "FK_MeetingTranscripts_Meetings_MeetingId",
+                        column: x => x.MeetingId,
+                        principalTable: "Meetings",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -306,24 +411,44 @@ namespace MeetingWeb.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CommentId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", maxLength: 450, nullable: false),
                     IsLike = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CommentReactions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_CommentReactions_MeetingComments_CommentId",
+                        name: "FK_CommentReactions_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_CommentReactions_Comments_CommentId",
                         column: x => x.CommentId,
-                        principalTable: "MeetingComments",
+                        principalTable: "Comments",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ActionItem_MeetingSummaryId",
-                table: "ActionItem",
-                column: "MeetingSummaryId");
+                name: "IX_ActionItems_AssigneeUserId",
+                table: "ActionItems",
+                column: "AssigneeUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ActionItems_CompletedByUserId",
+                table: "ActionItems",
+                column: "CompletedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ActionItems_CreatedByUserId",
+                table: "ActionItems",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ActionItems_MeetingId",
+                table: "ActionItems",
+                column: "MeetingId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -358,6 +483,13 @@ namespace MeetingWeb.Migrations
                 column: "NormalizedEmail");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_PhoneNumber",
+                table: "AspNetUsers",
+                column: "PhoneNumber",
+                unique: true,
+                filter: "[PhoneNumber] IS NOT NULL AND [PhoneNumber] <> ''");
+
+            migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
@@ -365,29 +497,66 @@ namespace MeetingWeb.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CommentReactions_CommentId",
+                name: "IX_CommentReactions_CommentId_UserId",
                 table: "CommentReactions",
-                column: "CommentId");
+                columns: new[] { "CommentId", "UserId" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_MeetingComments_MeetingId",
-                table: "MeetingComments",
-                column: "MeetingId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MeetingComments_ParentCommentId",
-                table: "MeetingComments",
-                column: "ParentCommentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MeetingComments_UserId",
-                table: "MeetingComments",
+                name: "IX_CommentReactions_UserId",
+                table: "CommentReactions",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_MeetingSummaries_WorkspaceId",
-                table: "MeetingSummaries",
-                column: "WorkspaceId");
+                name: "IX_Comments_MeetingId",
+                table: "Comments",
+                column: "MeetingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Comments_ParentCommentId",
+                table: "Comments",
+                column: "ParentCommentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Comments_UserId",
+                table: "Comments",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MeetingPoints_CreatedByUserId",
+                table: "MeetingPoints",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MeetingPoints_MeetingId",
+                table: "MeetingPoints",
+                column: "MeetingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Meetings_CreatedByUserId",
+                table: "Meetings",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Meetings_WorkspaceId_CreatedAtUtc",
+                table: "Meetings",
+                columns: new[] { "WorkspaceId", "CreatedAtUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkspaceInvitations_CreatedByUserId",
+                table: "WorkspaceInvitations",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkspaceInvitations_TokenHash",
+                table: "WorkspaceInvitations",
+                column: "TokenHash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkspaceInvitations_UsedByUserId",
+                table: "WorkspaceInvitations",
+                column: "UsedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_WorkspaceInvitations_WorkspaceId",
@@ -395,16 +564,39 @@ namespace MeetingWeb.Migrations
                 column: "WorkspaceId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_WorkspaceUsers_UserId",
-                table: "WorkspaceUsers",
+                name: "IX_WorkspaceMembers_UserId",
+                table: "WorkspaceMembers",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Workspaces_PersonalPerUser",
+                table: "Workspaces",
+                column: "CreatedByUserId",
+                unique: true,
+                filter: "[IsPersonal] = 1");
+
+            // ADR-0009: Serilog's table (warnings and errors only), created here because the app user cannot change the
+            // schema. Same columns as the sink's default; the index serves the daily cleanup.
+            migrationBuilder.Sql(@"
+CREATE TABLE [Logs] (
+    [Id] int IDENTITY(1,1) NOT NULL CONSTRAINT [PK_Logs] PRIMARY KEY,
+    [Message] nvarchar(max) NULL,
+    [MessageTemplate] nvarchar(max) NULL,
+    [Level] nvarchar(16) NULL,
+    [TimeStamp] datetime NULL,
+    [Exception] nvarchar(max) NULL,
+    [Properties] nvarchar(max) NULL
+);
+CREATE INDEX [IX_Logs_TimeStamp] ON [Logs] ([TimeStamp]);");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("DROP TABLE [Logs];");
+
             migrationBuilder.DropTable(
-                name: "ActionItem");
+                name: "ActionItems");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
@@ -425,25 +617,31 @@ namespace MeetingWeb.Migrations
                 name: "CommentReactions");
 
             migrationBuilder.DropTable(
+                name: "MeetingPoints");
+
+            migrationBuilder.DropTable(
+                name: "MeetingTranscripts");
+
+            migrationBuilder.DropTable(
                 name: "WorkspaceInvitations");
 
             migrationBuilder.DropTable(
-                name: "WorkspaceUsers");
+                name: "WorkspaceMembers");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "MeetingComments");
+                name: "Comments");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
-
-            migrationBuilder.DropTable(
-                name: "MeetingSummaries");
+                name: "Meetings");
 
             migrationBuilder.DropTable(
                 name: "Workspaces");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
         }
     }
 }
