@@ -35,8 +35,8 @@ namespace MeetingWeb.Tests.Features
             File.WriteAllBytes(audio, new byte[] { 1 });
             var id = _app.WithDb(db =>
             {
-                var m = new MeetingSummary { WorkspaceId = S.WorkspaceA, ToplantiKonusu = "bos", AudioFilePath = "bos-cevap.m4a" };
-                db.MeetingSummaries.Add(m);
+                var m = new Meeting { WorkspaceId = S.WorkspaceA, Title = "bos", AudioFileName = "bos-cevap.m4a" };
+                db.Meetings.Add(m);
                 db.SaveChanges();
                 return m.Id;
             });
@@ -45,12 +45,12 @@ namespace MeetingWeb.Tests.Features
             try
             {
                 using var scope = _app.Services.CreateScope();
-                try { await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id, audio); }
+                try { await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id); }
                 catch { /* a failed job may rethrow so Hangfire records it */ }
             }
             finally { _app.PythonApi.Body = previous; }
 
-            var meeting = _app.WithDb(db => db.MeetingSummaries.AsNoTracking().Single(m => m.Id == id));
+            var meeting = _app.WithDb(db => db.Meetings.AsNoTracking().Single(m => m.Id == id));
             Assert.Equal(MeetingStatus.Failed, meeting.Status);
             Assert.True(File.Exists(audio), "the recording is kept so the user can retry");
         }
@@ -64,15 +64,15 @@ namespace MeetingWeb.Tests.Features
                 var team = new Workspace { Name = "Silinecek Ekip" };
                 db.Workspaces.Add(team);
                 db.SaveChanges();
-                db.WorkspaceUsers.Add(new WorkspaceUser { WorkspaceId = team.Id, UserId = S.BobId, Role = "Sahip" });
-                var meeting = new MeetingSummary
+                db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = team.Id, UserId = S.BobId, Role = WorkspaceRole.Owner });
+                var meeting = new Meeting
                 {
-                    WorkspaceId = team.Id, ToplantiKonusu = "ekip toplantısı",
-                    AksiyonMaddeleri = new List<ActionItem> { new() { Text = "görev" } }
+                    WorkspaceId = team.Id, Title = "ekip toplantısı",
+                    ActionItems = new List<ActionItem> { new() { Text = "görev" } }
                 };
-                db.MeetingSummaries.Add(meeting);
+                db.Meetings.Add(meeting);
                 db.SaveChanges();
-                db.MeetingComments.Add(new MeetingComment { MeetingId = meeting.Id, UserId = S.BobId, Content = "yorum" });
+                db.Comments.Add(new Comment { MeetingId = meeting.Id, UserId = S.BobId, Content = "yorum" });
                 db.SaveChanges();
                 return (team.Id, meeting.Id);
             });
@@ -84,7 +84,7 @@ namespace MeetingWeb.Tests.Features
 
             Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
             Assert.False(_app.WithDb(db => db.Workspaces.Any(w => w.Id == teamId)));
-            Assert.False(_app.WithDb(db => db.MeetingSummaries.Any(m => m.Id == meetingId)));
+            Assert.False(_app.WithDb(db => db.Meetings.Any(m => m.Id == meetingId)));
         }
 
         [Fact]
@@ -103,7 +103,7 @@ namespace MeetingWeb.Tests.Features
 
             Assert.Equal(HttpStatusCode.OK, res.StatusCode);
             Assert.Contains("Dosya çok büyük", page);
-            Assert.False(_app.WithDb(db => db.MeetingSummaries.AsEnumerable().Any(m => m.ToplantiKonusu == "cok-buyuk.m4a")));
+            Assert.False(_app.WithDb(db => db.Meetings.AsEnumerable().Any(m => m.Title == "cok-buyuk.m4a")));
         }
 
         [Fact]

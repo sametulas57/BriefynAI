@@ -1,3 +1,4 @@
+using MeetingWeb.Services;
 using System.Net;
 using MeetingWeb.Tests.Infrastructure;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
@@ -30,7 +31,7 @@ namespace MeetingWeb.Tests.Security
             return WebUtility.HtmlDecode(await alice.GetStringAsync(res.Headers.Location!.ToString()));
         }
 
-        private int SentTo(string email) => _app.Jobs.CountFor("SendMeetingSummaryAsync", a => (string)a[1]! == email);
+        private int SentTo(string email) => _app.Jobs.CountFor("SendMeetingSummaryAsync", a => EmailService.UnprotectRecipient((string)a[1]!) == email);
 
         [Fact]
         public void Share_dialog_has_an_extra_address_line()

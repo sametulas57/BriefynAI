@@ -1,12 +1,10 @@
 namespace MeetingWeb.Models
 {
-    // Profile data kept as Identity claims (AspNetUserClaims). Stored in the database, so the names must not change.
+    // Profile values copied into the sign-in cookie by AppClaimsPrincipalFactory, so the layout can show them
+    // without a database query. The source of truth is ApplicationUser.
     public static class UserClaimTypes
     {
         public const string FullName = "FullName";
         public const string AvatarUrl = "AvatarUrl";
-
-        // Older accounts may still carry their photo under this name; it is only read.
-        public const string LegacyProfilePicture = "ProfilePicture";
     }
 }

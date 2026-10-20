@@ -45,11 +45,11 @@ namespace MeetingWeb.Tests.Security
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var audio = Path.Combine(_app.AudioRoot, Guid.NewGuid() + ".m4a");
             File.WriteAllBytes(audio, new byte[] { 1 });
-            var meeting = new MeetingSummary { WorkspaceId = S.WorkspaceA, ToplantiKonusu = "hub", AudioFilePath = Path.GetFileName(audio) };
-            db.MeetingSummaries.Add(meeting);
+            var meeting = new Meeting { WorkspaceId = S.WorkspaceA, Title = "hub", AudioFileName = Path.GetFileName(audio) };
+            db.Meetings.Add(meeting);
             await db.SaveChangesAsync();
 
-            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meeting.Id, audio);
+            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meeting.Id);
         }
 
         [Fact]

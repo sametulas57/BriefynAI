@@ -13,9 +13,9 @@ namespace MeetingWeb.Pages.Workspace
     public class CreateModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public CreateModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public CreateModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _userManager = userManager;
@@ -34,21 +34,10 @@ namespace MeetingWeb.Pages.Workspace
             var userId = _userManager.GetUserId(User);
             if (userId == null) return RedirectToPage("/Auth/Login");
 
-            // 1. Core Entity Creation: Provision the new Workspace (Tenant) in the database.
-            var newWorkspace = new MeetingWeb.Models.Workspace { Name = WorkspaceName };
+            // Provision the new Workspace (Tenant) with the creator as its 'Owner', in one save.
+            var newWorkspace = new MeetingWeb.Models.Workspace { Name = WorkspaceName, CreatedByUserId = userId };
+            newWorkspace.Members.Add(new WorkspaceMember { UserId = userId, Role = WorkspaceRole.Owner });
             _context.Workspaces.Add(newWorkspace);
-
-            // Commit to database sequentially to retrieve the newly generated Identity ID.
-            await _context.SaveChangesAsync();
-
-            // 2. Role-Based Access Control (RBAC): Bind the creator as the 'Owner' of the new workspace.
-            var wsUser = new WorkspaceUser
-            {
-                WorkspaceId = newWorkspace.Id,
-                UserId = userId,
-                Role = WorkspaceRoles.Owner
-            };
-            _context.WorkspaceUsers.Add(wsUser);
             await _context.SaveChangesAsync();
 
             // 3. UX Optimization: Seamlessly inject the newly created workspace ID into the active session.

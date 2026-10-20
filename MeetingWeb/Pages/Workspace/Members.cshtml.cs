@@ -14,12 +14,12 @@ namespace MeetingWeb.Pages.Workspace
     public class MembersModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         private readonly IActiveWorkspaceService _activeWorkspace;
         private readonly IAudioStorage _audioStorage;
 
-        public MembersModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IActiveWorkspaceService activeWorkspace, IAudioStorage audioStorage)
+        public MembersModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IActiveWorkspaceService activeWorkspace, IAudioStorage audioStorage)
         {
             _activeWorkspace = activeWorkspace;
             _audioStorage = audioStorage;
@@ -28,14 +28,14 @@ namespace MeetingWeb.Pages.Workspace
         }
 
         public string WorkspaceName { get; set; } = "";
-        public string CurrentUserRole { get; set; } = "";
+        public WorkspaceRole? CurrentUserRole { get; set; }
         public string CurrentUserId { get; set; } = "";
 
         // The personal space cannot be deleted (checked again in OnPostDeleteWorkspaceAsync); decided by the flag, not the name.
         public bool IsPersonalWorkspace { get; set; }
 
         // Primary collection to hold the roster of workspace members.
-        public List<WorkspaceUser> TeamMembers { get; set; } = new List<WorkspaceUser>();
+        public List<WorkspaceMember> TeamMembers { get; set; } = new List<WorkspaceMember>();
 
         // Lookup dictionaries for O(1) retrieval of user metadata (Names and Avatars).
         public Dictionary<string, string> UserNames { get; set; } = new Dictionary<string, string>();
@@ -57,7 +57,7 @@ namespace MeetingWeb.Pages.Workspace
             WorkspaceName = workspace?.Name ?? "Ekip";
             IsPersonalWorkspace = workspace?.IsPersonal == true;
 
-            TeamMembers = await _context.WorkspaceUsers
+            TeamMembers = await _context.WorkspaceMembers
                 .Include(wu => wu.User)
                 .Where(wu => wu.WorkspaceId == activeWorkspaceId)
                 .ToListAsync();
@@ -66,25 +66,13 @@ namespace MeetingWeb.Pages.Workspace
             var currentUserRecord = TeamMembers.FirstOrDefault(wu => wu.UserId == CurrentUserId);
             if (currentUserRecord == null) return RedirectToPage("/Index");
 
-            CurrentUserRole = currentUserRecord.Role ?? "";
+            CurrentUserRole = currentUserRecord.Role;
 
-            // Eagerly fetch Identity Claims (Full Name, Avatar) for the entire roster.
-            var userIds = TeamMembers.Select(wu => wu.UserId).ToList();
-            var claims = await _context.UserClaims
-                .Where(c => userIds.Contains(c.UserId) && (c.ClaimType == UserClaimTypes.FullName || c.ClaimType == UserClaimTypes.AvatarUrl || c.ClaimType == UserClaimTypes.LegacyProfilePicture))
-                .ToListAsync();
-
-            // Populate lookup dictionaries for efficient UI rendering.
-            foreach (var claim in claims)
+            // Names and photos come with the members (Include above).
+            foreach (var member in TeamMembers)
             {
-                if (claim.ClaimType == UserClaimTypes.FullName)
-                {
-                    UserNames[claim.UserId] = claim.ClaimValue ?? UserDisplay.UnknownName;
-                }
-                else if (claim.ClaimType == UserClaimTypes.AvatarUrl || claim.ClaimType == UserClaimTypes.LegacyProfilePicture)
-                {
-                    UserAvatars[claim.UserId] = claim.ClaimValue ?? "";
-                }
+                UserNames[member.UserId] = string.IsNullOrWhiteSpace(member.User.FullName) ? UserDisplay.UnknownName : member.User.FullName;
+                if (member.User.AvatarFileName != null) UserAvatars[member.UserId] = UserDisplay.AvatarUrl(member.User.AvatarFileName);
             }
 
             return Page();
@@ -98,15 +86,15 @@ namespace MeetingWeb.Pages.Workspace
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
-            var caller = await _context.WorkspaceUsers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
-            if (caller == null || caller.Role != WorkspaceRoles.Owner) return Unauthorized();
+            var caller = await _context.WorkspaceMembers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
+            if (caller == null || caller.Role != WorkspaceRole.Owner) return Unauthorized();
 
-            var targetUser = await _context.WorkspaceUsers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == targetUserId);
+            var targetUser = await _context.WorkspaceMembers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == targetUserId);
 
             // Privilege Escalation Prevention: An Owner cannot evict another Owner.
-            if (targetUser != null && targetUser.Role != WorkspaceRoles.Owner)
+            if (targetUser != null && targetUser.Role != WorkspaceRole.Owner)
             {
-                _context.WorkspaceUsers.Remove(targetUser);
+                _context.WorkspaceMembers.Remove(targetUser);
                 await _context.SaveChangesAsync();
                 TempData["StatusMessage"] = "Üye başarıyla ekipten çıkarıldı.";
             }
@@ -122,18 +110,18 @@ namespace MeetingWeb.Pages.Workspace
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
-            var me = await _context.WorkspaceUsers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
+            var me = await _context.WorkspaceMembers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
 
             if (me != null)
             {
                 // Orphan Prevention: Owners cannot leave; they must transfer ownership or delete the tenant.
-                if (me.Role == WorkspaceRoles.Owner)
+                if (me.Role == WorkspaceRole.Owner)
                 {
                     TempData["ErrorMessage"] = "Ekip kurucusu ekipten ayrılamaz; isterseniz ekibi silebilirsiniz.";
                     return RedirectToPage();
                 }
 
-                _context.WorkspaceUsers.Remove(me);
+                _context.WorkspaceMembers.Remove(me);
                 await _context.SaveChangesAsync();
 
                 // Clear session context upon departure.
@@ -152,11 +140,11 @@ namespace MeetingWeb.Pages.Workspace
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
-            var caller = await _context.WorkspaceUsers
+            var caller = await _context.WorkspaceMembers
                 .Include(w => w.Workspace)
                 .FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
 
-            if (caller == null || caller.Role != WorkspaceRoles.Owner)
+            if (caller == null || caller.Role != WorkspaceRole.Owner)
                 return Unauthorized();
 
             // Critical Guardrail: Prevent the deletion of the primary/default personal workspace.
@@ -169,21 +157,14 @@ namespace MeetingWeb.Pages.Workspace
             var workspaceToDelete = await _context.Workspaces.FindAsync(activeWorkspaceId);
             if (workspaceToDelete != null)
             {
-                // The meeting -> workspace foreign key does not cascade, so the team's meetings (with their comments;
-                // action items, reactions, members and invitations cascade in the database) are removed first.
-                var meetings = await _context.MeetingSummaries.Where(m => m.WorkspaceId == activeWorkspaceId).ToListAsync();
-                var meetingIds = meetings.Select(m => m.Id).ToList();
-                var comments = await _context.MeetingComments.Where(c => meetingIds.Contains(c.MeetingId)).ToListAsync();
-                var audioFiles = meetings.Select(m => m.AudioFilePath).ToList();
+                // Meetings, their lines, tasks, comments, reactions, members and invitations cascade in the database (ADR-0009).
+                var audioFiles = await _context.Meetings
+                    .Where(m => m.WorkspaceId == activeWorkspaceId && m.AudioFileName != null)
+                    .Select(m => m.AudioFileName)
+                    .ToListAsync();
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
-                _context.MeetingComments.RemoveRange(comments.Where(c => c.ParentCommentId != null));
-                await _context.SaveChangesAsync();
-                _context.MeetingComments.RemoveRange(comments.Where(c => c.ParentCommentId == null));
-                _context.MeetingSummaries.RemoveRange(meetings);
                 _context.Workspaces.Remove(workspaceToDelete);
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
 
                 foreach (var audio in audioFiles) _audioStorage.Delete(audio);
 

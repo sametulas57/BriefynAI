@@ -28,15 +28,15 @@ namespace MeetingWeb.Tests.Security
         {
             using var scope = _app.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var meeting = new MeetingSummary
+            var meeting = new Meeting
             {
                 WorkspaceId = S.WorkspaceA,
-                ToplantiKonusu = "ses testi",
+                Title = "ses testi",
                 Status = status,
-                AudioFilePath = storedAudio,
-                CreatedDate = createdUtc ?? DateTime.UtcNow
+                AudioFileName = storedAudio,
+                CreatedAtUtc = createdUtc ?? DateTime.UtcNow
             };
-            db.MeetingSummaries.Add(meeting);
+            db.Meetings.Add(meeting);
             await db.SaveChangesAsync();
             return meeting.Id;
         }
@@ -49,7 +49,7 @@ namespace MeetingWeb.Tests.Security
             return path;
         }
 
-        private MeetingSummary Meeting(int id) => _app.WithDb(db => db.MeetingSummaries.AsNoTracking().Single(m => m.Id == id));
+        private Meeting Meeting(int id) => _app.WithDb(db => db.Meetings.AsNoTracking().Single(m => m.Id == id));
 
         [Fact]
         public async Task Upload_stores_recording_outside_wwwroot()
@@ -65,13 +65,14 @@ namespace MeetingWeb.Tests.Security
             var res = await alice.PostAsync("/Upload", form);
 
             Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
-            var stored = _app.WithDb(db => db.MeetingSummaries.AsNoTracking()
-                .Where(m => m.AudioFilePath != null && m.AudioFilePath.EndsWith("toplanti.m4a"))
-                .Select(m => m.AudioFilePath!).Single());
-            Assert.False(stored.StartsWith("/"), "AudioFilePath must not be a public URL");
+            var stored = _app.WithDb(db => db.Meetings.AsNoTracking()
+                .Where(m => m.AudioFileName != null && m.AudioFileName.EndsWith("toplanti.m4a"))
+                .Select(m => m.AudioFileName!).Single());
+            Assert.False(stored.StartsWith("/"), "AudioFileName must not be a public URL");
             Assert.True(File.Exists(Path.Combine(_app.AudioRoot, stored)));
             Assert.Empty(Directory.GetFiles(Path.Combine(_app.WebRoot, "uploads"), "*toplanti.m4a"));
-            Assert.Equal(1, _app.Jobs.CountFor("ProcessMeetingJob", a => ((string)a[1]!).StartsWith(_app.AudioRoot)));
+            // ADR-0009: the job carries only the meeting id, never the file path.
+            Assert.Equal(1, _app.Jobs.CountFor("ProcessMeetingJob", a => a.Count == 1 && a[0] is int));
         }
 
         [Fact]
@@ -103,12 +104,12 @@ namespace MeetingWeb.Tests.Security
             var id = await CreateMeetingAsync(MeetingStatus.Processing, "basarili.m4a");
 
             using (var scope = _app.Services.CreateScope())
-                await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id, path);
+                await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
 
             Assert.False(File.Exists(path));
             var meeting = Meeting(id);
             Assert.Equal(MeetingStatus.Completed, meeting.Status);
-            Assert.Null(meeting.AudioFilePath);
+            Assert.Null(meeting.AudioFileName);
         }
 
         [Fact]
@@ -118,11 +119,11 @@ namespace MeetingWeb.Tests.Security
             var id = await CreateMeetingAsync(MeetingStatus.Processing, "basarisiz.m4a");
             var failingApi = new BriefynFactoryScope(_app, HttpStatusCode.InternalServerError);
 
-            await Assert.ThrowsAnyAsync<Exception>(() => failingApi.ProcessAsync(id, path));
+            await Assert.ThrowsAnyAsync<Exception>(() => failingApi.ProcessAsync(id));
 
             Assert.True(File.Exists(path));
             Assert.Equal(MeetingStatus.Failed, Meeting(id).Status);
-            Assert.Equal("basarisiz.m4a", Meeting(id).AudioFilePath);
+            Assert.Equal("basarisiz.m4a", Meeting(id).AudioFileName);
         }
 
         [Fact]
@@ -142,9 +143,9 @@ namespace MeetingWeb.Tests.Security
                 await scope.ServiceProvider.GetRequiredService<IAudioCleanupService>().CleanupAsync(now);
 
             Assert.False(File.Exists(oldFailed));
-            Assert.Null(Meeting(oldFailedId).AudioFilePath);
+            Assert.Null(Meeting(oldFailedId).AudioFileName);
             Assert.True(File.Exists(recentFailed));
-            Assert.Equal("yeni_hata.m4a", Meeting(recentFailedId).AudioFilePath);
+            Assert.Equal("yeni_hata.m4a", Meeting(recentFailedId).AudioFileName);
             Assert.True(File.Exists(processing));
             Assert.False(File.Exists(oldOrphan));
             Assert.True(File.Exists(freshOrphan));
@@ -161,7 +162,7 @@ namespace MeetingWeb.Tests.Security
             var res = await PostFormAsync(alice, "/History?handler=Delete", token, ("id", $"{id}"));
 
             Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
-            Assert.False(_app.WithDb(db => db.MeetingSummaries.Any(m => m.Id == id)));
+            Assert.False(_app.WithDb(db => db.Meetings.Any(m => m.Id == id)));
             Assert.False(File.Exists(path));
         }
     }
@@ -174,14 +175,14 @@ namespace MeetingWeb.Tests.Security
 
         public BriefynFactoryScope(BriefynFactory app, HttpStatusCode status) { _app = app; _status = status; }
 
-        public async Task ProcessAsync(int meetingId, string path)
+        public async Task ProcessAsync(int meetingId)
         {
             var previous = _app.PythonApi.Status;
             _app.PythonApi.Status = _status;
             try
             {
                 using var scope = _app.Services.CreateScope();
-                await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meetingId, path);
+                await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meetingId);
             }
             finally
             {

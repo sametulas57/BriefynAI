@@ -11,14 +11,14 @@ namespace MeetingWeb.Pages.Auth
 {
     public class RegisterModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ApplicationDbContext _context;
 
         // Constructor injection for Identity and EF Core dependencies.
         public RegisterModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
             ApplicationDbContext context)
         {
             _userManager = userManager;
@@ -87,31 +87,20 @@ namespace MeetingWeb.Pages.Auth
                 }
 
                 // Initialize a new identity principal.
-                var user = new IdentityUser { UserName = Input.Email, Email = Input.Email, PhoneNumber = Input.PhoneNumber };
+                var user = new ApplicationUser { UserName = Input.Email, Email = Input.Email, PhoneNumber = Input.PhoneNumber, FullName = Input.FullName };
                 var result = await _userManager.CreateAsync(user, Input.Password);
 
                 if (result.Succeeded)
                 {
-                    // Inject FullName into the authentication token (Claims) for immediate UI rendering.
-                    await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim(UserClaimTypes.FullName, Input.FullName));
-
-                    // ZERO-FRICTION ONBOARDING: Automatically provision a default isolated Workspace.
+                    // ZERO-FRICTION ONBOARDING: Automatically provision a default isolated Workspace, owned by the new user.
                     var personalWorkspace = new MeetingWeb.Models.Workspace
                     {
                         Name = "Kişisel Alanım",
-                        IsPersonal = true
+                        IsPersonal = true,
+                        CreatedByUserId = user.Id
                     };
+                    personalWorkspace.Members.Add(new WorkspaceMember { UserId = user.Id, Role = WorkspaceRole.Owner });
                     _context.Workspaces.Add(personalWorkspace);
-                    await _context.SaveChangesAsync(); // Commit to DB to generate primary key (Id).
-
-                    // Assign the new user as the 'Owner' of their isolated workspace via the junction table.
-                    var workspaceUser = new WorkspaceUser
-                    {
-                        WorkspaceId = personalWorkspace.Id,
-                        UserId = user.Id,
-                        Role = WorkspaceRoles.Owner
-                    };
-                    _context.WorkspaceUsers.Add(workspaceUser);
                     await _context.SaveChangesAsync();
 
                     // State management: Inject the new WorkspaceId into the user's active session.

@@ -1,6 +1,5 @@
 using MeetingWeb.Data;
 using MeetingWeb.Models;
-using Microsoft.AspNetCore.Identity;
 
 namespace MeetingWeb.Tests.Infrastructure
 {
@@ -29,27 +28,28 @@ namespace MeetingWeb.Tests.Infrastructure
             db.Workspaces.AddRange(wsA, wsB);
             await db.SaveChangesAsync();
 
-            db.WorkspaceUsers.AddRange(
-                new WorkspaceUser { WorkspaceId = wsA.Id, UserId = alice.Id, Role = "Sahip" },
-                new WorkspaceUser { WorkspaceId = wsA.Id, UserId = carol.Id, Role = "Üye" },
-                new WorkspaceUser { WorkspaceId = wsB.Id, UserId = bob.Id, Role = "Sahip" });
+            db.WorkspaceMembers.AddRange(
+                new WorkspaceMember { WorkspaceId = wsA.Id, UserId = alice.Id, Role = WorkspaceRole.Owner },
+                new WorkspaceMember { WorkspaceId = wsA.Id, UserId = carol.Id, Role = WorkspaceRole.Member },
+                new WorkspaceMember { WorkspaceId = wsB.Id, UserId = bob.Id, Role = WorkspaceRole.Owner });
 
             var meetingA = Meeting(wsA.Id, "A gizli toplantı");
             var meetingB = Meeting(wsB.Id, "B gizli toplantı");
-            db.MeetingSummaries.AddRange(meetingA, meetingB);
+            db.Meetings.AddRange(meetingA, meetingB);
             await db.SaveChangesAsync();
 
-            var commentA = new MeetingComment { MeetingId = meetingA.Id, UserId = alice.Id, Content = "A yorumu" };
-            var commentB = new MeetingComment { MeetingId = meetingB.Id, UserId = bob.Id, Content = "B yorumu" };
-            db.MeetingComments.AddRange(commentA, commentB);
+            var commentA = new Comment { MeetingId = meetingA.Id, UserId = alice.Id, Content = "A yorumu" };
+            var commentB = new Comment { MeetingId = meetingB.Id, UserId = bob.Id, Content = "B yorumu" };
+            db.Comments.AddRange(commentA, commentB);
             await db.SaveChangesAsync();
 
             return new SeedData(alice.Id, bob.Id, carol.Id, wsA.Id, wsB.Id, meetingA.Id, meetingB.Id,
-                meetingA.AksiyonMaddeleri[0].Id, meetingB.AksiyonMaddeleri[0].Id, commentA.Id, commentB.Id);
+                meetingA.ActionItems[0].Id, meetingB.ActionItems[0].Id, commentA.Id, commentB.Id);
         }
 
-        private static IdentityUser User(string email) => new()
+        private static ApplicationUser User(string email) => new()
         {
+            FullName = "", // nameless, like accounts before profiles had names; tests set one when they need it
             UserName = email,
             NormalizedUserName = email.ToUpperInvariant(),
             Email = email,
@@ -57,15 +57,18 @@ namespace MeetingWeb.Tests.Infrastructure
             SecurityStamp = Guid.NewGuid().ToString()
         };
 
-        private static MeetingSummary Meeting(int workspaceId, string topic) => new()
+        private static Meeting Meeting(int workspaceId, string topic) => new()
         {
             WorkspaceId = workspaceId,
-            ToplantiKonusu = topic,
+            Title = topic,
             Status = MeetingStatus.Failed,
-            AudioFilePath = "/uploads/test.m4a",
-            GorusulenKonular = new List<string> { "Konu" },
-            AlinanKararlar = new List<string> { "Karar" },
-            AksiyonMaddeleri = new List<ActionItem> { new() { Text = "Görev", IsDone = false } }
+            AudioFileName = "test.m4a",
+            Points = new List<MeetingPoint>
+            {
+                new() { Kind = MeetingPointKind.Topic, Text = "Konu" },
+                new() { Kind = MeetingPointKind.Decision, Text = "Karar" }
+            },
+            ActionItems = new List<ActionItem> { new() { Text = "Görev" } }
         };
     }
 }

@@ -1,6 +1,6 @@
 ﻿@page
 @model MeetingWeb.Pages.DetailsModel
-@inject Microsoft.AspNetCore.Identity.UserManager<Microsoft.AspNetCore.Identity.IdentityUser> UserManager
+@inject Microsoft.AspNetCore.Identity.UserManager<MeetingWeb.Models.ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Toplantı Detayı";
     var currentUserId = UserManager.GetUserId(User);
@@ -92,13 +92,13 @@
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-page="/History" class="text-decoration-none text-muted fw-medium"><i class="bi bi-arrow-left me-1"></i> Arşive Dön</a></li>
             <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">
-                @if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Failed && Model.Meeting.ToplantiKonusu == "Analiz Ediliyor (Kuyrukta)...")
+                @if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Failed && Model.Meeting.Title == "Analiz Ediliyor (Kuyrukta)...")
                 {
                     <span class="text-danger"><i class="bi bi-x-circle me-1"></i> İşlem Başarısız</span>
                 }
                 else
                 {
-                    @Model.Meeting.ToplantiKonusu
+                    @Model.Meeting.Title
                 }
             </li>
         </ol>
@@ -117,7 +117,7 @@
                             <h3 class="fw-bold text-dark mb-0" style="letter-spacing: -0.5px;">Yapay Zeka Devrede</h3>
                         </div>
                         <p class="text-muted fs-6 mb-0">
-                            <strong><i class="bi bi-file-earmark-music me-1"></i> @Model.Meeting.ToplantiKonusu</strong> adlı dosyanız 
+                            <strong><i class="bi bi-file-earmark-music me-1"></i> @Model.Meeting.Title</strong> adlı dosyanız 
                             şu an metne çevriliyor ve özetleniyor.
                         </p>
                     </div>
@@ -185,9 +185,9 @@
             <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
                 <div>
                     <span class="badge bg-soft-light text-muted border rounded-pill px-3 py-2 mb-3 fw-medium">
-                        <i class="bi bi-calendar3 me-1"></i> @MeetingWeb.Services.DisplayTime.Format(Model.Meeting.CreatedDate, "dd MMMM yyyy, HH:mm")
+                        <i class="bi bi-calendar3 me-1"></i> @MeetingWeb.Services.DisplayTime.Format(Model.Meeting.CreatedAtUtc, "dd MMMM yyyy, HH:mm")
                     </span>
-                    <h2 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.5px;">@Model.Meeting.ToplantiKonusu</h2>
+                    <h2 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.5px;">@Model.Meeting.Title</h2>
                 </div>
                 <div>
                     <button type="button" class="btn btn-primary btn-soft shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#shareModal">
@@ -210,10 +210,10 @@
                         </div>
                         
                         <ul class="list-unstyled mb-0">
-                            @foreach (var konu in Model.Meeting.GorusulenKonular)
+                            @foreach (var konu in Model.Meeting.PointsOf(MeetingWeb.Models.MeetingPointKind.Topic))
                             {
-                                var text = MeetingWeb.Models.ManualEntry.TextOf(konu);
-                                var addedBy = MeetingWeb.Models.ManualEntry.AuthorOf(konu);
+                                var text = konu.Text;
+                                var addedBy = konu.CreatedByUserId;
 
                                 <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <i class="bi bi-dot text-primary fs-4 mt-n1 flex-shrink-0"></i>
@@ -259,10 +259,10 @@
                         </div>
                         
                         <ul class="list-unstyled mb-0">
-                            @foreach (var karar in Model.Meeting.AlinanKararlar)
+                            @foreach (var karar in Model.Meeting.PointsOf(MeetingWeb.Models.MeetingPointKind.Decision))
                             {
-                                var text = MeetingWeb.Models.ManualEntry.TextOf(karar);
-                                var addedBy = MeetingWeb.Models.ManualEntry.AuthorOf(karar);
+                                var text = karar.Text;
+                                var addedBy = karar.CreatedByUserId;
 
                                 <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <i class="bi bi-dot text-success fs-4 mt-n1 flex-shrink-0"></i>
@@ -308,10 +308,10 @@
                         </div>
                         
                         <ul class="list-unstyled mb-0">
-                            @foreach (var task in Model.Meeting.AksiyonMaddeleri)
+                            @foreach (var task in Model.Meeting.OrderedActionItems)
                             {
-                                var text = MeetingWeb.Models.ManualEntry.TextOf(task.Text);
-                                var addedBy = MeetingWeb.Models.ManualEntry.AuthorOf(task.Text);
+                                var text = task.Text;
+                                var addedBy = task.CreatedByUserId;
 
                                 <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <div class="form-check mt-1 flex-shrink-0">
@@ -386,12 +386,12 @@
         </div>
     }
 
-    @if (!string.IsNullOrWhiteSpace(Model.Meeting.Transkript))
+    @if (!string.IsNullOrWhiteSpace(Model.Meeting.Transcript?.Text))
     {
         <details class="soft-card mt-5 p-4">
             <summary class="fw-bold text-dark" style="cursor: pointer;"><i class="bi bi-file-text me-2 text-primary"></i>Toplantı dökümü</summary>
             <p class="text-muted small mt-2 mb-3">Kaydın otomatik yazıya dökülmüş hâli. Küçük yazım hataları olabilir.</p>
-            <div class="text-dark" style="white-space: pre-wrap; line-height: 1.7;">@Model.Meeting.Transkript</div>
+            <div class="text-dark" style="white-space: pre-wrap; line-height: 1.7;">@Model.Meeting.Transcript.Text</div>
         </details>
     }
 
@@ -451,7 +451,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="fw-bold text-dark">@profile.FullName</span>
                                 <div class="d-flex align-items-center gap-3">
-                                    <small class="text-muted fw-medium"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(comment.CreatedAt, "HH:mm")</small>
+                                    <small class="text-muted fw-medium"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(comment.CreatedAtUtc, "HH:mm")</small>
                                     @if (comment.UserId == currentUserId)
                                     {
                                         <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yorumu kalıcı olarak silmek istediğinize emin misiniz?');">
@@ -489,7 +489,7 @@
                         @if (comment.Replies != null && comment.Replies.Any())
                         {
                             <div class="mt-4 ps-4 border-start ms-3 border-light">
-                                @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
+                                @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAtUtc))
                                 {
                                     var replyProfile = Model.UserProfiles.GetValueOrDefault(reply.UserId, new DetailsModel.UserProfileData { FullName = MeetingWeb.Services.UserDisplay.UnknownName, Initials = "?" });
                                     var isNewReply = (newCommentId == reply.Id);
@@ -512,7 +512,7 @@
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                                     <span class="fw-bold text-dark" style="font-size: 0.9rem;">@replyProfile.FullName</span>
                                                     <div class="d-flex align-items-center gap-3">
-                                                        <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(reply.CreatedAt, "HH:mm")</span>
+                                                        <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(reply.CreatedAtUtc, "HH:mm")</span>
                                                         @if (reply.UserId == currentUserId)
                                                         {
                                                             <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yanıtı silmek istediğinize emin misiniz?');">
@@ -567,7 +567,7 @@
                                     <input class="form-check-input flex-shrink-0 fs-5 mt-0 border-secondary" type="checkbox" name="selectedEmails" value="@member.User.Email" checked>
                                     <div class="d-flex flex-column">
                                         <span class="fw-bold text-dark" style="font-size: 0.95rem;">@member.User.Email</span>
-                                        @if (member.Role == MeetingWeb.Models.WorkspaceRoles.Owner)
+                                        @if (member.Role == MeetingWeb.Models.WorkspaceRole.Owner)
                                         {
                                             <span class="badge bg-soft-primary border border-primary border-opacity-25 mt-1 fw-medium" style="width: fit-content;"><i class="bi bi-star-fill me-1 small"></i> Kurucu</span>
                                         }
@@ -644,6 +644,9 @@
                         label.classList.remove('text-decoration-line-through', 'text-muted');
                         label.classList.add('text-dark', 'fw-medium');
                     }
+                } else if (data.reload) {
+                    // Someone else changed the task at the same moment: show the current state.
+                    location.reload();
                 }
             })
             .catch(error => console.error(error));

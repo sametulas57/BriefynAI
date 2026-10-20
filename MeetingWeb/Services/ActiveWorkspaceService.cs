@@ -9,7 +9,7 @@ namespace MeetingWeb.Services
     // Every read therefore re-checks membership; a stale value is replaced by the user's own default workspace.
     public interface IActiveWorkspaceService
     {
-        Task<WorkspaceUser?> GetActiveMembershipAsync(string? userId);
+        Task<WorkspaceMember?> GetActiveMembershipAsync(string? userId);
     }
 
     public class ActiveWorkspaceService : IActiveWorkspaceService
@@ -25,7 +25,7 @@ namespace MeetingWeb.Services
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<WorkspaceUser?> GetActiveMembershipAsync(string? userId)
+        public async Task<WorkspaceMember?> GetActiveMembershipAsync(string? userId)
         {
             var session = _httpContextAccessor.HttpContext?.Session;
             if (string.IsNullOrEmpty(userId))
@@ -35,7 +35,7 @@ namespace MeetingWeb.Services
             }
 
             var remembered = session?.GetInt32(SessionKey);
-            var memberships = _context.WorkspaceUsers.Include(wu => wu.Workspace).Where(wu => wu.UserId == userId);
+            var memberships = _context.WorkspaceMembers.Include(wu => wu.Workspace).Where(wu => wu.UserId == userId);
 
             var membership = remembered == null
                 ? null
@@ -43,7 +43,7 @@ namespace MeetingWeb.Services
 
             // Fallback: prefer a workspace the user owns, then the oldest one.
             membership ??= await memberships
-                .OrderByDescending(wu => wu.Role == WorkspaceRoles.Owner)
+                .OrderByDescending(wu => wu.Role == WorkspaceRole.Owner)
                 .ThenBy(wu => wu.WorkspaceId)
                 .FirstOrDefaultAsync();
 

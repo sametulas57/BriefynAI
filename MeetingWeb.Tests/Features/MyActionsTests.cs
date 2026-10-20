@@ -17,8 +17,7 @@ namespace MeetingWeb.Tests.Features
             await Factory.InitializeAsync();
             Factory.WithDb(db =>
             {
-                db.UserClaims.Add(new Microsoft.AspNetCore.Identity.IdentityUserClaim<string>
-                    { UserId = Factory.Seed.CarolId, ClaimType = "FullName", ClaimValue = "Carol Demir" });
+                db.Users.Single(u => u.Id == Factory.Seed.CarolId).FullName = "Carol Demir";
                 return db.SaveChanges();
             });
         }
@@ -37,14 +36,14 @@ namespace MeetingWeb.Tests.Features
 
         private int NewMeetingWithTask(string taskText, string? assignee = null, DateOnly? due = null) => _app.WithDb(db =>
         {
-            var m = new MeetingSummary
+            var m = new Meeting
             {
-                WorkspaceId = S.WorkspaceA, ToplantiKonusu = "Sprint planlama", Status = MeetingStatus.Completed,
-                AksiyonMaddeleri = new List<ActionItem> { new() { Text = taskText, AssigneeUserId = assignee, DueDate = due } }
+                WorkspaceId = S.WorkspaceA, Title = "Sprint planlama", Status = MeetingStatus.Completed,
+                ActionItems = new List<ActionItem> { new() { Text = taskText, AssigneeUserId = assignee, DueDate = due } }
             };
-            db.MeetingSummaries.Add(m);
+            db.Meetings.Add(m);
             db.SaveChanges();
-            return m.AksiyonMaddeleri[0].Id;
+            return m.ActionItems[0].Id;
         });
 
         private ActionItem Task(int id) => _app.WithDb(db => db.Set<ActionItem>().AsNoTracking().Single(a => a.Id == id));
@@ -62,7 +61,7 @@ namespace MeetingWeb.Tests.Features
         public async Task Task_can_be_assigned_to_a_teammate_with_a_date()
         {
             var id = NewMeetingWithTask("Sunucu maliyetini çıkar");
-            var meetingId = Task(id).MeetingSummaryId;
+            var meetingId = Task(id).MeetingId;
 
             await AssignAsync(_app.ClientFor(S.AliceId), id, $"/Details?id={meetingId}", S.CarolId, "2026-11-20");
 
@@ -75,7 +74,7 @@ namespace MeetingWeb.Tests.Features
         {
             var id = NewMeetingWithTask("Ekip dışına verilmemeli");
 
-            await AssignAsync(_app.ClientFor(S.AliceId), id, $"/Details?id={Task(id).MeetingSummaryId}", S.BobId, "2026-11-20");
+            await AssignAsync(_app.ClientFor(S.AliceId), id, $"/Details?id={Task(id).MeetingId}", S.BobId, "2026-11-20");
             await AssignAsync(_app.ClientFor(S.BobId), id, $"/Details?id={S.MeetingB}", S.BobId, "2026-11-20");
 
             Assert.Null(Task(id).AssigneeUserId);
@@ -107,7 +106,7 @@ namespace MeetingWeb.Tests.Features
             var task = Task(id);
             Assert.True(task.IsDone);
             Assert.Equal(S.CarolId, task.CompletedByUserId);
-            var summary = await TextAsync(_app.ClientFor(S.AliceId), $"/Details?id={task.MeetingSummaryId}");
+            var summary = await TextAsync(_app.ClientFor(S.AliceId), $"/Details?id={task.MeetingId}");
             Assert.Contains("Tamamlayan: Carol Demir", summary);
         }
 
@@ -116,7 +115,7 @@ namespace MeetingWeb.Tests.Features
         {
             var id = NewMeetingWithTask("Kutudan işaretlenen iş");
             var carol = _app.ClientFor(S.CarolId);
-            var token = await GetAntiforgeryTokenAsync(carol, $"/Details?id={Task(id).MeetingSummaryId}");
+            var token = await GetAntiforgeryTokenAsync(carol, $"/Details?id={Task(id).MeetingId}");
 
             await PostFormAsync(carol, $"/Details?handler=ToggleTask&taskId={id}", token);
 
@@ -140,8 +139,8 @@ namespace MeetingWeb.Tests.Features
         public async Task Regenerated_summary_does_not_drop_assigned_tasks()
         {
             var id = NewMeetingWithTask("Atanmış yapay zekâ işi", S.CarolId, new DateOnly(2026, 11, 24));
-            var meetingId = Task(id).MeetingSummaryId;
-            _app.WithDb(db => { db.MeetingSummaries.Single(m => m.Id == meetingId).Transkript = "döküm"; return db.SaveChanges(); });
+            var meetingId = Task(id).MeetingId;
+            _app.WithDb(db => { db.MeetingTranscripts.Add(new MeetingTranscript { MeetingId = meetingId, Text = "döküm" }); return db.SaveChanges(); });
 
             using (var scope = _app.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ResummarizeMeetingJob(meetingId);
@@ -155,11 +154,11 @@ namespace MeetingWeb.Tests.Features
         public async Task Regenerated_summary_does_not_drop_completed_unassigned_tasks()
         {
             var id = NewMeetingWithTask("Bitmiş ama atanmamış iş");
-            var meetingId = Task(id).MeetingSummaryId;
+            var meetingId = Task(id).MeetingId;
             _app.WithDb(db =>
             {
-                db.MeetingSummaries.Single(m => m.Id == meetingId).Transkript = "döküm";
-                db.Set<ActionItem>().Single(a => a.Id == id).IsDone = true;
+                db.MeetingTranscripts.Add(new MeetingTranscript { MeetingId = meetingId, Text = "döküm" });
+                db.Set<ActionItem>().Single(a => a.Id == id).CompletedAtUtc = DateTime.UtcNow;
                 return db.SaveChanges();
             });
 

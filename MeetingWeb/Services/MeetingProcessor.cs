@@ -13,8 +13,9 @@ namespace MeetingWeb.Services
 {
     public interface IMeetingProcessor
     {
+        // ADR-0009: jobs carry only the meeting id; the recording is resolved from the meeting at run time.
         [AutomaticRetry(Attempts = 0)]
-        Task ProcessMeetingJob(int meetingId, string audioPath);
+        Task ProcessMeetingJob(int meetingId);
 
         [AutomaticRetry(Attempts = 0)]
         Task ResummarizeMeetingJob(int meetingId);
@@ -49,9 +50,9 @@ namespace MeetingWeb.Services
             _audioStorage = audioStorage;
         }
 
-        public async Task ProcessMeetingJob(int meetingId, string audioPath)
+        public async Task ProcessMeetingJob(int meetingId)
         {
-            _logger.LogInformation("Background job started. MeetingId: {MeetingId}, AudioPath: {AudioPath}", meetingId, audioPath);
+            _logger.LogInformation("Background job started. MeetingId: {MeetingId}", meetingId);
 
             var meeting = await LoadAsync(meetingId);
             if (meeting == null) return;
@@ -60,20 +61,26 @@ namespace MeetingWeb.Services
 
             try
             {
+                if (string.IsNullOrEmpty(meeting.AudioFileName))
+                    throw new FileNotFoundException($"Meeting {meetingId} has no stored recording.");
+
                 _logger.LogInformation("Dispatching audio file to Python AI API for MeetingId: {MeetingId}", meetingId);
-                var ai = await RunPythonPipelineAsync(audioPath);
+                var ai = await RunPythonPipelineAsync(_audioStorage.GetPath(meeting.AudioFileName));
 
                 // Faz 2: keep the transcript (encrypted) even when the summary failed, so a retry only redoes the summary.
-                if (!string.IsNullOrWhiteSpace(ai?.Transkript)) meeting.Transkript = ai.Transkript;
+                if (!string.IsNullOrWhiteSpace(ai?.Transkript))
+                {
+                    meeting.Transcript ??= new MeetingTranscript();
+                    meeting.Transcript.Text = ai.Transkript;
+                }
 
                 if (ai is { Success: true, Summary: not null })
                 {
                     ApplySummary(meeting, ai.Summary);
-                    meeting.Status = MeetingStatus.Completed;
 
                     // DATA MINIMIZATION (S2/KVKK): the recording has served its purpose once the summary exists.
-                    completedAudio = meeting.AudioFilePath;
-                    meeting.AudioFilePath = null;
+                    completedAudio = meeting.AudioFileName;
+                    meeting.AudioFileName = null;
                 }
                 else
                 {
@@ -107,14 +114,13 @@ namespace MeetingWeb.Services
 
             try
             {
-                if (string.IsNullOrWhiteSpace(meeting.Transkript))
+                if (string.IsNullOrWhiteSpace(meeting.Transcript?.Text))
                     throw new InvalidOperationException("No stored transcript to summarise.");
 
-                var summary = await RequestSummaryAsync(meeting.Transkript);
+                var summary = await RequestSummaryAsync(meeting.Transcript.Text);
                 if (summary != null)
                 {
                     ApplySummary(meeting, summary);
-                    meeting.Status = MeetingStatus.Completed;
                 }
                 else
                 {
@@ -131,10 +137,13 @@ namespace MeetingWeb.Services
             }
         }
 
-        private async Task<MeetingSummary?> LoadAsync(int meetingId)
+        private async Task<Meeting?> LoadAsync(int meetingId)
         {
-            var meeting = await _context.MeetingSummaries
-                .Include(m => m.AksiyonMaddeleri)
+            var meeting = await _context.Meetings
+                .Include(m => m.Transcript)
+                .Include(m => m.Points)
+                .Include(m => m.ActionItems)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(m => m.Id == meetingId);
             if (meeting == null)
                 _logger.LogWarning("MeetingId: {MeetingId} not found in database. Aborting job.", meetingId);
@@ -148,7 +157,7 @@ namespace MeetingWeb.Services
             // Clear EF Core tracked entities to prevent saving corrupted states.
             _context.ChangeTracker.Clear();
 
-            var errorMeeting = await _context.MeetingSummaries.FindAsync(meetingId);
+            var errorMeeting = await _context.Meetings.FindAsync(meetingId);
             if (errorMeeting != null)
             {
                 errorMeeting.Status = MeetingStatus.Failed;
@@ -162,21 +171,34 @@ namespace MeetingWeb.Services
 
         private static bool IsTracked(ActionItem a) => a.IsDone || a.AssigneeUserId != null || a.DueDate != null || a.CompletedByUserId != null;
 
-        private static void ApplySummary(MeetingSummary meeting, AiSummaryData data)
+        private static void ApplySummary(Meeting meeting, AiSummaryData data)
         {
-            if (!string.IsNullOrWhiteSpace(data.ToplantiKonusu)) meeting.ToplantiKonusu = data.ToplantiKonusu;
-            meeting.GorusulenKonular = (data.GorusulenKonular ?? new()).Concat(meeting.GorusulenKonular.Where(ManualEntry.IsManual)).ToList();
-            meeting.AlinanKararlar = (data.AlinanKararlar ?? new()).Concat(meeting.AlinanKararlar.Where(ManualEntry.IsManual)).ToList();
+            if (!string.IsNullOrWhiteSpace(data.ToplantiKonusu)) meeting.Title = data.ToplantiKonusu;
+            meeting.Status = MeetingStatus.Completed;
+            meeting.CompletedAtUtc = DateTime.UtcNow;
 
-            // Entries users added by hand (ManualEntry) survive a regenerated summary.
-            // Earlier AI-generated tasks are replaced (removed items are deleted as orphans). Manual ones stay, and so
-            // do tasks someone has assigned or completed: regenerating the summary must not erase that work.
-            meeting.AksiyonMaddeleri.RemoveAll(a => !ManualEntry.IsManual(a.Text) && !IsTracked(a));
-            var kept = meeting.AksiyonMaddeleri.Select(a => a.Text).ToHashSet();
+            // Lines users added by hand are separate rows and survive a regenerated summary; earlier AI lines are
+            // replaced (removed rows are deleted as orphans).
+            meeting.Points.RemoveAll(p => p.Source == EntrySource.Ai);
+            AddPoints(MeetingPointKind.Topic, data.GorusulenKonular);
+            AddPoints(MeetingPointKind.Decision, data.AlinanKararlar);
+
+            // Earlier AI tasks are replaced too, except those someone has assigned or completed: regenerating the
+            // summary must not erase that work.
+            meeting.ActionItems.RemoveAll(a => a.Source == EntrySource.Ai && !IsTracked(a));
+            var kept = meeting.ActionItems.Where(a => a.Source == EntrySource.Ai).Select(a => a.Text).ToHashSet();
+            var nextOrder = meeting.ActionItems.Select(a => a.SortOrder + 1).DefaultIfEmpty(0).Max();
             foreach (var taskText in data.AksiyonMaddeleri ?? new())
             {
                 if (kept.Contains(taskText)) continue;
-                meeting.AksiyonMaddeleri.Add(new ActionItem { Text = taskText, IsDone = false });
+                meeting.ActionItems.Add(new ActionItem { Text = taskText, Source = EntrySource.Ai, SortOrder = nextOrder++ });
+            }
+
+            void AddPoints(MeetingPointKind kind, List<string>? texts)
+            {
+                var order = 0;
+                foreach (var text in texts ?? new())
+                    meeting.Points.Add(new MeetingPoint { Kind = kind, Text = text, Source = EntrySource.Ai, SortOrder = order++ });
             }
         }
 
@@ -195,11 +217,9 @@ namespace MeetingWeb.Services
 
         // S3: resolve recipients from current workspace membership at send time (not from hub groups),
         // so a member removed from the workspace stops receiving notifications immediately.
-        private async Task NotifyWorkspaceAsync(int meetingId, int? workspaceId)
+        private async Task NotifyWorkspaceAsync(int meetingId, int workspaceId)
         {
-            if (workspaceId == null) return;
-
-            var memberIds = await _context.WorkspaceUsers
+            var memberIds = await _context.WorkspaceMembers
                 .Where(wu => wu.WorkspaceId == workspaceId)
                 .Select(wu => wu.UserId)
                 .ToListAsync();

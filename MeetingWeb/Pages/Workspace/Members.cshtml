@@ -29,14 +29,14 @@
         </h2>
         
         <div class="d-flex gap-2">
-            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && !Model.IsPersonalWorkspace)
+            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner && !Model.IsPersonalWorkspace)
             {
                 <button type="button" class="btn btn-outline-danger fw-bold shadow-sm rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#deleteWorkspaceModal">
                     <i class="bi bi-trash3 me-1"></i> Ekibi Sil
                 </button>
             }
             
-            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner)
+            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner)
             {
                 <a asp-page="/Workspace/Invite" class="btn btn-primary fw-bold shadow-sm rounded-pill px-4">
                     <i class="bi bi-person-plus-fill me-1"></i> Yeni Üye Davet Et
@@ -81,7 +81,7 @@
                                 <div class="fs-5 fw-bold text-dark d-flex align-items-center flex-wrap gap-2 mb-1">
                                     @fullName
                     
-                                    @if (member.Role == MeetingWeb.Models.WorkspaceRoles.Owner)
+                                    @if (member.Role == MeetingWeb.Models.WorkspaceRole.Owner)
                                     {
                                         <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill border border-primary border-opacity-25" style="font-size: 0.75rem;">
                                             <i class="bi bi-star-fill me-1"></i> Kurucu
@@ -108,7 +108,7 @@
                         </div>
 
                         <div class="ms-md-4">
-                            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && member.UserId != Model.CurrentUserId)
+                            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner && member.UserId != Model.CurrentUserId)
                             {
                                 <form method="post" asp-page-handler="RemoveMember" class="d-inline" onsubmit="return confirm('Bu üyeyi ekipten çıkarmak istediğinize emin misiniz?');">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
@@ -118,7 +118,7 @@
                                 </form>
                             }
 
-                            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Member && member.UserId == Model.CurrentUserId)
+                            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Member && member.UserId == Model.CurrentUserId)
                             {
                                 <form method="post" asp-page-handler="LeaveWorkspace" class="d-inline" onsubmit="return confirm('Bu ekipten ayrılmak istediğinize emin misiniz?');">
                                     <button type="submit" class="btn btn-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">
@@ -134,7 +134,7 @@
     </div>
 </div>
 
-@if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner && !Model.IsPersonalWorkspace)
+@if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner && !Model.IsPersonalWorkspace)
 {
     <div class="modal fade" id="deleteWorkspaceModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

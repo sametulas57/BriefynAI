@@ -14,9 +14,9 @@ namespace MeetingWeb.Pages.Workspace
     public class JoinModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public JoinModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public JoinModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _userManager = userManager;
@@ -41,7 +41,7 @@ namespace MeetingWeb.Pages.Workspace
             // Retrieve invitation along with the associated tenant (Workspace) data.
             var invitation = await _context.WorkspaceInvitations
                 .Include(i => i.Workspace)
-                .FirstOrDefaultAsync(i => i.Token == Token);
+                .FirstOrDefaultAsync(i => i.TokenHash == WorkspaceInvitation.HashOf(Token));
 
             // VALIDATION PIPELINE: Check for non-existent, expired, or previously consumed tokens.
             if (invitation == null)
@@ -50,7 +50,7 @@ namespace MeetingWeb.Pages.Workspace
                 return Page();
             }
 
-            if (invitation.IsUsed || invitation.ExpiresAt < DateTime.UtcNow)
+            if (!invitation.IsUsable(DateTime.UtcNow))
             {
                 ErrorMessage = "Bu davet linkinin süresi dolmuş veya daha önce kullanılmış.";
                 return Page();
@@ -67,10 +67,10 @@ namespace MeetingWeb.Pages.Workspace
 
             var invitation = await _context.WorkspaceInvitations
                 .Include(i => i.Workspace)
-                .FirstOrDefaultAsync(i => i.Token == Token);
+                .FirstOrDefaultAsync(i => i.TokenHash == WorkspaceInvitation.HashOf(Token));
 
             // REDUNDANT SECURITY CHECK: Re-validate status before database write to prevent race conditions.
-            if (invitation == null || invitation.IsUsed || invitation.ExpiresAt < DateTime.UtcNow)
+            if (invitation == null || !invitation.IsUsable(DateTime.UtcNow))
             {
                 ErrorMessage = "Bu davet geçerliliğini yitirmiş.";
                 return Page();
@@ -80,23 +80,23 @@ namespace MeetingWeb.Pages.Workspace
             if (userId == null) return RedirectToPage("/Auth/Login");
 
             // IDEMPOTENCY CHECK: Ensure the user is not already a member to prevent duplicate join records.
-            var isAlreadyMember = await _context.WorkspaceUsers
+            var isAlreadyMember = await _context.WorkspaceMembers
                 .AnyAsync(wu => wu.WorkspaceId == invitation.WorkspaceId && wu.UserId == userId);
 
             if (!isAlreadyMember)
             {
                 // Assign the user with the default 'Member' role.
-                var workspaceUser = new WorkspaceUser
+                _context.WorkspaceMembers.Add(new WorkspaceMember
                 {
                     WorkspaceId = invitation.WorkspaceId,
                     UserId = userId,
-                    Role = WorkspaceRoles.Member
-                };
-                _context.WorkspaceUsers.Add(workspaceUser);
+                    Role = WorkspaceRole.Member
+                });
             }
 
             // CONSUME TOKEN: Mark as used to enforce the single-use security policy.
-            invitation.IsUsed = true;
+            invitation.UsedAtUtc = DateTime.UtcNow;
+            invitation.UsedByUserId = userId;
             await _context.SaveChangesAsync();
 
             // CONTEXT SWITCH: Immediately update the session to reflect the new workspace as active.

@@ -1,26 +1,21 @@
-﻿using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MeetingWeb.Models
 {
-    // Entity representing a user comment or reply within a meeting summary.
-    public class MeetingComment
+    // Entity representing a user comment or reply within a meeting.
+    public class Comment
     {
         [Key]
         public int Id { get; set; }
 
-        [Required]
         public int MeetingId { get; set; }
-
-        [ForeignKey("MeetingId")]
-        public MeetingSummary? Meeting { get; set; }
+        public Meeting? Meeting { get; set; }
 
         [Required]
+        [MaxLength(450)]
         public string UserId { get; set; } = string.Empty;
-
-        [ForeignKey("UserId")]
-        public IdentityUser? User { get; set; }
+        public ApplicationUser? User { get; set; }
 
         // Longest comment a user may write; checked in the page handler. The column itself has no limit because it
         // stores ciphertext, which is longer than the text.
@@ -29,16 +24,14 @@ namespace MeetingWeb.Models
         [Required(ErrorMessage = "Comment content cannot be empty.")]
         public string Content { get; set; } = string.Empty;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
         // Self-referencing foreign key to support nested/hierarchical reply threads.
         public int? ParentCommentId { get; set; }
-
-        [ForeignKey("ParentCommentId")]
-        public MeetingComment? ParentComment { get; set; }
+        public Comment? ParentComment { get; set; }
 
         // Navigation property for child replies in the thread.
-        public ICollection<MeetingComment> Replies { get; set; } = new List<MeetingComment>();
+        public ICollection<Comment> Replies { get; set; } = new List<Comment>();
 
         // Navigation property for user reactions (likes/dislikes).
         public ICollection<CommentReaction> Reactions { get; set; } = new List<CommentReaction>();

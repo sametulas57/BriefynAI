@@ -4,18 +4,23 @@ using MeetingWeb.Models;
 
 namespace MeetingWeb.Data
 {
-    public class ApplicationDbContext : IdentityDbContext
+    // Schema v2 (ADR-0009). Rules that must hold even when two requests race (one reaction per user, one personal
+    // space per user, unique phone and invitation) live in the database, not only in code.
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
         }
 
-        public DbSet<MeetingSummary> MeetingSummaries { get; set; }
         public DbSet<Workspace> Workspaces { get; set; }
-        public DbSet<WorkspaceUser> WorkspaceUsers { get; set; }
+        public DbSet<WorkspaceMember> WorkspaceMembers { get; set; }
         public DbSet<WorkspaceInvitation> WorkspaceInvitations { get; set; }
-        public DbSet<MeetingComment> MeetingComments { get; set; }
+        public DbSet<Meeting> Meetings { get; set; }
+        public DbSet<MeetingTranscript> MeetingTranscripts { get; set; }
+        public DbSet<MeetingPoint> MeetingPoints { get; set; }
+        public DbSet<ActionItem> ActionItems { get; set; }
+        public DbSet<Comment> Comments { get; set; }
         public DbSet<CommentReaction> CommentReactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -23,63 +28,103 @@ namespace MeetingWeb.Data
             // Required for Identity framework configuration.
             base.OnModelCreating(builder);
 
-            var stringConverter = new EncryptedConverter();
-            var listConverter = new EncryptedStringListConverter();
+            builder.Entity<ApplicationUser>(u =>
+            {
+                u.Property(x => x.PhoneNumber).HasMaxLength(20);
+                u.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("[PhoneNumber] IS NOT NULL AND [PhoneNumber] <> ''");
+            });
 
-            // Encrypt sensitive meeting topics in the database.
-            builder.Entity<MeetingSummary>()
-                .Property(m => m.ToplantiKonusu)
-                .HasConversion(stringConverter);
+            builder.Entity<Workspace>(w =>
+            {
+                w.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                w.HasIndex(x => x.CreatedByUserId).IsUnique().HasFilter("[IsPersonal] = 1").HasDatabaseName("IX_Workspaces_PersonalPerUser");
+            });
 
-            builder.Entity<MeetingSummary>()
-                .Property(m => m.Transkript)
-                .HasConversion(stringConverter);
+            builder.Entity<WorkspaceMember>(m =>
+            {
+                m.HasKey(x => new { x.WorkspaceId, x.UserId });
+                m.HasOne(x => x.Workspace).WithMany(w => w.Members).HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+                m.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                m.HasIndex(x => x.UserId);
+                m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)"));
+            });
 
-            // Encrypt sensitive lists (discussed topics and decisions).
-            builder.Entity<MeetingSummary>()
-                .Property(m => m.GorusulenKonular)
-                .HasConversion(listConverter);
+            builder.Entity<WorkspaceInvitation>(i =>
+            {
+                i.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+                i.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                i.HasOne(x => x.UsedBy).WithMany().HasForeignKey(x => x.UsedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                i.HasIndex(x => x.TokenHash).IsUnique();
+            });
 
-            builder.Entity<MeetingSummary>()
-                .Property(m => m.AlinanKararlar)
-                .HasConversion(listConverter);
+            builder.Entity<Meeting>(m =>
+            {
+                m.Property(x => x.Title).HasConversion(new EncryptedConverter("Meetings.Title"));
+                m.HasOne(x => x.Workspace).WithMany(w => w.Meetings).HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+                m.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                // History lists a workspace's meetings newest first.
+                m.HasIndex(x => new { x.WorkspaceId, x.CreatedAtUtc });
+                m.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
+                    t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1)");
+                });
+            });
 
-            // Encrypt action item texts.
-            builder.Entity<ActionItem>()
-                .Property(a => a.Text)
-                .HasConversion(stringConverter);
+            builder.Entity<MeetingTranscript>(t =>
+            {
+                t.HasKey(x => x.MeetingId);
+                t.Property(x => x.Text).HasConversion(new EncryptedConverter("MeetingTranscripts.Text"));
+                t.HasOne(x => x.Meeting).WithOne(m => m.Transcript).HasForeignKey<MeetingTranscript>(x => x.MeetingId).OnDelete(DeleteBehavior.Cascade);
+            });
 
-            // "Bana atananlar" looks tasks up by assignee.
-            builder.Entity<ActionItem>()
-                .HasIndex(a => a.AssigneeUserId);
+            builder.Entity<MeetingPoint>(p =>
+            {
+                p.Property(x => x.Text).HasConversion(new EncryptedConverter("MeetingPoints.Text"));
+                p.HasOne(x => x.Meeting).WithMany(m => m.Points).HasForeignKey(x => x.MeetingId).OnDelete(DeleteBehavior.Cascade);
+                p.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                p.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2)");
+                    t.HasCheckConstraint("CK_MeetingPoints_Source", "[Source] IN (1, 2)");
+                });
+            });
 
-            // Configure composite primary key for the many-to-many Workspace-User relationship.
-            builder.Entity<WorkspaceUser>()
-                .HasKey(wu => new { wu.WorkspaceId, wu.UserId });
+            builder.Entity<ActionItem>(a =>
+            {
+                a.Property(x => x.Text).HasConversion(new EncryptedConverter("ActionItems.Text"));
+                a.HasOne(x => x.Meeting).WithMany(m => m.ActionItems).HasForeignKey(x => x.MeetingId).OnDelete(DeleteBehavior.Cascade);
+                a.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                a.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssigneeUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                a.HasOne(x => x.CompletedBy).WithMany().HasForeignKey(x => x.CompletedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                // "Bana atananlar" looks tasks up by assignee.
+                a.HasIndex(x => x.AssigneeUserId);
+                a.ToTable(t => t.HasCheckConstraint("CK_ActionItems_Source", "[Source] IN (1, 2)"));
+            });
 
-            // Configure the Workspace side of the relationship.
-            builder.Entity<WorkspaceUser>()
-                .HasOne(wu => wu.Workspace)
-                .WithMany(w => w.WorkspaceUsers)
-                .HasForeignKey(wu => wu.WorkspaceId);
+            builder.Entity<Comment>(c =>
+            {
+                // Comments discuss meeting content, so they are encrypted too.
+                c.Property(x => x.Content).HasConversion(new EncryptedConverter("Comments.Content"));
+                c.HasOne(x => x.Meeting).WithMany(m => m.Comments).HasForeignKey(x => x.MeetingId).OnDelete(DeleteBehavior.Cascade);
+                c.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.ClientCascade);
+                // Replies are removed with their thread by the meeting cascade or by the delete handler.
+                c.HasOne(x => x.ParentComment).WithMany(x => x.Replies).HasForeignKey(x => x.ParentCommentId).OnDelete(DeleteBehavior.ClientCascade);
+            });
 
-            // Configure the User side of the relationship.
-            builder.Entity<WorkspaceUser>()
-                .HasOne(wu => wu.User)
-                .WithMany()
-                .HasForeignKey(wu => wu.UserId);
+            builder.Entity<CommentReaction>(r =>
+            {
+                r.HasOne(x => x.Comment).WithMany(c => c.Reactions).HasForeignKey(x => x.CommentId).OnDelete(DeleteBehavior.Cascade);
+                r.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.ClientCascade);
+                r.HasIndex(x => new { x.CommentId, x.UserId }).IsUnique();
+            });
 
-            // Comments discuss meeting content, so they are encrypted too (older plain comments stay readable).
-            builder.Entity<MeetingComment>()
-                .Property(c => c.Content)
-                .HasConversion(new EncryptedOrPlainTextConverter());
-
-            // Prevent cascade delete on nested comments to maintain comment history integrity.
-            builder.Entity<MeetingComment>()
-                .HasOne(c => c.ParentComment)
-                .WithMany(c => c.Replies)
-                .HasForeignKey(c => c.ParentCommentId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // SQLite (tests) cannot generate rowversion values; there the column is a plain, unchecked value.
+            if (!Database.IsSqlServer())
+            {
+                builder.Entity<Meeting>().Property(x => x.RowVersion).IsConcurrencyToken(false).ValueGeneratedNever();
+                builder.Entity<ActionItem>().Property(x => x.RowVersion).IsConcurrencyToken(false).ValueGeneratedNever();
+            }
         }
     }
 }

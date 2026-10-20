@@ -14,11 +14,11 @@ namespace MeetingWeb.Pages
     public class HistoryModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAudioStorage _audioStorage;
         private readonly IActiveWorkspaceService _activeWorkspace;
 
-        public HistoryModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage,
+        public HistoryModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IAudioStorage audioStorage,
             IActiveWorkspaceService activeWorkspace)
         {
             _activeWorkspace = activeWorkspace;
@@ -27,7 +27,7 @@ namespace MeetingWeb.Pages
             _audioStorage = audioStorage;
         }
 
-        public IList<MeetingSummary> MeetingSummaries { get; set; } = default!;
+        public IList<Meeting> Meetings { get; set; } = default!;
 
         // Role-Based Access Control (RBAC) flag for UI rendering (e.g., Delete button).
         public bool IsOwner { get; set; } = false;
@@ -51,47 +51,49 @@ namespace MeetingWeb.Pages
             int? activeWorkspaceId = workspaceUser?.WorkspaceId;
 
             // Flag evaluation for privileged UI actions.
-            if (workspaceUser != null && workspaceUser.Role == WorkspaceRoles.Owner)
+            if (workspaceUser != null && workspaceUser.Role == WorkspaceRole.Owner)
             {
                 IsOwner = true;
             }
 
             // --- PHASE 1: DATABASE (SQL) FILTERING ---
             // Perform queries ONLY on unencrypted indexing columns (Tenant ID, Dates).
-            var sqlQuery = _context.MeetingSummaries
+            // Topic lines are loaded for the card preview and the search; the transcript stays in its own table.
+            var sqlQuery = _context.Meetings
+                .Include(m => m.Points.Where(p => p.Kind == MeetingPointKind.Topic))
                 .Where(m => m.WorkspaceId == activeWorkspaceId)
                 .AsQueryable();
 
             if (StartDate.HasValue)
             {
-                sqlQuery = sqlQuery.Where(m => m.CreatedDate >= StartDate.Value.Date);
+                sqlQuery = sqlQuery.Where(m => m.CreatedAtUtc >= StartDate.Value.Date);
             }
 
             if (EndDate.HasValue)
             {
                 var endOfSelectedDay = EndDate.Value.Date.AddDays(1);
-                sqlQuery = sqlQuery.Where(m => m.CreatedDate < endOfSelectedDay);
+                sqlQuery = sqlQuery.Where(m => m.CreatedAtUtc < endOfSelectedDay);
             }
 
             // Execute SQL query and decrypt data sequentially into RAM.
             var decryptedMeetings = await sqlQuery
-                .OrderByDescending(m => m.CreatedDate)
+                .OrderByDescending(m => m.CreatedAtUtc)
                 .ToListAsync();
 
             // --- PHASE 2: IN-MEMORY (RAM) FILTERING ---
             // Execute string manipulation/search ONLY after data is decrypted in memory.
             if (!string.IsNullOrWhiteSpace(SearchString))
             {
-                MeetingSummaries = decryptedMeetings
+                Meetings = decryptedMeetings
                     .Where(m =>
-                        (!string.IsNullOrEmpty(m.ToplantiKonusu) && m.ToplantiKonusu.Contains(SearchString, StringComparison.OrdinalIgnoreCase)) ||
-                        (m.GorusulenKonular != null && m.GorusulenKonular.Any(k => k.Contains(SearchString, StringComparison.OrdinalIgnoreCase)))
+                        (!string.IsNullOrEmpty(m.Title) && m.Title.Contains(SearchString, StringComparison.OrdinalIgnoreCase)) ||
+                        m.Points.Any(p => p.Text.Contains(SearchString, StringComparison.OrdinalIgnoreCase))
                     )
                     .ToList();
             }
             else
             {
-                MeetingSummaries = decryptedMeetings;
+                Meetings = decryptedMeetings;
             }
         }
 
@@ -104,8 +106,8 @@ namespace MeetingWeb.Pages
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
 
             // SECURITY FIREWALL: Re-verify ownership status to prevent explicit POST attacks.
-            var isOwner = await _context.WorkspaceUsers
-                .AnyAsync(wu => wu.UserId == userId && wu.WorkspaceId == activeWorkspaceId && wu.Role == WorkspaceRoles.Owner);
+            var isOwner = await _context.WorkspaceMembers
+                .AnyAsync(wu => wu.UserId == userId && wu.WorkspaceId == activeWorkspaceId && wu.Role == WorkspaceRole.Owner);
 
             if (!isOwner)
             {
@@ -114,14 +116,14 @@ namespace MeetingWeb.Pages
             }
 
             // Ensure the meeting strictly belongs to the current tenant scope.
-            var meeting = await _context.MeetingSummaries
+            var meeting = await _context.Meetings
                 .FirstOrDefaultAsync(m => m.Id == id && m.WorkspaceId == activeWorkspaceId);
 
             if (meeting != null)
             {
-                _context.MeetingSummaries.Remove(meeting);
+                _context.Meetings.Remove(meeting);
                 await _context.SaveChangesAsync();
-                _audioStorage.Delete(meeting.AudioFilePath);
+                _audioStorage.Delete(meeting.AudioFileName);
 
                 TempData["StatusMessage"] = "Toplantı özeti kalıcı olarak silindi.";
             }

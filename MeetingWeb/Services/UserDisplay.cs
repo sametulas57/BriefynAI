@@ -1,10 +1,16 @@
 namespace MeetingWeb.Services
 {
-    // Avatar fallback shown when a user has no photo: first letters of the first and last name, or the first two letters.
+    // How users are shown: name fallback, initials for the avatar placeholder, and the public photo URL.
     public static class UserDisplay
     {
         // Shown wherever a user has no name on their profile.
         public const string UnknownName = "İsimsiz Üye";
+
+        // Avatars are the only public uploads (see the /uploads guard in Program.cs).
+        public const string AvatarUrlPath = "/uploads/avatars";
+
+        public static string AvatarUrl(string? avatarFileName) =>
+            string.IsNullOrEmpty(avatarFileName) ? "" : $"{AvatarUrlPath}/{avatarFileName}";
 
         public static string Initials(string fullName)
         {

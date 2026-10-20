@@ -1,6 +1,6 @@
 # ADR-0006: Veritabanı: uygulama kendi kullanıcısıyla, port yalnız yerel
 
-- Durum: Kabul edildi · Tarih: 2026-10-17
+- Durum: Yetki kısmının yerini aldı: ADR-0009 (şema ayrı `migrate` adımında, `briefyn_app` yalnız okur/yazar) · Tarih: 2026-10-17
 
 ## Bağlam
 Uygulama `sa` ile bağlanıyordu, 1433 bütün ağ arayüzlerinde açıktı.

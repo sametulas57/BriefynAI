@@ -14,9 +14,9 @@ namespace MeetingWeb.Pages
     public class MyActionsModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public MyActionsModel(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public MyActionsModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _userManager = userManager;
@@ -35,18 +35,17 @@ namespace MeetingWeb.Pages
             var tasks = await MyTasks(userId)
                 .Select(a => new
                 {
-                    a.Id, a.Text, a.DueDate, a.IsDone, a.CompletedAtUtc,
-                    Team = a.MeetingSummary!.Workspace!.Name,
-                    MeetingId = a.MeetingSummaryId,
-                    Meeting = a.MeetingSummary.ToplantiKonusu,
-                    MeetingDate = a.MeetingSummary.CreatedDate
+                    a.Id, a.Text, a.DueDate, a.CompletedAtUtc,
+                    Team = a.Meeting!.Workspace!.Name,
+                    a.MeetingId,
+                    Meeting = a.Meeting.Title,
+                    MeetingDate = a.Meeting.CreatedAtUtc
                 })
                 .ToListAsync();
 
-            // Texts are encrypted, so they are shaped after loading; manual tasks carry "|~|authorId".
             var list = tasks
-                .Select(t => new AssignedTask(t.Id, ManualEntry.TextOf(t.Text), t.Team, t.MeetingId, t.Meeting, t.MeetingDate,
-                    t.DueDate, t.IsDone, t.CompletedAtUtc))
+                .Select(t => new AssignedTask(t.Id, t.Text, t.Team, t.MeetingId, t.Meeting, t.MeetingDate,
+                    t.DueDate, t.CompletedAtUtc != null, t.CompletedAtUtc))
                 .ToList();
 
             Open = list.Where(t => !t.IsDone)
@@ -70,7 +69,15 @@ namespace MeetingWeb.Pages
             }
 
             task.SetDone(done, userId);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                TempData["ErrorMessage"] = "Bu görev bu arada başka biri tarafından değiştirildi. Güncel hâli aşağıda; isterseniz tekrar deneyin.";
+                return RedirectToPage();
+            }
 
             TempData["StatusMessage"] = done
                 ? "Görev tamamlandı olarak işaretlendi. Toplantı özetinde de adınızla görünüyor."
@@ -80,9 +87,9 @@ namespace MeetingWeb.Pages
 
         // Tasks assigned to the user in meetings of teams they are still a member of.
         private IQueryable<ActionItem> MyTasks(string? userId) =>
-            _context.Set<ActionItem>().Where(a =>
+            _context.ActionItems.Where(a =>
                 userId != null &&
                 a.AssigneeUserId == userId &&
-                _context.WorkspaceUsers.Any(wu => wu.WorkspaceId == a.MeetingSummary!.WorkspaceId && wu.UserId == userId));
+                _context.WorkspaceMembers.Any(wu => wu.WorkspaceId == a.Meeting!.WorkspaceId && wu.UserId == userId));
     }
 }

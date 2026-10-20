@@ -21,12 +21,15 @@ namespace MeetingWeb.Tests.Security
 
         public EmailTests(EmailFixture fixture) => _app = fixture.Factory;
 
-        private static MeetingSummary Hostile() => new()
+        private static Meeting Hostile() => new()
         {
-            ToplantiKonusu = "<script>alert('konu')</script>",
-            GorusulenKonular = new List<string> { "<img src=x onerror=alert(1)>|~|user-1" },
-            AlinanKararlar = new List<string> { "<a href=\"https://evil.test\">tıkla</a>" },
-            AksiyonMaddeleri = new List<ActionItem> { new() { Text = "<b>görev</b>|~|user-2" } }
+            Title = "<script>alert('konu')</script>",
+            Points = new List<MeetingPoint>
+            {
+                new() { Kind = MeetingPointKind.Topic, Text = "<img src=x onerror=alert(1)>", Source = EntrySource.Manual, CreatedByUserId = "user-1" },
+                new() { Kind = MeetingPointKind.Decision, Text = "<a href=\"https://evil.test\">tıkla</a>" }
+            },
+            ActionItems = new List<ActionItem> { new() { Text = "<b>görev</b>", Source = EntrySource.Manual, CreatedByUserId = "user-2" } }
         };
 
         [Fact]
@@ -45,7 +48,7 @@ namespace MeetingWeb.Tests.Security
         [Fact]
         public void Subject_cannot_carry_extra_header_lines()
         {
-            var subject = EmailService.BuildSubject(new MeetingSummary { ToplantiKonusu = "Konu\r\nBcc: victim@evil.test" });
+            var subject = EmailService.BuildSubject(new Meeting { Title = "Konu\r\nBcc: victim@evil.test" });
 
             Assert.DoesNotContain("\r", subject);
             Assert.DoesNotContain("\n", subject);

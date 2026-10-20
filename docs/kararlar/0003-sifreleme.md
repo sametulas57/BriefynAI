@@ -1,6 +1,6 @@
 # ADR-0003: Şifreleme: AES-256-GCM (v2)
 
-- Durum: Kabul edildi · Tarih: 2026-10-17
+- Durum: Biçim kısmının yerini aldı: ADR-0010 · Tarih: 2026-10-17
 
 ## Bağlam
 Eski AES-CBC anahtarı 16 Ekim'e kadar public repo geçmişindeydi; CBC bütünlük sağlamıyor.

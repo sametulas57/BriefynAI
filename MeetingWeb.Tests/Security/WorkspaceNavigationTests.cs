@@ -14,7 +14,7 @@ namespace MeetingWeb.Tests.Security
             // Alice also belongs to workspace B, so she can switch between two companies.
             Factory.WithDb(db =>
             {
-                db.WorkspaceUsers.Add(new WorkspaceUser { WorkspaceId = Factory.Seed.WorkspaceB, UserId = Factory.Seed.AliceId, Role = "Üye" });
+                db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = Factory.Seed.WorkspaceB, UserId = Factory.Seed.AliceId, Role = WorkspaceRole.Member });
                 return db.SaveChanges();
             });
         }

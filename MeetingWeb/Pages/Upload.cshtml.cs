@@ -15,7 +15,7 @@ namespace MeetingWeb.Pages
     public class UploadModel : PageModel
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAudioStorage _audioStorage;
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IActiveWorkspaceService _activeWorkspace;
@@ -24,7 +24,7 @@ namespace MeetingWeb.Pages
         // Shown on the page and checked in the browser before uploading.
         public int MaxMegabytes => _configuration.GetValue("Upload:MaxMegabytes", 300);
 
-        public UploadModel(ApplicationDbContext context, UserManager<IdentityUser> userManager, IAudioStorage audioStorage,
+        public UploadModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IAudioStorage audioStorage,
             IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace, IConfiguration configuration)
         {
             _configuration = configuration;
@@ -81,20 +81,21 @@ namespace MeetingWeb.Pages
             var storedName = await _audioStorage.SaveAsync(UploadFile);
 
             // 4. ENTITY CREATION: Provision the draft meeting in the database (Strictly UTC for consistency).
-            var draftMeeting = new MeetingSummary
+            var draftMeeting = new Meeting
             {
-                ToplantiKonusu = UploadFile.FileName,
-                CreatedDate = DateTime.UtcNow,
-                WorkspaceId = activeWorkspaceId,
+                Title = UploadFile.FileName,
+                WorkspaceId = activeWorkspaceId.Value,
                 Status = MeetingStatus.Processing,
-                AudioFilePath = storedName
+                Source = MeetingSource.Upload,
+                AudioFileName = storedName,
+                CreatedByUserId = userId
             };
 
-            _context.MeetingSummaries.Add(draftMeeting);
+            _context.Meetings.Add(draftMeeting);
             await _context.SaveChangesAsync();
 
-            // 5. BACKGROUND DELEGATION: Offload the heavy AI processing to Hangfire.
-            _backgroundJobClient.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(draftMeeting.Id, _audioStorage.GetPath(storedName)));
+            // 5. BACKGROUND DELEGATION: Offload the heavy AI processing to Hangfire (the job carries only the id).
+            _backgroundJobClient.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(draftMeeting.Id));
 
             // 6. UX ROUTING: Immediately redirect to the Details page for Real-Time SignalR tracking.
             return RedirectToPage("/Details", new { id = draftMeeting.Id });
