@@ -58,6 +58,16 @@ namespace MeetingWeb.Tests.Security
             Assert.Equal(EncryptionHelper.DecryptionFailedMarker, EncryptionHelper.Decrypt("bozuk-veri-bozuk-veri", "Meetings.Title"));
         }
 
+        // Found in review: an out-of-range key id threw instead of showing the marker, breaking the whole page.
+        [Theory]
+        [InlineData("v3:2147483648:AAAA")]
+        [InlineData("v3:9:AAAA")]
+        [InlineData("v3:x:AAAA")]
+        public void Unknown_or_malformed_key_ids_are_flagged(string value)
+        {
+            Assert.Equal(EncryptionHelper.DecryptionFailedMarker, EncryptionHelper.Decrypt(value, "Meetings.Title"));
+        }
+
         [Fact]
         public void Encrypted_columns_have_no_length_limit()
         {

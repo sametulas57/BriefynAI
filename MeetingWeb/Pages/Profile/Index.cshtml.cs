@@ -108,7 +108,7 @@ namespace MeetingWeb.Pages.Profile
 
             user.PhoneNumber = string.IsNullOrWhiteSpace(ProfileInput.PhoneNumber) ? null : ProfileInput.PhoneNumber;
             user.FullName = ProfileInput.FullName;
-            await _userManager.UpdateAsync(user);
+            if (!await TryUpdateAsync(user)) return RedirectToPage();
 
             // Refresh the authentication cookie so the new name shows in the layout.
             await _signInManager.RefreshSignInAsync(user);
@@ -167,7 +167,7 @@ namespace MeetingWeb.Pages.Profile
 
                 var previous = user.AvatarFileName;
                 user.AvatarFileName = fileName;
-                if (!(await _userManager.UpdateAsync(user)).Succeeded)
+                if (!await TryUpdateAsync(user))
                 {
                     // The profile still points at the previous photo, so that one stays and the new file goes.
                     DeleteAvatarFile(fileName);
@@ -192,9 +192,10 @@ namespace MeetingWeb.Pages.Profile
 
             if (user.AvatarFileName != null)
             {
-                DeleteAvatarFile(user.AvatarFileName);
+                var previous = user.AvatarFileName;
                 user.AvatarFileName = null;
-                await _userManager.UpdateAsync(user);
+                if (!await TryUpdateAsync(user)) return RedirectToPage();
+                DeleteAvatarFile(previous);
                 await _signInManager.RefreshSignInAsync(user);
             }
 
@@ -209,6 +210,22 @@ namespace MeetingWeb.Pages.Profile
             ProfilePictureUrl = UserDisplay.AvatarUrl(user.AvatarFileName);
             Initials = UserDisplay.Initials(user.FullName);
             return Task.CompletedTask;
+        }
+
+        // Saves the profile; on failure (the phone number was just taken by another account, or the account changed
+        // meanwhile) nothing is saved and the user is told so.
+        private async Task<bool> TryUpdateAsync(ApplicationUser user)
+        {
+            try
+            {
+                if ((await _userManager.UpdateAsync(user)).Succeeded) return true;
+                TempData["ErrorMessage"] = "Profiliniz bu arada değişti, kaydedilemedi. Sayfayı yenileyip tekrar deneyin.";
+            }
+            catch (DbUpdateException)
+            {
+                TempData["ErrorMessage"] = "Bu telefon numarası başka bir hesap tarafından kullanılıyor.";
+            }
+            return false;
         }
 
         // File names come from our own column, but Path.GetFileName keeps the delete inside the avatar folder.
