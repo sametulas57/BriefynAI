@@ -275,6 +275,8 @@ try
 catch (Exception ex)
 {
     Log.Fatal(ex, "Uygulama beklenmedik şekilde çöktü!");
+    // A failed "migrate" must not look successful to Docker Compose, which would then start the web service.
+    Environment.ExitCode = 1;
 }
 finally
 {

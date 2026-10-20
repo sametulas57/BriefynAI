@@ -167,7 +167,12 @@ namespace MeetingWeb.Pages.Profile
 
                 var previous = user.AvatarFileName;
                 user.AvatarFileName = fileName;
-                await _userManager.UpdateAsync(user);
+                if (!(await _userManager.UpdateAsync(user)).Succeeded)
+                {
+                    // The profile still points at the previous photo, so that one stays and the new file goes.
+                    DeleteAvatarFile(fileName);
+                    return new JsonResult(new { success = false, message = "Fotoğraf kaydedilemedi. Lütfen tekrar deneyin." });
+                }
                 DeleteAvatarFile(previous);
 
                 await _signInManager.RefreshSignInAsync(user);
