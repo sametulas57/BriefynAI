@@ -45,7 +45,7 @@ namespace MeetingWeb.Pages
 
             // Texts are encrypted, so they are shaped after loading; manual tasks carry "|~|authorId".
             var list = tasks
-                .Select(t => new AssignedTask(t.Id, t.Text.Split("|~|")[0], t.Team, t.MeetingId, t.Meeting, t.MeetingDate,
+                .Select(t => new AssignedTask(t.Id, ManualEntry.TextOf(t.Text), t.Team, t.MeetingId, t.Meeting, t.MeetingDate,
                     t.DueDate, t.IsDone, t.CompletedAtUtc))
                 .ToList();
 

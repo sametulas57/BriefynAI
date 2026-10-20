@@ -15,6 +15,6 @@ namespace MeetingWeb.Models
         // Role-Based Access Control (RBAC) identifier within the workspace.
         [Required]
         [MaxLength(50)]
-        public string Role { get; set; } = "Üye";
+        public string Role { get; set; } = WorkspaceRoles.Member;
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Auth
 {
@@ -92,7 +93,7 @@ namespace MeetingWeb.Pages.Auth
                 if (result.Succeeded)
                 {
                     // Inject FullName into the authentication token (Claims) for immediate UI rendering.
-                    await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim("FullName", Input.FullName));
+                    await _userManager.AddClaimAsync(user, new System.Security.Claims.Claim(UserClaimTypes.FullName, Input.FullName));
 
                     // ZERO-FRICTION ONBOARDING: Automatically provision a default isolated Workspace.
                     var personalWorkspace = new MeetingWeb.Models.Workspace
@@ -108,13 +109,13 @@ namespace MeetingWeb.Pages.Auth
                     {
                         WorkspaceId = personalWorkspace.Id,
                         UserId = user.Id,
-                        Role = "Sahip"
+                        Role = WorkspaceRoles.Owner
                     };
                     _context.WorkspaceUsers.Add(workspaceUser);
                     await _context.SaveChangesAsync();
 
                     // State management: Inject the new WorkspaceId into the user's active session.
-                    HttpContext.Session.SetInt32("ActiveWorkspaceId", personalWorkspace.Id);
+                    HttpContext.Session.SetInt32(ActiveWorkspaceService.SessionKey, personalWorkspace.Id);
 
                     // Authenticate the user bypassing the login screen and redirect to dashboard.
                     await _signInManager.SignInAsync(user, isPersistent: false);

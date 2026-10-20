@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Workspace
 {
@@ -89,7 +90,7 @@ namespace MeetingWeb.Pages.Workspace
                 {
                     WorkspaceId = invitation.WorkspaceId,
                     UserId = userId,
-                    Role = "Üye"
+                    Role = WorkspaceRoles.Member
                 };
                 _context.WorkspaceUsers.Add(workspaceUser);
             }
@@ -99,7 +100,7 @@ namespace MeetingWeb.Pages.Workspace
             await _context.SaveChangesAsync();
 
             // CONTEXT SWITCH: Immediately update the session to reflect the new workspace as active.
-            HttpContext.Session.SetInt32("ActiveWorkspaceId", invitation.WorkspaceId);
+            HttpContext.Session.SetInt32(ActiveWorkspaceService.SessionKey, invitation.WorkspaceId);
 
             TempData["StatusMessage"] = $"Tebrikler! '{invitation.Workspace?.Name}' ekibine başarıyla katıldınız.";
 

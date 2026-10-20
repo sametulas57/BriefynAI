@@ -2,7 +2,7 @@
 using System.Text;
 using Microsoft.Extensions.Configuration;
 
-namespace MeetingWeb.Helpers
+namespace MeetingWeb.Services
 {
     // Static utility class for at-rest encryption of meeting content (used by the EF Core value converters).
     //

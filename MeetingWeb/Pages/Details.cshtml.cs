@@ -101,8 +101,8 @@ namespace MeetingWeb.Pages
             var manualIds = Meeting.GorusulenKonular
                 .Concat(Meeting.AlinanKararlar)
                 .Concat(Meeting.AksiyonMaddeleri.Select(a => a.Text))
-                .Where(t => t.Contains("|~|"))
-                .Select(t => t.Split("|~|")[1]);
+                .Where(ManualEntry.IsManual)
+                .Select(t => ManualEntry.AuthorOf(t)!);
 
             allRelevantUserIds.AddRange(manualIds);
 
@@ -121,16 +121,10 @@ namespace MeetingWeb.Pages
             foreach (var uid in allRelevantUserIds)
             {
                 var userClaims = claims.Where(c => c.UserId == uid).ToList();
-                var fullName = userClaims.FirstOrDefault(c => c.ClaimType == "FullName")?.ClaimValue ?? "İsimsiz Üye";
-                var avatarUrl = userClaims.FirstOrDefault(c => c.ClaimType == "AvatarUrl")?.ClaimValue ?? "";
+                var fullName = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.FullName)?.ClaimValue ?? "İsimsiz Üye";
+                var avatarUrl = userClaims.FirstOrDefault(c => c.ClaimType == UserClaimTypes.AvatarUrl)?.ClaimValue ?? "";
 
-                // Fallback avatar generation logic (Initials).
-                var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var initials = nameParts.Length > 1
-                    ? (nameParts[0][0].ToString() + nameParts[nameParts.Length - 1][0].ToString()).ToUpper()
-                    : (fullName.Length > 1 ? fullName.Substring(0, 2).ToUpper() : fullName.ToUpper());
-
-                UserProfiles[uid] = new UserProfileData { FullName = fullName, Initials = initials, AvatarUrl = avatarUrl };
+                UserProfiles[uid] = new UserProfileData { FullName = fullName, Initials = UserDisplay.Initials(fullName), AvatarUrl = avatarUrl };
             }
 
             return Page();
@@ -288,7 +282,7 @@ namespace MeetingWeb.Pages
                 var updatedList = meeting.GorusulenKonular.ToList();
 
                 // Append the user ID using the delimiter for future author resolution.
-                updatedList.Add($"{topic}|~|{userId}");
+                updatedList.Add(ManualEntry.Create(topic, userId));
 
                 meeting.GorusulenKonular = updatedList;
                 _context.MeetingSummaries.Update(meeting);
@@ -309,7 +303,7 @@ namespace MeetingWeb.Pages
                 meeting.AlinanKararlar ??= new List<string>();
                 var updatedList = meeting.AlinanKararlar.ToList();
 
-                updatedList.Add($"{decision}|~|{userId}");
+                updatedList.Add(ManualEntry.Create(decision, userId));
 
                 meeting.AlinanKararlar = updatedList;
                 _context.MeetingSummaries.Update(meeting);
@@ -330,7 +324,7 @@ namespace MeetingWeb.Pages
 
             if (meeting != null)
             {
-                meeting.AksiyonMaddeleri.Add(new ActionItem { Text = $"{actionText}|~|{userId}", IsDone = false });
+                meeting.AksiyonMaddeleri.Add(new ActionItem { Text = ManualEntry.Create(actionText, userId), IsDone = false });
                 await _context.SaveChangesAsync();
             }
             return RedirectToPage(new { id = meetingId });
@@ -361,7 +355,7 @@ namespace MeetingWeb.Pages
 
         private async Task<string> FullNameAsync(string? userId) =>
             await _context.UserClaims
-                .Where(c => c.UserId == userId && c.ClaimType == "FullName")
+                .Where(c => c.UserId == userId && c.ClaimType == UserClaimTypes.FullName)
                 .Select(c => c.ClaimValue)
                 .FirstOrDefaultAsync() ?? "İsimsiz Üye";
 

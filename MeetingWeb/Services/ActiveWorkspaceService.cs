@@ -43,7 +43,7 @@ namespace MeetingWeb.Services
 
             // Fallback: prefer a workspace the user owns, then the oldest one.
             membership ??= await memberships
-                .OrderByDescending(wu => wu.Role == "Sahip")
+                .OrderByDescending(wu => wu.Role == WorkspaceRoles.Owner)
                 .ThenBy(wu => wu.WorkspaceId)
                 .FirstOrDefaultAsync();
 

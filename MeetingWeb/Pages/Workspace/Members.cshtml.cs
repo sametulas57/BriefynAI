@@ -67,17 +67,17 @@ namespace MeetingWeb.Pages.Workspace
             // Eagerly fetch Identity Claims (Full Name, Avatar) for the entire roster.
             var userIds = TeamMembers.Select(wu => wu.UserId).ToList();
             var claims = await _context.UserClaims
-                .Where(c => userIds.Contains(c.UserId) && (c.ClaimType == "FullName" || c.ClaimType == "AvatarUrl" || c.ClaimType == "ProfilePicture"))
+                .Where(c => userIds.Contains(c.UserId) && (c.ClaimType == UserClaimTypes.FullName || c.ClaimType == UserClaimTypes.AvatarUrl || c.ClaimType == UserClaimTypes.LegacyProfilePicture))
                 .ToListAsync();
 
             // Populate lookup dictionaries for efficient UI rendering.
             foreach (var claim in claims)
             {
-                if (claim.ClaimType == "FullName")
+                if (claim.ClaimType == UserClaimTypes.FullName)
                 {
                     UserNames[claim.UserId] = claim.ClaimValue ?? "İsimsiz Üye";
                 }
-                else if (claim.ClaimType == "AvatarUrl" || claim.ClaimType == "ProfilePicture")
+                else if (claim.ClaimType == UserClaimTypes.AvatarUrl || claim.ClaimType == UserClaimTypes.LegacyProfilePicture)
                 {
                     UserAvatars[claim.UserId] = claim.ClaimValue ?? "";
                 }
@@ -89,16 +89,16 @@ namespace MeetingWeb.Pages.Workspace
         // --- MEMBER EVICTION LOGIC ---
         public async Task<IActionResult> OnPostRemoveMemberAsync(string targetUserId)
         {
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
+            int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
             var caller = await _context.WorkspaceUsers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
-            if (caller == null || caller.Role != "Sahip") return Unauthorized();
+            if (caller == null || caller.Role != WorkspaceRoles.Owner) return Unauthorized();
 
             var targetUser = await _context.WorkspaceUsers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == targetUserId);
 
             // Privilege Escalation Prevention: An Owner cannot evict another Owner.
-            if (targetUser != null && targetUser.Role != "Sahip")
+            if (targetUser != null && targetUser.Role != WorkspaceRoles.Owner)
             {
                 _context.WorkspaceUsers.Remove(targetUser);
                 await _context.SaveChangesAsync();
@@ -111,7 +111,7 @@ namespace MeetingWeb.Pages.Workspace
         // --- VOLUNTARY DEPARTURE LOGIC ---
         public async Task<IActionResult> OnPostLeaveWorkspaceAsync()
         {
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
+            int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
             var me = await _context.WorkspaceUsers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
@@ -119,7 +119,7 @@ namespace MeetingWeb.Pages.Workspace
             if (me != null)
             {
                 // Orphan Prevention: Owners cannot leave; they must transfer ownership or delete the tenant.
-                if (me.Role == "Sahip")
+                if (me.Role == WorkspaceRoles.Owner)
                 {
                     TempData["ErrorMessage"] = "Ekip kurucusu ekipten ayrılamaz; isterseniz ekibi silebilirsiniz.";
                     return RedirectToPage();
@@ -129,7 +129,7 @@ namespace MeetingWeb.Pages.Workspace
                 await _context.SaveChangesAsync();
 
                 // Clear session context upon departure.
-                HttpContext.Session.Remove("ActiveWorkspaceId");
+                HttpContext.Session.Remove(ActiveWorkspaceService.SessionKey);
                 TempData["StatusMessage"] = "Ekipten ayrıldınız.";
             }
 
@@ -139,14 +139,14 @@ namespace MeetingWeb.Pages.Workspace
         // --- TENANT ANNIHILATION (CASCADE DELETE) ---
         public async Task<IActionResult> OnPostDeleteWorkspaceAsync()
         {
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
+            int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
             var caller = await _context.WorkspaceUsers
                 .Include(w => w.Workspace)
                 .FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
 
-            if (caller == null || caller.Role != "Sahip")
+            if (caller == null || caller.Role != WorkspaceRoles.Owner)
                 return Unauthorized();
 
             // Critical Guardrail: Prevent the deletion of the primary/default personal workspace.
@@ -177,7 +177,7 @@ namespace MeetingWeb.Pages.Workspace
 
                 foreach (var audio in audioFiles) _audioStorage.Delete(audio);
 
-                HttpContext.Session.Remove("ActiveWorkspaceId");
+                HttpContext.Session.Remove(ActiveWorkspaceService.SessionKey);
                 TempData["StatusMessage"] = $"'{workspaceToDelete.Name}' ekibi silindi.";
             }
 

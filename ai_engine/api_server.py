@@ -90,8 +90,8 @@ async def process_meeting(file: UploadFile = File(...)):
     """
     Primary orchestration endpoint:
     1) Receives audio binary via multipart/form-data.
-    2) Transcribes audio using optimized Faster-Whisper.
-    3) Summarizes transcript using local LLM via Ollama.
+    2) Transcribes audio with the configured provider (Groq Whisper, see providers/).
+    3) Summarizes the transcript with the configured LLM provider.
     4) Returns structured JSON to the .NET Backend.
     """
     
@@ -103,7 +103,7 @@ async def process_meeting(file: UploadFile = File(...)):
         size = save_with_limit(file, temp_file_path)
         logging.info(f"📥 Received audio upload ({size} bytes).")
         
-        # STEP 2: TRANSCRIPTION - Convert speech to text via Whisper
+        # STEP 2: TRANSCRIPTION - Convert speech to text
         logging.info("🎧 Initializing Speech-to-Text engine...")
         transcribed_text = transcribe_audio(str(temp_file_path))
         

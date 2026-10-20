@@ -87,12 +87,9 @@
                     </ul>
                     @if (User.Identity!.IsAuthenticated)
                     {
-                        var fullName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? User.Identity?.Name ?? "İsimsiz";
-                        var avatarUrl = User.Claims.FirstOrDefault(c => c.Type == "AvatarUrl")?.Value;
-                        var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        var initials = nameParts.Length > 1
-                            ? (nameParts[0][0].ToString() + nameParts[^1][0].ToString()).ToUpper()
-                            : (fullName.Length > 1 ? fullName.Substring(0, 2).ToUpper() : fullName.ToUpper());
+                        var fullName = User.Claims.FirstOrDefault(c => c.Type == MeetingWeb.Models.UserClaimTypes.FullName)?.Value ?? User.Identity?.Name ?? "İsimsiz";
+                        var avatarUrl = User.Claims.FirstOrDefault(c => c.Type == MeetingWeb.Models.UserClaimTypes.AvatarUrl)?.Value;
+                        var initials = MeetingWeb.Services.UserDisplay.Initials(fullName);
                         <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 gap-lg-3 ms-lg-auto mt-3 mt-lg-0">
                             <a class="btn btn-primary px-3" asp-area="" asp-page="/Upload"><i class="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Yeni Kayıt Yükle</a>
                             @if (activeWorkspaceId != null) { <span class="small text-secondary text-truncate" style="max-width:180px" title="@activeWorkspaceName"><i class="bi bi-buildings me-1" aria-hidden="true"></i>@activeWorkspaceName</span> }
@@ -109,12 +106,12 @@
                                     <span class="d-lg-none d-xl-inline">@fullName</span><i class="bi bi-chevron-down small ms-auto ms-lg-0" aria-hidden="true"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end account-menu p-2" aria-labelledby="accountMenu">
-                                    <li><a class="dropdown-item py-2" asp-area="" asp-page="/Auth/Profile"><i class="bi bi-person me-2" aria-hidden="true"></i>Profilim</a></li>
+                                    <li><a class="dropdown-item py-2" asp-area="" asp-page="/Profile/Index"><i class="bi bi-person me-2" aria-hidden="true"></i>Profilim</a></li>
                                     @if (activeWorkspaceId != null)
                                     {
                                         <li><hr class="dropdown-divider"><h6 class="dropdown-header">@activeWorkspaceName</h6></li>
                                         <li><a class="dropdown-item py-2" asp-page="/Workspace/Members"><i class="bi bi-people me-2" aria-hidden="true"></i>Ekibi Görüntüle</a></li>
-                                        @if (currentUserRole == "Sahip") { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
+                                        @if (currentUserRole == MeetingWeb.Models.WorkspaceRoles.Owner) { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
                                     }
                                     <li><a class="dropdown-item py-2" asp-page="/Workspace/Create"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>Yeni Ekip Oluştur</a></li>
                                     @if (userWorkspaces.Count > 0)
@@ -150,7 +147,6 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

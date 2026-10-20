@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using MeetingWeb.Models;
+using MeetingWeb.Services;
 
-namespace MeetingWeb.Pages.Auth
+namespace MeetingWeb.Pages.Profile
 {
     // SECURITY GATEWAY: Restrict access to authenticated users only.
     [Authorize]
@@ -22,6 +24,10 @@ namespace MeetingWeb.Pages.Auth
             _signInManager = signInManager;
             _env = env;
         }
+
+        // Avatars are the only public uploads (see the /uploads guard in Program.cs); one file per user id.
+        private const string AvatarUrlPath = "/uploads/avatars";
+        private string AvatarFolder => Path.Combine(_env.WebRootPath, "uploads", "avatars");
 
         public string Username { get; set; } = "";
         public string Initials { get; set; } = "";
@@ -72,7 +78,7 @@ namespace MeetingWeb.Pages.Auth
             ProfileInput.PhoneNumber = user.PhoneNumber ?? "";
 
             var claims = await _userManager.GetClaimsAsync(user);
-            ProfileInput.FullName = claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "İsimsiz";
+            ProfileInput.FullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? "İsimsiz";
 
             return Page();
         }
@@ -108,13 +114,13 @@ namespace MeetingWeb.Pages.Auth
 
             // Update custom identity Claims to reflect name changes across the application.
             var claims = await _userManager.GetClaimsAsync(user);
-            var oldFullNameClaim = claims.FirstOrDefault(c => c.Type == "FullName");
+            var oldFullNameClaim = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName);
 
             if (oldFullNameClaim != null)
             {
                 await _userManager.RemoveClaimAsync(user, oldFullNameClaim);
             }
-            await _userManager.AddClaimAsync(user, new Claim("FullName", ProfileInput.FullName));
+            await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.FullName, ProfileInput.FullName));
 
             // Invalidate and refresh the authentication cookie to apply claim modifications.
             await _signInManager.RefreshSignInAsync(user);
@@ -164,7 +170,7 @@ namespace MeetingWeb.Pages.Auth
                 var bytes = Convert.FromBase64String(base64Data);
 
                 // Ensure the physical directory structure exists.
-                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "avatars");
+                var uploadsFolder = AvatarFolder;
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
                 // Persist the image. Using User.Id guarantees a single file per user, preventing storage bloat.
@@ -174,12 +180,12 @@ namespace MeetingWeb.Pages.Auth
 
                 // Update the user's Avatar Claim.
                 var claims = await _userManager.GetClaimsAsync(user);
-                var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "AvatarUrl");
+                var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl);
                 if (oldAvatarClaim != null) await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
 
                 // Implement Cache Busting via URL parameters (Ticks) to force browser refresh.
-                var newAvatarUrl = $"/uploads/avatars/{fileName}?t={DateTime.UtcNow.Ticks}";
-                await _userManager.AddClaimAsync(user, new Claim("AvatarUrl", newAvatarUrl));
+                var newAvatarUrl = $"{AvatarUrlPath}/{fileName}?t={DateTime.UtcNow.Ticks}";
+                await _userManager.AddClaimAsync(user, new Claim(UserClaimTypes.AvatarUrl, newAvatarUrl));
 
                 await _signInManager.RefreshSignInAsync(user);
                 return new JsonResult(new { success = true, avatarUrl = newAvatarUrl });
@@ -197,12 +203,12 @@ namespace MeetingWeb.Pages.Auth
             if (user == null) return RedirectToPage();
 
             // Perform hard deletion from the physical file system.
-            var filePath = Path.Combine(_env.WebRootPath, "uploads", "avatars", $"{user.Id}.jpg");
+            var filePath = Path.Combine(AvatarFolder, $"{user.Id}.jpg");
             if (System.IO.File.Exists(filePath)) System.IO.File.Delete(filePath);
 
             // Strip the Avatar Claim from the user's identity profile.
             var claims = await _userManager.GetClaimsAsync(user);
-            var avatarClaim = claims.FirstOrDefault(c => c.Type == "AvatarUrl");
+            var avatarClaim = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl);
             if (avatarClaim != null)
             {
                 await _userManager.RemoveClaimAsync(user, avatarClaim);
@@ -219,14 +225,11 @@ namespace MeetingWeb.Pages.Auth
             Username = user.Email ?? "";
 
             var claims = await _userManager.GetClaimsAsync(user);
-            var fullName = claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? "İsimsiz";
+            var fullName = claims.FirstOrDefault(c => c.Type == UserClaimTypes.FullName)?.Value ?? "İsimsiz";
 
-            ProfilePictureUrl = claims.FirstOrDefault(c => c.Type == "AvatarUrl")?.Value ?? "";
+            ProfilePictureUrl = claims.FirstOrDefault(c => c.Type == UserClaimTypes.AvatarUrl)?.Value ?? "";
 
-            var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            Initials = nameParts.Length > 1
-                ? (nameParts[0][0].ToString() + nameParts[nameParts.Length - 1][0].ToString()).ToUpper()
-                : fullName.Substring(0, Math.Min(fullName.Length, 2)).ToUpper();
+            Initials = UserDisplay.Initials(fullName);
         }
     }
 }

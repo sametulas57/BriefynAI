@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using MeetingWeb.Data;
+using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Workspace
 {
@@ -34,7 +35,7 @@ namespace MeetingWeb.Pages.Workspace
             if (hasAccess)
             {
                 // CONTEXT SWITCH: Overwrite the active tenant ID in the user's volatile session memory.
-                HttpContext.Session.SetInt32("ActiveWorkspaceId", workspaceId);
+                HttpContext.Session.SetInt32(ActiveWorkspaceService.SessionKey, workspaceId);
             }
 
             // SECURITY: Mitigate Open Redirect vulnerabilities by enforcing local domain routing.

@@ -5,13 +5,6 @@ namespace MeetingWeb.Pages
     // Controller class for the application's root landing page.
     public class IndexModel : PageModel
     {
-        private readonly ILogger<IndexModel> _logger;
-
-        public IndexModel(ILogger<IndexModel> logger)
-        {
-            _logger = logger;
-        }
-
         // HTTP GET: Handles initial requests to the root URL.
         public void OnGet()
         {
