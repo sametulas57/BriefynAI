@@ -132,8 +132,7 @@ namespace MeetingWeb.Pages
 
             if (absolutePath != null && System.IO.File.Exists(absolutePath))
             {
-                meeting.Status = MeetingStatus.Processing;
-                await _context.SaveChangesAsync();
+                if (!await TryMarkProcessingAsync(meeting)) return RedirectToPage(new { id = meeting.Id });
 
                 // Re-enqueue the AI pipeline job.
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ProcessMeetingJob(meeting.Id));
@@ -142,8 +141,7 @@ namespace MeetingWeb.Pages
             else if (!string.IsNullOrWhiteSpace(meeting.Transcript?.Text))
             {
                 // Faz 2: the transcript is stored, so only the summary is generated again.
-                meeting.Status = MeetingStatus.Processing;
-                await _context.SaveChangesAsync();
+                if (!await TryMarkProcessingAsync(meeting)) return RedirectToPage(new { id = meeting.Id });
 
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ResummarizeMeetingJob(meeting.Id));
                 TempData["StatusMessage"] = "Özet, kayıtlı dökümden yeniden hazırlanıyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
@@ -154,6 +152,22 @@ namespace MeetingWeb.Pages
             }
 
             return RedirectToPage(new { id = meeting.Id });
+        }
+
+        // Two members pressing "retry" together: the first one starts the job, the second is told it is already running.
+        private async Task<bool> TryMarkProcessingAsync(Meeting meeting)
+        {
+            meeting.Status = MeetingStatus.Processing;
+            try
+            {
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                TempData["StatusMessage"] = "Bu toplantı zaten yeniden işleniyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";
+                return false;
+            }
         }
 
         // --- COLLABORATION & INTERACTION HANDLERS ---

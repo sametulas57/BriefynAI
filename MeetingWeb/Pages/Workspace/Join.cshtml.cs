@@ -79,6 +79,20 @@ namespace MeetingWeb.Pages.Workspace
             var userId = _userManager.GetUserId(User);
             if (userId == null) return RedirectToPage("/Auth/Login");
 
+            // CONSUME TOKEN first, with one conditional update: of two people using the same link at once, only one
+            // gets a row back; the other is refused. Joining happens in the same transaction.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var consumed = await _context.WorkspaceInvitations
+                .Where(i => i.Id == invitation.Id && i.UsedAtUtc == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(i => i.UsedAtUtc, DateTime.UtcNow)
+                    .SetProperty(i => i.UsedByUserId, userId));
+            if (consumed == 0)
+            {
+                ErrorMessage = "Bu davet geçerliliğini yitirmiş.";
+                return Page();
+            }
+
             // IDEMPOTENCY CHECK: Ensure the user is not already a member to prevent duplicate join records.
             var isAlreadyMember = await _context.WorkspaceMembers
                 .AnyAsync(wu => wu.WorkspaceId == invitation.WorkspaceId && wu.UserId == userId);
@@ -94,10 +108,8 @@ namespace MeetingWeb.Pages.Workspace
                 });
             }
 
-            // CONSUME TOKEN: Mark as used to enforce the single-use security policy.
-            invitation.UsedAtUtc = DateTime.UtcNow;
-            invitation.UsedByUserId = userId;
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             // CONTEXT SWITCH: Immediately update the session to reflect the new workspace as active.
             HttpContext.Session.SetInt32(ActiveWorkspaceService.SessionKey, invitation.WorkspaceId);
