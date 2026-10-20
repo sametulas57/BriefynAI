@@ -49,156 +49,85 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
     <style>
-            /* Smooth drop-down animation for modern SaaS feel */
-            @@keyframes slideDownFade {
-                from {
-                    opacity: 0;
-                    transform: translateY(-15px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .dropdown-menu.show {
-                animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                display: block;
-            }
-
-            /* Multi-level nested dropdown styling */
-            .dropdown-submenu {
-                position: relative;
-            }
-        
-                .dropdown-submenu .dropdown-menu {
-                    top: 0;
-                    left: 100%;
-                    margin-top: -5px;
-                    margin-left: 0px;
-                    display: none;
-                    border-radius: 0.75rem;
-                }
-        
-                .dropdown-submenu:hover > .dropdown-menu {
-                    display: block;
-                    animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-                }
-
-            /* Glassmorphism sticky navbar */
             .navbar-sticky {
                 position: sticky;
                 top: 0;
                 z-index: 1020;
-                backdrop-filter: blur(10px);
-                background-color: rgba(255, 255, 255, 0.95) !important;
+                background-color: #fff !important;
+            }
+            .navbar .nav-link { color: #495057; border-radius: .5rem; padding: .55rem .75rem; }
+            .navbar .nav-link[aria-current="page"] { color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .09); font-weight: 600; }
+            .account-menu { min-width: 290px; max-height: min(75vh, 560px); overflow-y: auto; }
+            .account-menu .dropdown-item { border-radius: .4rem; }
+            @@media (max-width: 991.98px) {
+                .navbar-collapse { padding-top: .75rem; }
+                .navbar-nav .nav-item { width: 100%; margin: 0 !important; }
+                .navbar-nav .nav-link, .navbar-nav .btn { width: 100%; justify-content: flex-start !important; }
+                .account-menu { width: 100%; }
             }
     </style>
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
     <header>
-        <nav class="navbar navbar-expand-lg navbar-light border-bottom box-shadow navbar-sticky py-3">
-            <div class="container-fluid px-4 px-lg-5">
-                <a class="navbar-brand fw-bold text-primary d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
-                    <div class="bg-primary text-white rounded-3 p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                        <i class="bi bi-robot fs-5"></i>
-                    </div>
-                    Briefyn AI
+        <nav class="navbar navbar-expand-lg navbar-light border-bottom navbar-sticky py-2" aria-label="Ana gezinme">
+            <div class="container-fluid px-3 px-lg-4">
+                <a class="navbar-brand fw-bold text-primary d-flex align-items-center gap-2 me-lg-4" asp-area="" asp-page="/Index">
+                    <span class="bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width:32px;height:32px"><i class="bi bi-robot"></i></span>Briefyn AI
                 </a>
-                
-                <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                
-                <div class="navbar-collapse collapse d-lg-inline-flex justify-content-between mt-3 mt-lg-0">
-                    <ul class="navbar-nav flex-grow-1 align-items-lg-center">
-                        <li class="nav-item mb-2 mb-lg-0">
-                            <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-area="" asp-page="/Index">Ana Sayfa</a>
-                        </li>
-                        
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Menüyü aç veya kapat"><span class="navbar-toggler-icon"></span></button>
+                <div class="navbar-collapse collapse" id="mainNavbar">
+                    <ul class="navbar-nav align-items-lg-center gap-lg-1">
+                        @{ var currentPage = ViewContext.RouteData.Values["page"]?.ToString(); }
+                        <li class="nav-item"><a class="nav-link @(currentPage == "/Index" ? "active" : "")" aria-current="@(currentPage == "/Index" ? "page" : null)" asp-area="" asp-page="/Index">Ana Sayfa</a></li>
                         @if (User.Identity!.IsAuthenticated)
                         {
-                            <li class="nav-item mb-2 mb-lg-0 ms-lg-2">
-                                <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-page="/History">
-                                    <i class="bi bi-folder2-open text-primary me-1"></i> Geçmiş Özetler
-                                </a>
-                            </li>
-                            <li class="nav-item mb-2 mb-lg-0 ms-lg-2">
-                                <a class="nav-link text-dark fw-medium px-3 rounded-pill hover-bg-light transition-all" asp-page="/MyActions">
-                                    <i class="bi bi-person-check text-primary me-1"></i> Bana Atananlar
-                                </a>
-                            </li>
-                            <li class="nav-item mb-3 mb-lg-0 ms-lg-3">
-                                <a class="btn btn-primary fw-bold shadow-sm rounded-pill px-4 transition-all hover-scale d-flex align-items-center justify-content-center" asp-area="" asp-page="/Upload">
-                                    <i class="bi bi-cloud-arrow-up-fill me-2"></i> Yeni Kayıt Yükle
-                                </a>
-                            </li>
-
-                            @if (activeWorkspaceId != null)
-                            {
-                                <li class="nav-item dropdown ms-lg-4 mt-2 mt-lg-0 border-lg-start ps-lg-3">
-                                    <a class="nav-link dropdown-toggle text-dark fw-bold border rounded-pill px-4 py-2 bg-white shadow-sm transition-all hover-primary" href="#" id="workspaceMenu" role="button" data-bs-toggle="dropdown">
-                                        <i class="bi bi-buildings-fill text-primary me-1"></i> @activeWorkspaceName
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 rounded-4 p-2" aria-labelledby="workspaceMenu" style="min-width: 250px;">
-                                        <li><h6 class="dropdown-header text-uppercase tracking-wide">Ekip Yönetimi</h6></li>
-                                        <li>
-                                            <a class="dropdown-item py-2 rounded-3 transition-all fw-medium" asp-page="/Workspace/Members">
-                                                <i class="bi bi-people text-secondary me-2"></i> Ekibi Görüntüle
-                                            </a>
-                                        </li>
-                                        
-                                        @if (currentUserRole == "Sahip")
-                                        {
-                                            <li>
-                                                <a class="dropdown-item py-2 rounded-3 transition-all text-success fw-bold bg-success bg-opacity-10 mt-1" asp-page="/Workspace/Invite">
-                                                    <i class="bi bi-link-45deg me-2 fs-5"></i> Davet Linki Üret
-                                                </a>
-                                            </li>
-                                        }
-
-                                        <li><hr class="dropdown-divider opacity-25 my-2"></li>
-                                        <li>
-                                            <a class="dropdown-item py-2 rounded-3 transition-all fw-medium" asp-page="/Workspace/Create">
-                                                <i class="bi bi-plus-circle text-primary me-2"></i> Yeni Ekip Oluştur
-                                            </a>
-                                        </li>
-                                        
-                                        <li class="dropdown-submenu mt-1">
-                                            <a class="dropdown-item py-2 rounded-3 transition-all fw-medium d-flex justify-content-between align-items-center" href="#">
-                                                <span><i class="bi bi-arrow-left-right text-secondary me-2"></i> Ekip Değiştir</span>
-                                                <i class="bi bi-chevron-right small text-muted"></i>
-                                            </a>
-                                            <ul class="dropdown-menu shadow-lg border-0 mt-0 rounded-4 p-2" style="min-width: 220px;">
-                                                <li><h6 class="dropdown-header text-uppercase tracking-wide">Ekipleriniz</h6></li>
-                                                @foreach (var ws in userWorkspaces)
-                                                {
-                                                    <li>
-                                                        <a class="dropdown-item py-2 rounded-3 mb-1 transition-all @(ws.WorkspaceId == activeWorkspaceId ? "fw-bold text-primary bg-primary bg-opacity-10" : "text-dark")"
-                                                               href="/Workspace/Switch?workspaceId=@ws.WorkspaceId&returnUrl=@Context.Request.Path">
-                                                            @if (ws.WorkspaceId == activeWorkspaceId)
-                                                            {
-                                                                <i class="bi bi-check2 text-primary me-2 fw-bold"></i>
-                                                            }
-                                                            else
-                                                            {
-                                                                <span class="ms-4"></span>
-                                                            }
-                                                            @ws.Workspace.Name
-                                                        </a>
-                                                    </li>
-                                                }
-                                            </ul>
-                                        </li>
-                                    </ul>
-                                </li>
-                            }
+                            <li class="nav-item"><a class="nav-link @(currentPage == "/History" ? "active" : "")" aria-current="@(currentPage == "/History" ? "page" : null)" asp-page="/History">Geçmiş Özetler</a></li>
+                            <li class="nav-item"><a class="nav-link @(currentPage == "/MyActions" ? "active" : "")" aria-current="@(currentPage == "/MyActions" ? "page" : null)" asp-page="/MyActions">Bana Atananlar</a></li>
                         }
                     </ul>
-                    
-                    <hr class="d-lg-none opacity-25">
-                    <partial name="_LoginPartial" />
+                    @if (User.Identity!.IsAuthenticated)
+                    {
+                        var fullName = User.Claims.FirstOrDefault(c => c.Type == "FullName")?.Value ?? User.Identity?.Name ?? "İsimsiz";
+                        var avatarUrl = User.Claims.FirstOrDefault(c => c.Type == "AvatarUrl")?.Value;
+                        var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        var initials = nameParts.Length > 1
+                            ? (nameParts[0][0].ToString() + nameParts[^1][0].ToString()).ToUpper()
+                            : (fullName.Length > 1 ? fullName.Substring(0, 2).ToUpper() : fullName.ToUpper());
+                        <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 gap-lg-3 ms-lg-auto mt-3 mt-lg-0">
+                            <a class="btn btn-primary px-3" asp-area="" asp-page="/Upload"><i class="bi bi-cloud-arrow-up me-2" aria-hidden="true"></i>Yeni Kayıt Yükle</a>
+                            @if (activeWorkspaceId != null) { <span class="small text-secondary text-truncate" style="max-width:180px" title="@activeWorkspaceName"><i class="bi bi-buildings me-1" aria-hidden="true"></i>@activeWorkspaceName</span> }
+                            <div class="dropdown">
+                                <button class="btn btn-light d-flex align-items-center gap-2 w-100" id="accountMenu" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Kullanıcı menüsü" title="Kullanıcı menüsü">
+                                    @if (!string.IsNullOrEmpty(avatarUrl))
+                                    {
+                                        <img src="@avatarUrl" alt="" class="rounded-circle object-fit-cover" style="width:32px;height:32px" />
+                                    }
+                                    else
+                                    {
+                                        <span class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center fw-bold" style="width:32px;height:32px;font-size:.8rem" aria-hidden="true">@initials</span>
+                                    }
+                                    <span class="d-lg-none d-xl-inline">@fullName</span><i class="bi bi-chevron-down small ms-auto ms-lg-0" aria-hidden="true"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end account-menu p-2" aria-labelledby="accountMenu">
+                                    <li><a class="dropdown-item py-2" asp-area="" asp-page="/Auth/Profile"><i class="bi bi-person me-2" aria-hidden="true"></i>Profilim</a></li>
+                                    @if (activeWorkspaceId != null)
+                                    {
+                                        <li><hr class="dropdown-divider"><h6 class="dropdown-header">@activeWorkspaceName</h6></li>
+                                        <li><a class="dropdown-item py-2" asp-page="/Workspace/Members"><i class="bi bi-people me-2" aria-hidden="true"></i>Ekibi Görüntüle</a></li>
+                                        @if (currentUserRole == "Sahip") { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
+                                    }
+                                    <li><a class="dropdown-item py-2" asp-page="/Workspace/Create"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>Yeni Ekip Oluştur</a></li>
+                                    @if (userWorkspaces.Count > 0)
+                                    {
+                                        <li><hr class="dropdown-divider"><h6 class="dropdown-header">Ekip Değiştir</h6></li>
+                                        @foreach (var ws in userWorkspaces) { <li><a class="dropdown-item py-2 @(ws.WorkspaceId == activeWorkspaceId ? "text-primary fw-semibold" : "")" href="/Workspace/Switch?workspaceId=@ws.WorkspaceId&returnUrl=@Context.Request.Path">@if (ws.WorkspaceId == activeWorkspaceId) { <i class="bi bi-check2 me-2" aria-hidden="true"></i> }@ws.Workspace.Name</a></li> }
+                                    }
+                                    <li><hr class="dropdown-divider"><partial name="_LoginPartial" /></li>
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                    else { <div class="ms-lg-auto mt-3 mt-lg-0"><partial name="_LoginPartial" /></div> }
                 </div>
             </div>
         </nav>
