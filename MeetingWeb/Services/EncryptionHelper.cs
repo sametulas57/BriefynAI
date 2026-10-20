@@ -89,8 +89,8 @@ namespace MeetingWeb.Services
         {
             var parts = value.Split(':', 3);
             if (parts.Length != 3 || parts[0] + ":" != Prefix) throw new FormatException("Not an encrypted value.");
-            var keyId = int.Parse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture);
-            if (!Keys.TryGetValue(keyId, out var key)) throw new InvalidOperationException($"Unknown key id {keyId}.");
+            if (!int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var keyId) || !Keys.TryGetValue(keyId, out var key))
+                throw new InvalidOperationException("Unknown key id.");
 
             var payload = Convert.FromBase64String(parts[2]);
             if (payload.Length < NonceSize + TagSize) throw new CryptographicException("Payload too short.");

@@ -88,7 +88,17 @@ namespace MeetingWeb.Pages.Auth
 
                 // Initialize a new identity principal.
                 var user = new ApplicationUser { UserName = Input.Email, Email = Input.Email, PhoneNumber = Input.PhoneNumber, FullName = Input.FullName };
-                var result = await _userManager.CreateAsync(user, Input.Password);
+                IdentityResult result;
+                try
+                {
+                    result = await _userManager.CreateAsync(user, Input.Password);
+                }
+                catch (DbUpdateException)
+                {
+                    // Another sign-up took the same phone number a moment ago; the database's unique index refused this one.
+                    ModelState.AddModelError("Input.PhoneNumber", "Bu telefon numarası zaten başka bir hesap tarafından kullanılıyor.");
+                    return Page();
+                }
 
                 if (result.Succeeded)
                 {
