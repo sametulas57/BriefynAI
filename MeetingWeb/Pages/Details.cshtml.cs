@@ -241,7 +241,15 @@ namespace MeetingWeb.Pages
                 _context.CommentReactions.Add(new CommentReaction { CommentId = commentId, UserId = userId, IsLike = isLike });
             }
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // A double click raced with itself; the database kept one reaction, so just report the current counts.
+                _context.ChangeTracker.Clear();
+            }
 
             var likes = await _context.CommentReactions.CountAsync(r => r.CommentId == commentId && r.IsLike);
             var dislikes = await _context.CommentReactions.CountAsync(r => r.CommentId == commentId && !r.IsLike);
