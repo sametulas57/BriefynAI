@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
+using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Workspace
 {
@@ -45,13 +46,13 @@ namespace MeetingWeb.Pages.Workspace
             {
                 WorkspaceId = newWorkspace.Id,
                 UserId = userId,
-                Role = "Sahip"
+                Role = WorkspaceRoles.Owner
             };
             _context.WorkspaceUsers.Add(wsUser);
             await _context.SaveChangesAsync();
 
             // 3. UX Optimization: Seamlessly inject the newly created workspace ID into the active session.
-            HttpContext.Session.SetInt32("ActiveWorkspaceId", newWorkspace.Id);
+            HttpContext.Session.SetInt32(ActiveWorkspaceService.SessionKey, newWorkspace.Id);
 
             // Set a volatile status message for the UI toast notification.
             TempData["StatusMessage"] = $"🏢 '{WorkspaceName}' başarıyla oluşturuldu ve aktif edildi.";

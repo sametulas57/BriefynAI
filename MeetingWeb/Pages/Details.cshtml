@@ -212,9 +212,8 @@
                         <ul class="list-unstyled mb-0">
                             @foreach (var konu in Model.Meeting.GorusulenKonular)
                             {
-                                var parts = konu.Split("|~|");
-                                var text = parts[0];
-                                var addedBy = parts.Length > 1 ? parts[1] : null;
+                                var text = MeetingWeb.Models.ManualEntry.TextOf(konu);
+                                var addedBy = MeetingWeb.Models.ManualEntry.AuthorOf(konu);
 
                                 <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <i class="bi bi-dot text-primary fs-4 mt-n1 flex-shrink-0"></i>
@@ -262,9 +261,8 @@
                         <ul class="list-unstyled mb-0">
                             @foreach (var karar in Model.Meeting.AlinanKararlar)
                             {
-                                var parts = karar.Split("|~|");
-                                var text = parts[0];
-                                var addedBy = parts.Length > 1 ? parts[1] : null;
+                                var text = MeetingWeb.Models.ManualEntry.TextOf(karar);
+                                var addedBy = MeetingWeb.Models.ManualEntry.AuthorOf(karar);
 
                                 <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <i class="bi bi-dot text-success fs-4 mt-n1 flex-shrink-0"></i>
@@ -312,9 +310,8 @@
                         <ul class="list-unstyled mb-0">
                             @foreach (var task in Model.Meeting.AksiyonMaddeleri)
                             {
-                                var parts = task.Text.Split("|~|");
-                                var text = parts[0];
-                                var addedBy = parts.Length > 1 ? parts[1] : null;
+                                var text = MeetingWeb.Models.ManualEntry.TextOf(task.Text);
+                                var addedBy = MeetingWeb.Models.ManualEntry.AuthorOf(task.Text);
 
                                 <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
                                     <div class="form-check mt-1 flex-shrink-0">
@@ -570,7 +567,7 @@
                                     <input class="form-check-input flex-shrink-0 fs-5 mt-0 border-secondary" type="checkbox" name="selectedEmails" value="@member.User.Email" checked>
                                     <div class="d-flex flex-column">
                                         <span class="fw-bold text-dark" style="font-size: 0.95rem;">@member.User.Email</span>
-                                        @if (member.Role == "Sahip")
+                                        @if (member.Role == MeetingWeb.Models.WorkspaceRoles.Owner)
                                         {
                                             <span class="badge bg-soft-primary border border-primary border-opacity-25 mt-1 fw-medium" style="width: fit-content;"><i class="bi bi-star-fill me-1 small"></i> Kurucu</span>
                                         }

@@ -16,7 +16,7 @@ COPY requirements.txt .
 # 5. Python kütüphanelerini kur
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. Şimdi diğer tüm kodları (api_server.py, transcribe_audio.py vb.) içeri kopyala (ikinci nokta WORKDIR oluyor yani)
+# 6. Şimdi diğer tüm kodları (api_server.py, providers/ vb.) içeri kopyala (ikinci nokta WORKDIR oluyor yani)
 COPY . .
 
 # 7. Konteynerin dış dünyaya açacağı port (C# buradan istek atacak)

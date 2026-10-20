@@ -76,7 +76,7 @@ namespace MeetingWeb.Services
             void Section(string title, IEnumerable<string> items)
             {
                 text.AppendLine(title);
-                foreach (var item in items) text.AppendLine("- " + item.Split("|~|")[0]);
+                foreach (var item in items) text.AppendLine("- " + ManualEntry.TextOf(item));
                 text.AppendLine();
             }
         }
@@ -86,7 +86,7 @@ namespace MeetingWeb.Services
         private static readonly HtmlEncoder Html = HtmlEncoder.Create(UnicodeRanges.All);
 
         // Manual entries carry "text|~|authorId"; only the text belongs in the email, HTML-encoded.
-        private static string Item(string value) => Html.Encode(value.Split("|~|")[0]);
+        private static string Item(string value) => Html.Encode(ManualEntry.TextOf(value));
 
         // Construct the responsive HTML email template using inline CSS for mail client compatibility.
         // S8: every meeting value comes from the LLM or from users, so all of it is HTML-encoded.

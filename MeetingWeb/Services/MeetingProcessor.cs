@@ -22,6 +22,9 @@ namespace MeetingWeb.Services
 
     public class MeetingProcessor : IMeetingProcessor
     {
+        // Named HttpClient for the AI engine, configured in Program.cs (base address, API key).
+        public const string PythonApiClient = "PythonApi";
+
         private readonly ApplicationDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
@@ -157,20 +160,18 @@ namespace MeetingWeb.Services
             }
         }
 
-        // Entries users added by hand are stored as "text|~|authorId"; they survive a regenerated summary.
-        private static bool IsManual(string? value) => value != null && value.Contains("|~|");
-
         private static bool IsTracked(ActionItem a) => a.IsDone || a.AssigneeUserId != null || a.DueDate != null || a.CompletedByUserId != null;
 
         private static void ApplySummary(MeetingSummary meeting, AiSummaryData data)
         {
             if (!string.IsNullOrWhiteSpace(data.ToplantiKonusu)) meeting.ToplantiKonusu = data.ToplantiKonusu;
-            meeting.GorusulenKonular = (data.GorusulenKonular ?? new()).Concat(meeting.GorusulenKonular.Where(IsManual)).ToList();
-            meeting.AlinanKararlar = (data.AlinanKararlar ?? new()).Concat(meeting.AlinanKararlar.Where(IsManual)).ToList();
+            meeting.GorusulenKonular = (data.GorusulenKonular ?? new()).Concat(meeting.GorusulenKonular.Where(ManualEntry.IsManual)).ToList();
+            meeting.AlinanKararlar = (data.AlinanKararlar ?? new()).Concat(meeting.AlinanKararlar.Where(ManualEntry.IsManual)).ToList();
 
+            // Entries users added by hand (ManualEntry) survive a regenerated summary.
             // Earlier AI-generated tasks are replaced (removed items are deleted as orphans). Manual ones stay, and so
             // do tasks someone has assigned or completed: regenerating the summary must not erase that work.
-            meeting.AksiyonMaddeleri.RemoveAll(a => !IsManual(a.Text) && !IsTracked(a));
+            meeting.AksiyonMaddeleri.RemoveAll(a => !ManualEntry.IsManual(a.Text) && !IsTracked(a));
             var kept = meeting.AksiyonMaddeleri.Select(a => a.Text).ToHashSet();
             foreach (var taskText in data.AksiyonMaddeleri ?? new())
             {
@@ -181,7 +182,7 @@ namespace MeetingWeb.Services
 
         private async Task<AiSummaryData?> RequestSummaryAsync(string transcript)
         {
-            var client = _httpClientFactory.CreateClient("PythonApi");
+            var client = _httpClientFactory.CreateClient(PythonApiClient);
             var endpoint = _configuration["PythonApiSettings:SummarizeEndpoint"] ?? "api/summarize";
 
             var response = await client.PostAsJsonAsync(endpoint, new { transkript = transcript });
@@ -216,7 +217,7 @@ namespace MeetingWeb.Services
             }
 
             // Create an HttpClient instance using the configured factory to prevent socket exhaustion.
-            var client = _httpClientFactory.CreateClient("PythonApi");
+            var client = _httpClientFactory.CreateClient(PythonApiClient);
             var endpoint = _configuration["PythonApiSettings:ProcessEndpoint"];
 
             // Utilize 'using var' to ensure unmanaged memory resources are disposed immediately.

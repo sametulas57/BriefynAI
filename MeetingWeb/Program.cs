@@ -1,6 +1,5 @@
 using Hangfire;
 using Hangfire.SqlServer;
-using Hangfire.Dashboard;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
@@ -30,7 +29,7 @@ try
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-    MeetingWeb.Helpers.EncryptionHelper.Initialize(builder.Configuration);
+    EncryptionHelper.Initialize(builder.Configuration);
 
     // Serilog'u sisteme dahil et (Şu an geçici bootstrap logger'ı kullanıyor)
     builder.Host.UseSerilog();
@@ -65,7 +64,7 @@ try
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
     // --- 4. Python API Communication ---
-    builder.Services.AddHttpClient("PythonApi", (sp, client) =>
+    builder.Services.AddHttpClient(MeetingProcessor.PythonApiClient, (sp, client) =>
     {
         var configuration = sp.GetRequiredService<IConfiguration>();
         var baseUrl = configuration["PythonApiSettings:BaseUrl"];
@@ -280,28 +279,6 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
-}
-
-// Custom Authorization Filter for Hangfire Dashboard.
-// S6: the dashboard shows job arguments (meeting ids, file paths) and can delete or re-run jobs, so being signed in
-// is not enough. Only operators listed in Hangfire:DashboardAdminEmails get in; an empty list locks everyone out.
-public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
-{
-    public bool Authorize(DashboardContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        var user = httpContext.User;
-        if (user.Identity?.IsAuthenticated != true) return false;
-
-        var admins = httpContext.RequestServices.GetRequiredService<IConfiguration>()
-            .GetSection("Hangfire:DashboardAdminEmails").Get<string[]>() ?? Array.Empty<string>();
-
-        // Accounts are created with UserName == Email, so the Name claim is a valid fallback.
-        var email = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? user.Identity.Name;
-
-        return !string.IsNullOrWhiteSpace(email) &&
-               admins.Any(a => !string.IsNullOrWhiteSpace(a) && string.Equals(a.Trim(), email, StringComparison.OrdinalIgnoreCase));
-    }
 }
 
 // WebApplicationFactory'nin (entegrasyon testleri) Program sınıfına erişebilmesi için.

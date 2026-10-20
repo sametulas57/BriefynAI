@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MeetingWeb/MeetingWeb.csproj" />
+  <Project Path="MeetingWeb.Tests/MeetingWeb.Tests.csproj" />
+</Solution>

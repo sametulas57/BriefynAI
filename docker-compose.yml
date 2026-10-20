@@ -66,7 +66,7 @@ services:
       - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=briefyn_app;Password=${APP_DB_PASSWORD};TrustServerCertificate=True;
       - PythonApiSettings__BaseUrl=http://ai_engine:8000/
       - PythonApiSettings__ApiKey=${AI_ENGINE_API_KEY}
-      # Sırlar .env dosyasından gelir (git\'e girmez); şablon: .env.example
+      # Sırlar .env dosyasından gelir (git'e girmez).
       - EmailSettings__SenderEmail=${EMAIL_SENDER}
       - EmailSettings__Password=${EMAIL_PASSWORD}
       # S4: tüm veriler v2 (AES-256-GCM) biçiminde. Eski Key/IV artık uygulamaya verilmiyor (S4-D, 2026-10-17);

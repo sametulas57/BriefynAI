@@ -51,7 +51,7 @@ namespace MeetingWeb.Pages
             int? activeWorkspaceId = workspaceUser?.WorkspaceId;
 
             // Flag evaluation for privileged UI actions.
-            if (workspaceUser != null && workspaceUser.Role == "Sahip")
+            if (workspaceUser != null && workspaceUser.Role == WorkspaceRoles.Owner)
             {
                 IsOwner = true;
             }
@@ -99,11 +99,11 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnPostDeleteAsync(int id)
         {
             var userId = _userManager.GetUserId(User);
-            int? activeWorkspaceId = HttpContext.Session.GetInt32("ActiveWorkspaceId");
+            int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
 
             // SECURITY FIREWALL: Re-verify ownership status to prevent explicit POST attacks.
             var isOwner = await _context.WorkspaceUsers
-                .AnyAsync(wu => wu.UserId == userId && wu.WorkspaceId == activeWorkspaceId && wu.Role == "Sahip");
+                .AnyAsync(wu => wu.UserId == userId && wu.WorkspaceId == activeWorkspaceId && wu.Role == WorkspaceRoles.Owner);
 
             if (!isOwner)
             {

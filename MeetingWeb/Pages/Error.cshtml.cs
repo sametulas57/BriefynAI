@@ -14,13 +14,6 @@ namespace MeetingWeb.Pages
 
         public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
 
-        private readonly ILogger<ErrorModel> _logger;
-
-        public ErrorModel(ILogger<ErrorModel> logger)
-        {
-            _logger = logger;
-        }
-
         // HTTP GET: Captures the active telemetry context when an unhandled exception propagates to the pipeline.
         public void OnGet()
         {
