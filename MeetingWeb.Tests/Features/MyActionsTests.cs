@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
-namespace MeetingWeb.Tests.Security
+namespace MeetingWeb.Tests.Features
 {
     public class MyActionsFixture : IAsyncLifetime
     {

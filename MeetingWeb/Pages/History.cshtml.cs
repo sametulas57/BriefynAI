@@ -99,6 +99,8 @@ namespace MeetingWeb.Pages
         public async Task<IActionResult> OnPostDeleteAsync(int id)
         {
             var userId = _userManager.GetUserId(User);
+            // The session's workspace is used as-is (not ActiveWorkspaceService's fallback): a destructive action must hit
+            // the team the user was looking at, or nothing. Membership and role are verified against the database below.
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
 
             // SECURITY FIREWALL: Re-verify ownership status to prevent explicit POST attacks.

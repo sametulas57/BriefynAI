@@ -318,7 +318,7 @@
                                         <input class="form-check-input border-secondary shadow-sm" type="checkbox" id="task_@task.Id" @(task.IsDone ? "checked" : "") onchange="toggleTask(@task.Id)" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
                                     </div>
                                     @{
-                                        string NameOf(string? uid) => uid == null ? "" : Model.UserProfiles.GetValueOrDefault(uid)?.FullName ?? "İsimsiz Üye";
+                                        string NameOf(string? uid) => uid == null ? "" : Model.UserProfiles.GetValueOrDefault(uid)?.FullName ?? MeetingWeb.Services.UserDisplay.UnknownName;
                                         var assignee = task.AssigneeUserId != null ? NameOf(task.AssigneeUserId) : null;
                                         var completer = task.CompletedByUserId != null ? NameOf(task.CompletedByUserId) : null;
                                     }
@@ -430,7 +430,7 @@
 
             @foreach (var comment in Model.Comments)
             {
-                var profile = Model.UserProfiles.GetValueOrDefault(comment.UserId, new DetailsModel.UserProfileData { FullName = "İsimsiz", Initials = "?" });
+                var profile = Model.UserProfiles.GetValueOrDefault(comment.UserId, new DetailsModel.UserProfileData { FullName = MeetingWeb.Services.UserDisplay.UnknownName, Initials = "?" });
                 var isNewComment = (newCommentId == comment.Id);
                 var commentClass = isNewComment ? "highlight-comment" : "soft-card";
                 
@@ -491,7 +491,7 @@
                             <div class="mt-4 ps-4 border-start ms-3 border-light">
                                 @foreach (var reply in comment.Replies.OrderBy(r => r.CreatedAt))
                                 {
-                                    var replyProfile = Model.UserProfiles.GetValueOrDefault(reply.UserId, new DetailsModel.UserProfileData { FullName = "İsimsiz", Initials = "?" });
+                                    var replyProfile = Model.UserProfiles.GetValueOrDefault(reply.UserId, new DetailsModel.UserProfileData { FullName = MeetingWeb.Services.UserDisplay.UnknownName, Initials = "?" });
                                     var isNewReply = (newCommentId == reply.Id);
                                     var replyClass = isNewReply ? "highlight-comment" : "bg-soft-light border-0";
 

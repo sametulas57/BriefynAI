@@ -3,6 +3,9 @@ namespace MeetingWeb.Services
     // Avatar fallback shown when a user has no photo: first letters of the first and last name, or the first two letters.
     public static class UserDisplay
     {
+        // Shown wherever a user has no name on their profile.
+        public const string UnknownName = "İsimsiz Üye";
+
         public static string Initials(string fullName)
         {
             var nameParts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);

@@ -31,6 +31,9 @@ namespace MeetingWeb.Pages.Workspace
         public string CurrentUserRole { get; set; } = "";
         public string CurrentUserId { get; set; } = "";
 
+        // The personal space cannot be deleted (checked again in OnPostDeleteWorkspaceAsync); decided by the flag, not the name.
+        public bool IsPersonalWorkspace { get; set; }
+
         // Primary collection to hold the roster of workspace members.
         public List<WorkspaceUser> TeamMembers { get; set; } = new List<WorkspaceUser>();
 
@@ -52,6 +55,7 @@ namespace MeetingWeb.Pages.Workspace
             // Retrieve current workspace metadata.
             var workspace = await _context.Workspaces.FindAsync(activeWorkspaceId);
             WorkspaceName = workspace?.Name ?? "Ekip";
+            IsPersonalWorkspace = workspace?.IsPersonal == true;
 
             TeamMembers = await _context.WorkspaceUsers
                 .Include(wu => wu.User)
@@ -75,7 +79,7 @@ namespace MeetingWeb.Pages.Workspace
             {
                 if (claim.ClaimType == UserClaimTypes.FullName)
                 {
-                    UserNames[claim.UserId] = claim.ClaimValue ?? "İsimsiz Üye";
+                    UserNames[claim.UserId] = claim.ClaimValue ?? UserDisplay.UnknownName;
                 }
                 else if (claim.ClaimType == UserClaimTypes.AvatarUrl || claim.ClaimType == UserClaimTypes.LegacyProfilePicture)
                 {
@@ -89,6 +93,8 @@ namespace MeetingWeb.Pages.Workspace
         // --- MEMBER EVICTION LOGIC ---
         public async Task<IActionResult> OnPostRemoveMemberAsync(string targetUserId)
         {
+            // The session's workspace is used as-is (not ActiveWorkspaceService's fallback): a destructive action must hit
+            // the team the user was looking at, or nothing. Membership and role are verified against the database below.
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
@@ -111,6 +117,8 @@ namespace MeetingWeb.Pages.Workspace
         // --- VOLUNTARY DEPARTURE LOGIC ---
         public async Task<IActionResult> OnPostLeaveWorkspaceAsync()
         {
+            // The session's workspace is used as-is (not ActiveWorkspaceService's fallback): a destructive action must hit
+            // the team the user was looking at, or nothing. Membership and role are verified against the database below.
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
@@ -139,6 +147,8 @@ namespace MeetingWeb.Pages.Workspace
         // --- TENANT ANNIHILATION (CASCADE DELETE) ---
         public async Task<IActionResult> OnPostDeleteWorkspaceAsync()
         {
+            // The session's workspace is used as-is (not ActiveWorkspaceService's fallback): a destructive action must hit
+            // the team the user was looking at, or nothing. Membership and role are verified against the database below.
             int? activeWorkspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
