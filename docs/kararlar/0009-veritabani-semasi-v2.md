@@ -9,7 +9,7 @@ Tarama (iç proje notu): konu/kararlar tek kolonda JSON, profil claim tablosunda
 - Tek `InitialCreate`; tablolar: `AspNetUsers` (+`FullName`, `AvatarFileName`, `CreatedAtUtc`), `Workspaces`, `WorkspaceMembers`, `WorkspaceInvitations`, `Meetings`, `MeetingTranscripts`, `MeetingPoints`, `ActionItems`, `Comments`, `CommentReactions`, `Logs`.
 - Konu ve kararlar tek tabloda (`MeetingPoints.Kind`); kaydın ve maddenin kaynağı kolonla (`Meetings.Source`, `*.Source`: AI/elle). Ulaş, 2026-10-21.
 - Kısıtlar veritabanında: benzersiz tepki `(CommentId, UserId)`, kişisel alan kullanıcı başına bir, telefon tekliği, davet `TokenHash` tekliği, sayı kolonlarına (rol, tür, kaynak, durum) kontrol.
-- Ekip silinince toplantılar, maddeler, görevler, yorumlar, davetler ve üyelikler veritabanında zincirleme silinir. Kullanıcıya giden FK'ler (yazar, atanan, tamamlayan, davet eden) zincirleme değil: SQL Server aynı tabloya birden çok zincirleme yolu kabul etmiyor. Uygulamada hesap silme yok; eklenirse o iş bu bağları önce temizler.
+- Ekip silinince toplantılar, maddeler, görevler, yorumlar, davetler ve üyelikler veritabanında zincirleme silinir. Kullanıcıya giden FK'ler (yazar, atanan, tamamlayan, davet eden) zincirleme değil: SQL Server aynı tabloya birden çok zincirleme yolu kabul etmiyor. Uygulamada hesap silme yok (çerçevenin hazır `/Identity` sayfaları çıkış dışında kapatıldı); eklenirse o iş bu bağları önce temizler.
 - `Meetings` ve `ActionItems`'ta `RowVersion`: aynı anda iki değişiklikte sonuncusu sessizce kazanmaz.
 - Davet bağlantısında rastgele token, veritabanında yalnız SHA-256 özeti.
 - Şema kurulumu ayrı adım: `migrate` servisi (`briefyn_migrator`, şema yetkili) EF migration'ı, Hangfire tablolarını kurar ve çıkar; `web` (`briefyn_app`) yalnız okur/yazar.

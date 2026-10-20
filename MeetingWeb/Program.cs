@@ -242,6 +242,20 @@ try
         await next();
     });
 
+    // The framework's built-in account pages (/Identity/...) come with AddDefaultIdentity; the app has its own sign-up,
+    // sign-in and profile pages and uses only the built-in logout. The rest is closed: its sign-up skips the consent and
+    // the personal space, and its account deletion does not fit the v2 schema (ADR-0009).
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path;
+        if (path.StartsWithSegments("/Identity") && !path.StartsWithSegments("/Identity/Account/Logout"))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        await next();
+    });
+
     // Empty error responses (404, 401, ...) are re-rendered as a friendly page instead of the browser's blank one.
     app.UseStatusCodePagesWithReExecute("/Durum/{0}");
 
