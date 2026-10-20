@@ -160,7 +160,7 @@ namespace MeetingWeb.Services
         // Entries users added by hand are stored as "text|~|authorId"; they survive a regenerated summary.
         private static bool IsManual(string? value) => value != null && value.Contains("|~|");
 
-        private static bool IsTracked(ActionItem a) => a.AssigneeUserId != null || a.DueDate != null || a.CompletedByUserId != null;
+        private static bool IsTracked(ActionItem a) => a.IsDone || a.AssigneeUserId != null || a.DueDate != null || a.CompletedByUserId != null;
 
         private static void ApplySummary(MeetingSummary meeting, AiSummaryData data)
         {

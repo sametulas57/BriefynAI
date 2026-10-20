@@ -148,5 +148,27 @@ namespace MeetingWeb.Tests.Security
 
             Assert.Equal(S.CarolId, Task(id).AssigneeUserId);
         }
+
+        // Found in review (2026-10-18): an unassigned, undated task that was ticked done (e.g. before
+        // "who completed it" was recorded) vanished when the summary was regenerated, losing the done state.
+        [Fact]
+        public async Task Regenerated_summary_does_not_drop_completed_unassigned_tasks()
+        {
+            var id = NewMeetingWithTask("Bitmiş ama atanmamış iş");
+            var meetingId = Task(id).MeetingSummaryId;
+            _app.WithDb(db =>
+            {
+                db.MeetingSummaries.Single(m => m.Id == meetingId).Transkript = "döküm";
+                db.Set<ActionItem>().Single(a => a.Id == id).IsDone = true;
+                return db.SaveChanges();
+            });
+
+            using (var scope = _app.Services.CreateScope())
+                await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ResummarizeMeetingJob(meetingId);
+
+            var task = _app.WithDb(db => db.Set<ActionItem>().AsNoTracking().SingleOrDefault(a => a.Id == id));
+            Assert.NotNull(task);
+            Assert.True(task!.IsDone);
+        }
     }
 }
