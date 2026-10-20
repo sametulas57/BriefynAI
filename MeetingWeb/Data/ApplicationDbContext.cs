@@ -119,11 +119,33 @@ namespace MeetingWeb.Data
                 r.HasIndex(x => new { x.CommentId, x.UserId }).IsUnique();
             });
 
-            // SQLite (tests) cannot generate rowversion values; there the column is a plain, unchecked value.
+            // SQLite (tests) cannot generate rowversion values; there StampRowVersions sets a new one on every save, so the
+            // same concurrency check runs in tests as on SQL Server.
             if (!Database.IsSqlServer())
             {
-                builder.Entity<Meeting>().Property(x => x.RowVersion).IsConcurrencyToken(false).ValueGeneratedNever();
-                builder.Entity<ActionItem>().Property(x => x.RowVersion).IsConcurrencyToken(false).ValueGeneratedNever();
+                builder.Entity<Meeting>().Property(x => x.RowVersion).ValueGeneratedNever();
+                builder.Entity<ActionItem>().Property(x => x.RowVersion).ValueGeneratedNever();
+            }
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            StampRowVersions();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            StampRowVersions();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void StampRowVersions()
+        {
+            if (Database.IsSqlServer()) return;
+            foreach (var entry in ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified))
+            {
+                if (entry.Metadata.FindProperty("RowVersion") != null) entry.Property("RowVersion").CurrentValue = Guid.NewGuid().ToByteArray();
             }
         }
     }

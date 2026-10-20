@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using MeetingWeb.Models;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
 namespace MeetingWeb.Tests.Security
@@ -82,6 +83,23 @@ namespace MeetingWeb.Tests.Security
         public void Role_must_be_a_known_value()
         {
             SaveFails(db => db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = S.WorkspaceB, UserId = S.CarolId, Role = (WorkspaceRole)7 }));
+        }
+
+        [Fact]
+        public void Two_people_editing_the_same_task_do_not_overwrite_each_other()
+        {
+            using var scope1 = _app.Services.CreateScope();
+            using var scope2 = _app.Services.CreateScope();
+            var first = scope1.ServiceProvider.GetRequiredService<MeetingWeb.Data.ApplicationDbContext>();
+            var second = scope2.ServiceProvider.GetRequiredService<MeetingWeb.Data.ApplicationDbContext>();
+            var a = first.ActionItems.Single(t => t.Id == S.TaskB);
+            var b = second.ActionItems.Single(t => t.Id == S.TaskB);
+
+            a.AssigneeUserId = S.BobId;
+            first.SaveChanges();
+            b.DueDate = new DateOnly(2026, 12, 1);
+
+            Assert.Throws<DbUpdateConcurrencyException>(() => second.SaveChanges());
         }
 
         [Fact]
