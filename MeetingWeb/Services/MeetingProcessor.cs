@@ -67,29 +67,31 @@ namespace MeetingWeb.Services
                 _logger.LogInformation("Dispatching audio file to Python AI API for MeetingId: {MeetingId}", meetingId);
                 var ai = await RunPythonPipelineAsync(_audioStorage.GetPath(meeting.AudioFileName));
 
-                // Faz 2: keep the transcript (encrypted) even when the summary failed, so a retry only redoes the summary.
-                if (!string.IsNullOrWhiteSpace(ai?.Transkript))
+                meeting = await SaveOnFreshCopyAsync(meetingId, m =>
                 {
-                    meeting.Transcript ??= new MeetingTranscript();
-                    meeting.Transcript.Text = ai.Transkript;
-                }
+                    // Faz 2: keep the transcript (encrypted) even when the summary failed, so a retry only redoes the summary.
+                    if (!string.IsNullOrWhiteSpace(ai?.Transkript))
+                    {
+                        m.Transcript ??= new MeetingTranscript();
+                        m.Transcript.Text = ai.Transkript;
+                    }
 
-                if (ai is { Success: true, Summary: not null })
-                {
-                    ApplySummary(meeting, ai.Summary);
+                    if (ai is { Success: true, Summary: not null })
+                    {
+                        ApplySummary(m, ai.Summary);
 
-                    // DATA MINIMIZATION (S2/KVKK): the recording has served its purpose once the summary exists.
-                    completedAudio = meeting.AudioFileName;
-                    meeting.AudioFileName = null;
-                }
-                else
-                {
-                    // An empty answer is a failed analysis; leaving it "Processing" made the meeting spin forever.
-                    _logger.LogWarning("Python API returned no summary for MeetingId: {MeetingId}; marking as Failed.", meetingId);
-                    meeting.Status = MeetingStatus.Failed;
-                }
-
-                await _context.SaveChangesAsync();
+                        // DATA MINIMIZATION (S2/KVKK): the recording has served its purpose once the summary exists.
+                        completedAudio = m.AudioFileName;
+                        m.AudioFileName = null;
+                    }
+                    else
+                    {
+                        // An empty answer is a failed analysis; leaving it "Processing" made the meeting spin forever.
+                        _logger.LogWarning("Python API returned no summary for MeetingId: {MeetingId}; marking as Failed.", meetingId);
+                        m.Status = MeetingStatus.Failed;
+                    }
+                });
+                if (meeting == null) return;
                 _logger.LogInformation("Processing complete. MeetingId: {MeetingId} saved successfully.", meetingId);
 
                 // Delete only after the save succeeded; a leftover file is swept by AudioCleanupService.
@@ -118,22 +120,41 @@ namespace MeetingWeb.Services
                     throw new InvalidOperationException("No stored transcript to summarise.");
 
                 var summary = await RequestSummaryAsync(meeting.Transcript.Text);
-                if (summary != null)
+                meeting = await SaveOnFreshCopyAsync(meetingId, m =>
                 {
-                    ApplySummary(meeting, summary);
-                }
-                else
-                {
-                    meeting.Status = MeetingStatus.Failed;
-                }
-
-                await _context.SaveChangesAsync();
+                    if (summary != null) ApplySummary(m, summary);
+                    else m.Status = MeetingStatus.Failed;
+                });
+                if (meeting == null) return;
                 await NotifyWorkspaceAsync(meetingId, meeting.WorkspaceId);
             }
             catch (Exception ex)
             {
                 await MarkFailedAsync(meetingId, ex);
                 throw;
+            }
+        }
+
+        // The AI call takes minutes; meanwhile users may assign or complete tasks. The result is therefore applied to a
+        // freshly loaded copy, and if someone still changed a row in between (RowVersion), it is applied again.
+        private async Task<Meeting?> SaveOnFreshCopyAsync(int meetingId, Action<Meeting> apply)
+        {
+            for (var attempt = 1; ; attempt++)
+            {
+                _context.ChangeTracker.Clear();
+                var meeting = await LoadAsync(meetingId);
+                if (meeting == null) return null;
+
+                apply(meeting);
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    return meeting;
+                }
+                catch (DbUpdateConcurrencyException) when (attempt < 3)
+                {
+                    _logger.LogWarning("MeetingId: {MeetingId} changed while saving the summary; applying it again.", meetingId);
+                }
             }
         }
 
