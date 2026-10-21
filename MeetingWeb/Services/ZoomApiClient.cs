@@ -162,7 +162,7 @@ namespace MeetingWeb.Services
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, Auth("oauth/token")) { Content = new FormUrlEncodedContent(form) };
             request.Headers.Authorization = Basic();
-            using var response = await SendAsync(request);
+            using var response = await SendAsync(request, timeout: TimeSpan.FromSeconds(_options.TokenTimeoutSeconds));
 
             if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized && await IsInvalidGrantAsync(response))
                 throw new ZoomGrantRejectedException();
@@ -214,13 +214,15 @@ namespace MeetingWeb.Services
         }
 
         // Network failures and timeouts become ZoomApiException; their messages never contain tokens.
-        private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, HttpCompletionOption completion = HttpCompletionOption.ResponseContentRead)
+        private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+            HttpCompletionOption completion = HttpCompletionOption.ResponseContentRead, TimeSpan? timeout = null)
         {
+            using var limit = new CancellationTokenSource(timeout ?? Timeout.InfiniteTimeSpan);
             try
             {
-                return await _httpClientFactory.CreateClient(HttpClientName).SendAsync(request, completion);
+                return await _httpClientFactory.CreateClient(HttpClientName).SendAsync(request, completion, limit.Token).WaitAsync(limit.Token);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
             {
                 throw new ZoomApiException(null);
             }

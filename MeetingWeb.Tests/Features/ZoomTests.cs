@@ -775,6 +775,27 @@ public class ZoomTests
         Assert.NotNull(ConnectionOf(app, app.Seed.AliceId));
     }
 
+    // Review round 9: a token request has its own short time limit, shorter than the refresh mark's lifetime.
+    [Fact]
+    public async Task Slow_token_request_is_cut_off_and_lifts_the_mark()
+    {
+        using var app = new BriefynFactory { ZoomEnabled = true, ExtraSettings = { ["Zoom:TokenTimeoutSeconds"] = "1" } };
+        await app.InitializeAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(-1));
+        app.Zoom.On("POST", "/oauth/token", _ =>
+        {
+            Thread.Sleep(3000);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(StubZoomHandler.TokenJson("late", "late")) };
+        });
+
+        var page = WebUtility.HtmlDecode(await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Zoom/Recordings").WaitAsync(TimeSpan.FromSeconds(20)));
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", page);
+        var saved = ConnectionOf(app, app.Seed.AliceId)!;
+        Assert.Equal(StubZoomHandler.RefreshToken, saved.RefreshToken);
+        Assert.Null(saved.RefreshStartedAtUtc);
+    }
+
     // A refresh mark left by a process that died is ignored after a minute.
     [Fact]
     public async Task Old_refresh_mark_does_not_block_refreshing()
