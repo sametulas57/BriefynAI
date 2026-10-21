@@ -47,9 +47,9 @@ namespace MeetingWeb.Pages.Workspace
                 .Select(wu => wu.Role)
                 .FirstOrDefaultAsync();
 
-            if (userRole != WorkspaceRole.Owner)
+            if (!WorkspaceMember.RunsTeam(userRole))
             {
-                TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu oluşturabilir.";
+                TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu ve yöneticiler oluşturabilir.";
                 return RedirectToPage("/Workspace/Members");
             }
 
@@ -75,9 +75,9 @@ namespace MeetingWeb.Pages.Workspace
                 .Select(wu => wu.Role)
                 .FirstOrDefaultAsync();
 
-            if (userRole != WorkspaceRole.Owner)
+            if (!WorkspaceMember.RunsTeam(userRole))
             {
-                TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu oluşturabilir.";
+                TempData["ErrorMessage"] = "Davet bağlantısını yalnız ekip kurucusu ve yöneticiler oluşturabilir.";
                 return RedirectToPage("/Workspace/Members");
             }
 

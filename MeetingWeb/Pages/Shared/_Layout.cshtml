@@ -111,7 +111,7 @@
                                     {
                                         <li><hr class="dropdown-divider"><h6 class="dropdown-header">@activeWorkspaceName</h6></li>
                                         <li><a class="dropdown-item py-2" asp-page="/Workspace/Members"><i class="bi bi-people me-2" aria-hidden="true"></i>Ekibi Görüntüle</a></li>
-                                        @if (currentUserRole == MeetingWeb.Models.WorkspaceRole.Owner) { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
+                                        @if (currentUserRole is { } navRole && MeetingWeb.Models.WorkspaceMember.RunsTeam(navRole)) { <li><a class="dropdown-item py-2" asp-page="/Workspace/Invite"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>Davet Linki Üret</a></li> }
                                     }
                                     <li><a class="dropdown-item py-2" asp-page="/Workspace/Create"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>Yeni Ekip Oluştur</a></li>
                                     @if (userWorkspaces.Count > 0)

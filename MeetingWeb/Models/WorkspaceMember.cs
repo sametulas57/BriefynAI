@@ -15,8 +15,13 @@ namespace MeetingWeb.Models
         public int? TitleId { get; set; }
         public WorkspaceTitle? Title { get; set; }
 
-        // Single place for title permissions (PRD roller-ve-unvanlar); the admin role will join here later.
-        public bool CanManageTitles => Role == WorkspaceRole.Owner;
+        // Single place for role permissions (PRD roller-ve-unvanlar). Founder and admins run the team (invite, remove
+        // members, titles); only the founder changes roles, removes admins and deletes the team.
+        public static bool RunsTeam(WorkspaceRole role) => role is WorkspaceRole.Owner or WorkspaceRole.Admin;
+
+        public bool CanManageTitles => RunsTeam(Role);
+        public bool CanInvite => RunsTeam(Role);
+        public bool CanManageRoles => Role == WorkspaceRole.Owner;
 
         public DateTime JoinedAtUtc { get; set; } = DateTime.UtcNow;
     }

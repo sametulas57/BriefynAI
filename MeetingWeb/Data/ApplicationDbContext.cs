@@ -50,8 +50,7 @@ namespace MeetingWeb.Data
                 // Not a database cascade: SQL Server refuses a second cascade path from Workspaces to WorkspaceMembers.
                 // DeleteTitle clears the members first; deleting a team removes titles and members in the same cascade.
                 m.HasOne(x => x.Title).WithMany().HasForeignKey(x => x.TitleId).OnDelete(DeleteBehavior.ClientSetNull);
-                m.Ignore(x => x.CanManageTitles);
-                m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)"));
+                m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2, 3)"));
             });
 
             builder.Entity<WorkspaceTitle>(t =>

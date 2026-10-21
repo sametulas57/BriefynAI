@@ -223,14 +223,16 @@ namespace MeetingWeb.Pages.Workspace
             CurrentUserId = _userManager.GetUserId(User) ?? "";
 
             var caller = await _context.WorkspaceMembers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
-            if (caller == null || caller.Role != WorkspaceRole.Owner) return Unauthorized();
+            if (caller == null || !WorkspaceMember.RunsTeam(caller.Role)) return Unauthorized();
 
-            // Recheck both roles in the DELETE itself: ownership may have changed since the read above.
+            // Recheck both roles in the DELETE itself: roles may have changed since the read above. The founder removes
+            // members and admins; an admin removes members only; nobody removes the founder.
             var removed = await _context.WorkspaceMembers
                 .Where(m => m.WorkspaceId == activeWorkspaceId && m.UserId == targetUserId &&
-                    m.Role == WorkspaceRole.Member &&
-                    _context.WorkspaceMembers.Any(owner => owner.WorkspaceId == m.WorkspaceId &&
-                        owner.UserId == CurrentUserId && owner.Role == WorkspaceRole.Owner))
+                    m.UserId != CurrentUserId &&
+                    _context.WorkspaceMembers.Any(c => c.WorkspaceId == m.WorkspaceId && c.UserId == CurrentUserId &&
+                        ((c.Role == WorkspaceRole.Owner && (m.Role == WorkspaceRole.Member || m.Role == WorkspaceRole.Admin)) ||
+                         (c.Role == WorkspaceRole.Admin && m.Role == WorkspaceRole.Member))))
                 .ExecuteDeleteAsync();
             TempData[removed == 1 ? "StatusMessage" : "ErrorMessage"] = removed == 1
                 ? "Üye başarıyla ekipten çıkarıldı."
@@ -263,7 +265,7 @@ namespace MeetingWeb.Pages.Workspace
             if (changedCaller != 1) return Unauthorized();
             var changedTarget = await _context.WorkspaceMembers
                 .Where(m => m.WorkspaceId == workspaceId && m.UserId == targetUserId &&
-                    m.Role == WorkspaceRole.Member && m.User.DeletionRequestedAtUtc == null)
+                    (m.Role == WorkspaceRole.Member || m.Role == WorkspaceRole.Admin) && m.User.DeletionRequestedAtUtc == null)
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.Role, WorkspaceRole.Owner));
             if (changedTarget != 1)
             {
@@ -272,6 +274,28 @@ namespace MeetingWeb.Pages.Workspace
             }
             await tx.CommitAsync();
             TempData["StatusMessage"] = "Kuruculuk devredildi.";
+            return RedirectToPage();
+        }
+
+        // --- ROLES ---
+        // Only the founder makes a member an admin or an admin a member again, in one conditional update (both roles
+        // rechecked at the moment of the change). The founder's own role changes only by transferring ownership.
+        public async Task<IActionResult> OnPostSetRoleAsync(string targetUserId, bool makeAdmin)
+        {
+            var workspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
+            var callerId = _userManager.GetUserId(User);
+            if (await _context.Workspaces.AnyAsync(w => w.Id == workspaceId && w.IsPersonal)) return Unauthorized();
+
+            var from = makeAdmin ? WorkspaceRole.Member : WorkspaceRole.Admin;
+            var to = makeAdmin ? WorkspaceRole.Admin : WorkspaceRole.Member;
+            var changed = await _context.WorkspaceMembers
+                .Where(m => m.WorkspaceId == workspaceId && m.UserId == targetUserId && m.UserId != callerId && m.Role == from &&
+                    _context.WorkspaceMembers.Any(c => c.WorkspaceId == m.WorkspaceId && c.UserId == callerId && c.Role == WorkspaceRole.Owner))
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.Role, to));
+
+            TempData[changed == 1 ? "StatusMessage" : "ErrorMessage"] = changed == 1
+                ? (makeAdmin ? "Üye yönetici yapıldı." : "Yönetici yeniden üye yapıldı.")
+                : "Rol değiştirilemedi. Ekip üyeliklerini yeniden kontrol edin.";
             return RedirectToPage();
         }
 
@@ -296,7 +320,7 @@ namespace MeetingWeb.Pages.Workspace
 
                 var removed = await _context.WorkspaceMembers
                     .Where(m => m.WorkspaceId == activeWorkspaceId && m.UserId == CurrentUserId &&
-                        m.Role == WorkspaceRole.Member)
+                        (m.Role == WorkspaceRole.Member || m.Role == WorkspaceRole.Admin))
                     .ExecuteDeleteAsync();
                 if (removed != 1)
                 {

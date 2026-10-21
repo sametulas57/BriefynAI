@@ -454,7 +454,7 @@ namespace MeetingWeb.Migrations
 
                     b.ToTable("WorkspaceMembers", t =>
                         {
-                            t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)");
+                            t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2, 3)");
                         });
                 });
 
