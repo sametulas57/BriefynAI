@@ -2,6 +2,31 @@
 @model MeetingWeb.Pages.Workspace.MembersModel
 @{
     ViewData["Title"] = "Ekip Yönetimi";
+
+    // Icon picker: the icons are shown as shapes in a grid (a plain list can only show their names); the chosen one
+    // goes into the form's titleIcon field.
+    void IconPicker(string? selected)
+    {
+        <input type="hidden" name="titleIcon" value="@selected" />
+        <div class="dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 icon-picker-button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="İkon seç" title="İkon seç">
+                <i class="bi bi-@(selected ?? "slash-circle")"></i><i class="bi bi-chevron-down ms-2" style="font-size: 0.7rem;"></i>
+            </button>
+            <div class="dropdown-menu p-2 shadow-sm border-0 rounded-3">
+                <div class="icon-grid">
+                    <button type="button" class="btn btn-sm icon-choice @(selected == null ? "btn-primary" : "btn-light")" data-icon="" title="İkon yok" aria-label="İkon yok">
+                        <i class="bi bi-slash-circle"></i>
+                    </button>
+                    @foreach (var icon in MeetingWeb.Models.TitleIcons.All)
+                    {
+                        <button type="button" class="btn btn-sm icon-choice @(icon.Icon == selected ? "btn-primary" : "btn-light")" data-icon="@icon.Icon" title="@icon.Label" aria-label="@icon.Label">
+                            <i class="bi bi-@icon.Icon"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 }
 
 <div class="container mt-5 mb-5">
@@ -107,12 +132,7 @@
                                         </span>
                                     }
 
-                                    @if (member.Title != null)
-                                    {
-                                        <span class="badge bg-light text-dark rounded-pill border" style="font-size: 0.75rem;">
-                                            @if (member.Title.Icon != null) { <i class="bi bi-@member.Title.Icon me-1"></i> }@member.Title.Name
-                                        </span>
-                                    }
+                                    <span class="badge bg-light text-dark rounded-pill border member-title @(member.Title == null ? "d-none" : "")" style="font-size: 0.75rem;"><i class="bi bi-@member.Title?.Icon me-1 @(member.Title?.Icon == null ? "d-none" : "")"></i><span>@member.Title?.Name</span></span>
                                 </div>
                                 <div class="text-muted small fw-medium">
                                     <i class="bi bi-envelope text-secondary me-1"></i> @member.User.Email
@@ -123,7 +143,7 @@
                         <div class="ms-md-4 d-flex flex-wrap align-items-center gap-2">
                             @if (Model.CanManageTitles && Model.Titles.Count > 0)
                             {
-                                <form method="post" asp-page-handler="AssignTitle" class="d-flex gap-2 align-items-center">
+                                <form method="post" asp-page-handler="AssignTitle" class="d-flex flex-wrap gap-2 align-items-center assign-title-form" autocomplete="off">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <select name="titleId" class="form-select form-select-sm rounded-pill" aria-label="Unvan" style="width: auto;">
                                         <option value="">Unvansız</option>
@@ -133,17 +153,18 @@
                                         }
                                     </select>
                                     <button type="submit" class="btn btn-outline-secondary btn-sm fw-bold rounded-pill px-3">Kaydet</button>
+                                    <span class="assign-note small fw-medium d-none" role="status"></span>
                                 </form>
                             }
                             @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner && member.UserId != Model.CurrentUserId)
                             {
                                 @if (!Model.IsPersonalWorkspace)
                                 {
-                                <form method="post" asp-page-handler="TransferOwnership" class="d-inline" onsubmit="return confirm('Kuruculuğu bu üyeye devretmek istediğinize emin misiniz?');">
+                                <form method="post" asp-page-handler="TransferOwnership" class="d-inline" data-confirm-title="Kuruculuğu devret" data-confirm-button="Evet, devret" data-confirm="Kuruculuk @fullName adlı kişiye geçer, sen üye olursun. Geri almak için onun kuruculuğu sana devretmesi gerekir.">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <button type="submit" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-4 shadow-sm">Kuruculuğu Devret</button>
                                 </form>
-                                <form method="post" asp-page-handler="SetRole" class="d-inline">
+                                <form method="post" asp-page-handler="SetRole" class="d-inline" data-confirm-safe data-confirm-title="@(member.Role == MeetingWeb.Models.WorkspaceRole.Member ? "Yönetici yap" : "Üye yap")" data-confirm-button="Evet" data-confirm="@(member.Role == MeetingWeb.Models.WorkspaceRole.Member ? $"{fullName} yönetici olur: davet gönderebilir, üye çıkarabilir, unvanları yönetebilir." : $"{fullName} üye olur; davet gönderme, üye çıkarma ve unvan yönetme yetkisi kalkar.")">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <input type="hidden" name="makeAdmin" value="@(member.Role == MeetingWeb.Models.WorkspaceRole.Member ? "true" : "false")" />
                                     <button type="submit" class="btn btn-outline-secondary btn-sm fw-bold rounded-pill px-4 shadow-sm">
@@ -151,7 +172,7 @@
                                     </button>
                                 </form>
                                 }
-                                <form method="post" asp-page-handler="RemoveMember" class="d-inline" onsubmit="return confirm('Bu üyeyi ekipten çıkarmak istediğinize emin misiniz?');">
+                                <form method="post" asp-page-handler="RemoveMember" class="d-inline" data-confirm-title="Ekipten çıkar" data-confirm-button="Evet, çıkar" data-confirm="@fullName ekipten çıkarılır ve bu ekibin toplantılarını artık göremez.">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">
                                         <i class="bi bi-person-dash me-1"></i> Ekipten Çıkar
@@ -160,7 +181,7 @@
                             }
                             else if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Admin && member.Role == MeetingWeb.Models.WorkspaceRole.Member)
                             {
-                                <form method="post" asp-page-handler="RemoveMember" class="d-inline" onsubmit="return confirm('Bu üyeyi ekipten çıkarmak istediğinize emin misiniz?');">
+                                <form method="post" asp-page-handler="RemoveMember" class="d-inline" data-confirm-title="Ekipten çıkar" data-confirm-button="Evet, çıkar" data-confirm="@fullName ekipten çıkarılır ve bu ekibin toplantılarını artık göremez.">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">
                                         <i class="bi bi-person-dash me-1"></i> Ekipten Çıkar
@@ -170,7 +191,7 @@
 
                             @if (Model.CurrentUserRole != MeetingWeb.Models.WorkspaceRole.Owner && member.UserId == Model.CurrentUserId)
                             {
-                                <form method="post" asp-page-handler="LeaveWorkspace" class="d-inline" onsubmit="return confirm('Bu ekipten ayrılmak istediğinize emin misiniz?');">
+                                <form method="post" asp-page-handler="LeaveWorkspace" class="d-inline" data-confirm-title="Ekipten ayrıl" data-confirm-button="Evet, ayrıl" data-confirm="Bu ekipten ayrılırsın ve ekibin toplantılarını artık göremezsin. Geri dönmek için yeni bir davet gerekir.">
                                     <button type="submit" class="btn btn-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">
                                         <i class="bi bi-box-arrow-right me-1"></i> Ekipten Ayrıl
                                     </button>
@@ -196,17 +217,10 @@
                         <form method="post" asp-page-handler="UpdateTitle" class="d-flex flex-wrap gap-2 align-items-center flex-grow-1">
                             <input type="hidden" name="titleId" value="@title.Id" />
                             <input type="text" name="titleName" value="@title.Name" maxlength="@MeetingWeb.Models.WorkspaceTitle.NameMaxLength" class="form-control form-control-sm rounded-pill" aria-label="Unvan adı" style="max-width: 16rem;" required />
-                            <select name="titleIcon" class="form-select form-select-sm rounded-pill" aria-label="İkon" style="width: auto;">
-                                <option value="">İkon yok</option>
-                                @foreach (var icon in MeetingWeb.Models.TitleIcons.All)
-                                {
-                                    <option value="@icon.Icon" selected="@(icon.Icon == title.Icon)">@icon.Label</option>
-                                }
-                            </select>
-                            @if (title.Icon != null) { <i class="bi bi-@title.Icon fs-5 text-secondary" aria-hidden="true"></i> }
+                            @{ IconPicker(title.Icon); }
                             <button type="submit" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-3">Kaydet</button>
                         </form>
-                        <form method="post" asp-page-handler="DeleteTitle" onsubmit="return confirm('Bu unvanı silmek istediğinize emin misiniz? Taşıyanlar ekipte kalır, yalnız unvanları kalkar.');">
+                        <form method="post" asp-page-handler="DeleteTitle" data-confirm-title="Unvanı sil" data-confirm-button="Evet, sil" data-confirm="&quot;@title.Name&quot; unvanı silinir. Bu unvanı taşıyanlar ekipte kalır, yalnız unvanları kalkar.">
                             <input type="hidden" name="titleId" value="@title.Id" />
                             <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-3"><i class="bi bi-trash3 me-1"></i>Sil</button>
                         </form>
@@ -215,13 +229,7 @@
 
                 <form method="post" asp-page-handler="CreateTitle" class="d-flex flex-wrap gap-2 align-items-center mt-3 pt-3 border-top">
                     <input type="text" name="titleName" maxlength="@MeetingWeb.Models.WorkspaceTitle.NameMaxLength" class="form-control form-control-sm rounded-pill" placeholder="Yeni unvan (ör. Yazılım, Hukuk)" aria-label="Yeni unvan" style="max-width: 16rem;" required />
-                    <select name="titleIcon" class="form-select form-select-sm rounded-pill" aria-label="İkon" style="width: auto;">
-                        <option value="">İkon yok</option>
-                        @foreach (var icon in MeetingWeb.Models.TitleIcons.All)
-                        {
-                            <option value="@icon.Icon">@icon.Label</option>
-                        }
-                    </select>
+                    @{ IconPicker(null); }
                     <button type="submit" class="btn btn-primary btn-sm fw-bold rounded-pill px-3"><i class="bi bi-plus-lg me-1"></i>Ekle</button>
                 </form>
             </div>
@@ -269,5 +277,43 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl)
             });
         });
+
+        // Icon picker: the menu is positioned "fixed" so the card's rounded edge does not cut it; clicking a shape stores
+        // it in the form and shows it on the picker's button.
+        document.querySelectorAll('.icon-picker-button').forEach(button =>
+            new bootstrap.Dropdown(button, { popperConfig: config => ({ ...config, strategy: 'fixed' }) }));
+        document.querySelectorAll('.icon-choice').forEach(choice => choice.addEventListener('click', () => {
+            const form = choice.closest('form');
+            form.querySelector('input[name="titleIcon"]').value = choice.dataset.icon;
+            form.querySelector('.icon-picker-button i').className = 'bi bi-' + (choice.dataset.icon || 'slash-circle');
+            form.querySelectorAll('.icon-choice').forEach(c => {
+                c.classList.toggle('btn-primary', c === choice);
+                c.classList.toggle('btn-light', c !== choice);
+            });
+        }));
+
+        // Saving one person's title updates only that row, so a choice made in another row is not lost (no page reload).
+        document.querySelectorAll('form.assign-title-form').forEach(form => form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const row = form.closest('li');
+            const note = form.querySelector('.assign-note');
+            let data;
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
+                data = await response.json();
+            } catch {
+                location.reload();
+                return;
+            }
+            note.textContent = data.message;
+            note.className = 'assign-note small fw-medium ' + (data.success ? 'text-success' : 'text-danger');
+            if (!data.success) return;
+
+            const badge = row.querySelector('.member-title');
+            const icon = badge.querySelector('i');
+            badge.querySelector('span').textContent = data.name || '';
+            badge.classList.toggle('d-none', !data.name);
+            icon.className = 'bi me-1 ' + (data.icon ? 'bi-' + data.icon : 'd-none');
+        }));
     </script>
 }

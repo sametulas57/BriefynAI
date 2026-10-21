@@ -20,3 +20,9 @@ html {
 body {
   margin-bottom: 60px;
 }
+/* Title icon picker (Ekip sayfası): the icons as a grid of shapes */
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 2.25rem);
+    gap: 0.25rem;
+}

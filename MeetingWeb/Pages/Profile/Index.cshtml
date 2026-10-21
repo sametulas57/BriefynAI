@@ -67,7 +67,7 @@
 
                         @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
                         {
-                            <form method="post" asp-page-handler="RemoveAvatar" class="m-0" onsubmit="return confirm('Fotoğrafınızı kaldırmak istediğinize emin misiniz?');">
+                            <form method="post" asp-page-handler="RemoveAvatar" class="m-0" data-confirm-title="Fotoğrafı kaldır" data-confirm-button="Evet, kaldır" data-confirm="Profil fotoğrafın kaldırılır; yerine adının baş harfleri görünür.">
                                 <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill px-4 shadow-sm transition-all">Sil</button>
                             </form>
                         }
@@ -114,7 +114,7 @@
                 </div>
                 <div class="card-body p-4">
                     <p class="text-muted">Hesabınız 7 gün sonra silinir. Bu sürede giriş yaparsanız isteğiniz iptal olur.</p>
-                    <form method="post" asp-page-handler="RequestDeletion" onsubmit="return confirm('Hesabınızı silmek istediğinize emin misiniz?');">
+                    <form method="post" asp-page-handler="RequestDeletion" data-confirm-title="Hesabımı sil" data-confirm-button="Evet, hesabımı sil" data-confirm="Hesabın 7 gün sonra silinir. Bu sürede giriş yaparsan istek iptal olur.">
                         <label for="DeletionPassword" class="form-label fw-bold text-muted small">Şifreniz</label>
                         <input id="DeletionPassword" name="DeletionPassword" type="password" required autocomplete="current-password" class="form-control bg-light border-0 rounded-3" />
                         <div class="text-end mt-4">
@@ -174,6 +174,8 @@
                 <img id="imageToCrop" src="" style="max-width: 100%; display: block; margin: 0 auto;">
             </div>
             
+            <div class="alert alert-danger border-0 rounded-0 mb-0 d-none" id="cropError" role="alert"></div>
+
             <div class="modal-footer bg-white border-top py-3">
                 <button type="button" class="btn btn-light px-4 rounded-pill fw-bold text-muted" data-bs-dismiss="modal">İptal</button>
                 <button type="button" class="btn btn-primary fw-bold px-5 rounded-pill shadow-sm d-flex align-items-center transition-all" id="cropAndSaveBtn">
@@ -282,15 +284,23 @@
         // Reload the page to reflect the new avatar across the application (Claims refresh)
         window.location.reload();
         } else {
-        alert('Hata: ' + result.message);
+        showCropError(result.message);
         resetBtn();
         }
         } catch (error) {
         console.error('Upload failed:', error);
-        alert('Fotoğraf yüklenirken bir ağ hatası oluştu. Lütfen bağlantınızı kontrol edin.');
+        showCropError('Fotoğraf yüklenirken bağlantı sorunu oldu. İnternet bağlantınızı kontrol edip tekrar deneyin.');
         resetBtn();
         }
         });
+
+        // Upload errors are shown inside the crop panel (the app's own look, not the browser's box).
+        const cropError = document.getElementById('cropError');
+        function showCropError(message) {
+        cropError.textContent = message;
+        cropError.classList.remove('d-none');
+        }
+        cropperModalElement.addEventListener('show.bs.modal', () => cropError.classList.add('d-none'));
 
         // Helper function to restore the save button to its original interactive state
         function resetBtn() {

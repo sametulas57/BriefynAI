@@ -335,19 +335,13 @@
                                             @text
                                         </label>
                                         <div class="small text-muted mt-1 d-flex flex-wrap gap-2">
-                                            @if (assignee != null)
-                                            {
-                                                <span><i class="bi bi-person me-1"></i>@assignee</span>
-                                            }
-                                            @if (task.DueDate != null)
-                                            {
-                                                <span><i class="bi bi-calendar-event me-1"></i>@task.DueDate.Value.ToString("d MMMM yyyy", MeetingWeb.Services.DisplayTime.Culture)</span>
-                                            }
+                                            <span class="task-assignee @(assignee == null ? "d-none" : "")"><i class="bi bi-person me-1"></i><span>@assignee</span></span>
+                                            <span class="task-due @(task.DueDate == null ? "d-none" : "")"><i class="bi bi-calendar-event me-1"></i><span>@task.DueDate?.ToString("d MMMM yyyy", MeetingWeb.Services.DisplayTime.Culture)</span></span>
                                             <span id="done_@task.Id" class="text-success fw-medium @(task.IsDone ? "" : "d-none")"><i class="bi bi-check2-circle me-1"></i><span class="done-text">Tamamlandı@(completer != null ? $" · Tamamlayan: {completer}" : "")</span></span>
                                         </div>
                                         <details class="mt-1">
                                             <summary class="small text-primary" style="cursor: pointer;">@(assignee == null ? "Birine ata" : "Atamayı değiştir")</summary>
-                                            <form method="post" asp-page-handler="AssignAction" class="d-flex flex-column gap-2 mt-2">
+                                            <form method="post" asp-page-handler="AssignAction" class="d-flex flex-column gap-2 mt-2 assign-form" autocomplete="off">
                                                 <input type="hidden" name="taskId" value="@task.Id" />
                                                 <select name="assigneeUserId" class="form-select form-select-sm rounded-pill" aria-label="Kime atansın">
                                                     <option value="">Kimseye (atamayı kaldır)</option>
@@ -360,6 +354,7 @@
                                                 <button type="submit" class="btn btn-sm btn-primary rounded-pill">Kaydet</button>
                                             </form>
                                         </details>
+                                        <div class="assign-note small mt-1 d-none" role="status"></div>
                                     </div>
                                     
                                     @if (addedBy == null && task.Source == MeetingWeb.Models.EntrySource.Manual)
@@ -466,7 +461,7 @@
                                     <small class="text-muted fw-medium"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(comment.CreatedAtUtc, "HH:mm")</small>
                                     @if (comment.UserId == currentUserId)
                                     {
-                                        <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yorumu kalıcı olarak silmek istediğinize emin misiniz?');">
+                                        <form method="post" asp-page-handler="DeleteComment" class="m-0" data-confirm-title="Yorumu sil" data-confirm-button="Evet, sil" data-confirm="Yorum, altındaki yanıtlarla birlikte kalıcı olarak silinir.">
                                             <input type="hidden" name="commentId" value="@comment.Id" />
                                             <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
                                             <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0 text-decoration-none" title="Sil"><i class="bi bi-trash3"></i></button>
@@ -527,7 +522,7 @@
                                                         <span class="text-muted fw-medium" style="font-size: 0.75rem;"><i class="bi bi-clock me-1"></i> @MeetingWeb.Services.DisplayTime.Format(reply.CreatedAtUtc, "HH:mm")</span>
                                                         @if (reply.UserId == currentUserId)
                                                         {
-                                                            <form method="post" asp-page-handler="DeleteComment" class="m-0" onsubmit="return confirm('Yanıtı silmek istediğinize emin misiniz?');">
+                                                            <form method="post" asp-page-handler="DeleteComment" class="m-0" data-confirm-title="Yanıtı sil" data-confirm-button="Evet, sil" data-confirm="Yanıt kalıcı olarak silinir.">
                                                                 <input type="hidden" name="commentId" value="@reply.Id" />
                                                                 <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
                                                                 <button type="submit" class="btn btn-link btn-sm text-danger p-0 border-0 text-decoration-none" style="font-size: 0.85rem;"><i class="bi bi-trash3"></i></button>
@@ -709,6 +704,37 @@
             })
             .catch(error => console.error(error));
         }
+
+        // Assigning saves only its own row, so a choice made in another row is not lost (no page reload).
+        document.querySelectorAll('form.assign-form').forEach(form => form.addEventListener('submit', async e => {
+            e.preventDefault();
+            const row = form.closest('li');
+            const note = row.querySelector('.assign-note');
+            let data;
+            try {
+                const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
+                data = await response.json();
+            } catch {
+                location.reload();
+                return;
+            }
+            if (data.reload) { location.reload(); return; }
+            note.textContent = data.message;
+            note.className = 'assign-note small mt-1 fw-medium ' + (data.success ? 'text-success' : 'text-danger');
+            if (!data.success) return;
+
+            const show = (selector, text) => {
+                const el = row.querySelector(selector);
+                el.querySelector('span').textContent = text || '';
+                el.classList.toggle('d-none', !text);
+            };
+            show('.task-assignee', data.assignee);
+            show('.task-due', data.dueDate);
+            if (!data.assignee) form.querySelector('[name="dueDate"]').value = '';
+            const details = form.closest('details');
+            details.querySelector('summary').textContent = data.assignee ? 'Atamayı değiştir' : 'Birine ata';
+            details.open = false;
+        }));
 
         // AJAX Fetch API: Asynchronously dispatch comment likes/dislikes
         document.querySelectorAll('.btn-reaction').forEach(button => {

@@ -172,6 +172,40 @@ namespace MeetingWeb.Tests.Features
         }
 
         // Criterion 10
+        // PRD 2026-10-21-ikon-secici-atama-onay-paneli: icons are picked by their shape, not from a list of names.
+        [Fact]
+        public async Task Icons_are_picked_by_their_shape()
+        {
+            CreateTitle(S.WorkspaceA, "Şekil testi");
+            var page = WebUtility.HtmlDecode(await _app.ClientFor(S.AliceId).GetStringAsync("/Workspace/Members"));
+
+            Assert.DoesNotContain("<option value=\"laptop\"", page);
+            foreach (var (icon, label) in TitleIcons.All)
+                Assert.Matches($"data-icon=\"{icon}\"[^>]*title=\"{Regex.Escape(label)}\"[^>]*>\\s*<i class=\"bi bi-{icon}\"", page);
+        }
+
+        // Saving one person's title must not reset a choice made in another row.
+        [Fact]
+        public async Task Assigning_a_title_from_the_page_answers_without_a_reload()
+        {
+            var titleId = CreateTitle(S.WorkspaceA, "Yenilemesiz");
+            _app.WithDb(db => { db.WorkspaceTitles.Single(t => t.Id == titleId).Icon = "star"; return db.SaveChanges(); });
+            var (alice, token) = await OnTeamPageAsync(S.AliceId);
+
+            var json = await PostFormForJsonAsync(alice, "/Workspace/Members?handler=AssignTitle", token,
+                ("targetUserId", S.CarolId), ("titleId", $"{titleId}"));
+
+            Assert.True(json.GetProperty("success").GetBoolean());
+            Assert.Equal("Yenilemesiz", json.GetProperty("name").GetString());
+            Assert.Equal("star", json.GetProperty("icon").GetString());
+            Assert.Equal(titleId, TitleOf(S.WorkspaceA, S.CarolId));
+
+            var page = WebUtility.HtmlDecode(await alice.GetStringAsync("/Workspace/Members"));
+            var forms = Regex.Matches(page, "<form[^>]*handler=AssignTitle[^>]*>");
+            Assert.NotEmpty(forms);
+            Assert.All(forms, f => Assert.Contains("autocomplete=\"off\"", f.Value));
+        }
+
         [Fact]
         public async Task Personal_space_has_no_title_management()
         {
