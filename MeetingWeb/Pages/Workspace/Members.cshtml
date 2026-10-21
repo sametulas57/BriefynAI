@@ -301,15 +301,24 @@
             const button = form.querySelector('button[type="submit"]');
             if (button.disabled) return;
             button.disabled = true;
+            let response;
+            try {
+                response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
+            } catch {
+                // No connection: say so in the row and keep every choice on the page.
+                button.disabled = false;
+                note.textContent = 'Bağlantı kurulamadı, kaydedilmedi. Lütfen tekrar deneyin.';
+                note.className = 'assign-note small fw-medium text-danger';
+                return;
+            }
+            button.disabled = false;
             let data;
             try {
-                const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
                 data = await response.json();
             } catch {
+                // Not a short answer (e.g. the session ended): show the page as it now is.
                 location.reload();
                 return;
-            } finally {
-                button.disabled = false;
             }
             note.textContent = data.message;
             note.className = 'assign-note small fw-medium ' + (data.success ? 'text-success' : 'text-danger');
