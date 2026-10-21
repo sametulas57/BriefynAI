@@ -101,12 +101,14 @@ namespace MeetingWeb.Tests.Security
         public async Task Recording_is_deleted_after_successful_analysis()
         {
             var path = WriteAudio("basarili.m4a");
+            var sidecar = WriteAudio("basarili.m4a.vtt");
             var id = await CreateMeetingAsync(MeetingStatus.Processing, "basarili.m4a");
 
             using (var scope = _app.Services.CreateScope())
                 await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
 
             Assert.False(File.Exists(path));
+            Assert.False(File.Exists(sidecar));
             var meeting = Meeting(id);
             Assert.Equal(MeetingStatus.Completed, meeting.Status);
             Assert.Null(meeting.AudioFileName);
@@ -135,8 +137,10 @@ namespace MeetingWeb.Tests.Security
             var recentFailed = WriteAudio("yeni_hata.m4a");
             var recentFailedId = await CreateMeetingAsync(MeetingStatus.Failed, "yeni_hata.m4a", now.AddDays(-1));
             var processing = WriteAudio("isleniyor.m4a", now.AddDays(-10));
+            var processingSidecar = WriteAudio("isleniyor.m4a.vtt", now.AddDays(-10));
             await CreateMeetingAsync(MeetingStatus.Processing, "isleniyor.m4a", now.AddDays(-10));
             var oldOrphan = WriteAudio("sahipsiz_eski.m4a", now.AddDays(-8));
+            var oldOrphanSidecar = WriteAudio("sahipsiz_eski.m4a.vtt", now.AddDays(-8));
             var freshOrphan = WriteAudio("sahipsiz_yeni.m4a", now);
 
             using (var scope = _app.Services.CreateScope())
@@ -147,7 +151,9 @@ namespace MeetingWeb.Tests.Security
             Assert.True(File.Exists(recentFailed));
             Assert.Equal("yeni_hata.m4a", Meeting(recentFailedId).AudioFileName);
             Assert.True(File.Exists(processing));
+            Assert.True(File.Exists(processingSidecar));
             Assert.False(File.Exists(oldOrphan));
+            Assert.False(File.Exists(oldOrphanSidecar));
             Assert.True(File.Exists(freshOrphan));
         }
 

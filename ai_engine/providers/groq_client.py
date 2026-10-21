@@ -51,6 +51,17 @@ class GroqClient:
             raise GroqError(f"transcription failed: HTTP {res.status_code}")
         return res.json().get("text", "").strip()
 
+    def transcribe_segments(self, audio: Path, model: str, language: str, prompt: str) -> list[tuple[float, float, str]]:
+        with audio.open("rb") as f:
+            res = self._post("/audio/transcriptions",
+                             data={"model": model, "language": language, "prompt": prompt,
+                                   "response_format": "verbose_json", "temperature": "0"},
+                             files={"file": (audio.name, f, "audio/flac")})
+        if res.status_code != 200:
+            raise GroqError(f"transcription failed: HTTP {res.status_code}")
+        return [(segment["start"], segment["end"], segment["text"].strip())
+                for segment in res.json().get("segments", [])]
+
     def chat_json(self, model: str, messages: list[dict], schema: dict) -> dict:
         body = {"model": model, "messages": messages, "temperature": 0.2,
                 "response_format": {"type": "json_schema", "json_schema": {"name": "result", "schema": schema, "strict": True}}}

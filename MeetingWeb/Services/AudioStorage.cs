@@ -8,7 +8,9 @@ namespace MeetingWeb.Services
         Task<string> SaveAsync(IFormFile file);
         // Copies at most maxBytes; returns null (and keeps nothing) when the content is larger.
         Task<string?> SaveAsync(Stream content, string fileName, long maxBytes);
+        Task<bool> SaveSidecarAsync(string storedName, Stream content, long maxBytes);
         string GetPath(string storedName);
+        string? GetSidecarPath(string storedName);
         bool Delete(string? storedName);
     }
 
@@ -65,6 +67,33 @@ namespace MeetingWeb.Services
             }
         }
 
+        public async Task<bool> SaveSidecarAsync(string storedName, Stream content, long maxBytes)
+        {
+            var path = GetPath(storedName) + ".vtt";
+            var created = false;
+            var complete = false;
+            try
+            {
+                await using var stream = new FileStream(path, FileMode.CreateNew);
+                created = true;
+                var buffer = new byte[81920];
+                long total = 0;
+                int read;
+                while ((read = await content.ReadAsync(buffer)) > 0)
+                {
+                    total += read;
+                    if (total > maxBytes) return false;
+                    await stream.WriteAsync(buffer.AsMemory(0, read));
+                }
+                complete = true;
+                return true;
+            }
+            finally
+            {
+                if (created && !complete) File.Delete(path);
+            }
+        }
+
         // Accepts both new values ("<guid>_name.m4a") and legacy ones ("/uploads/<guid>_name.m4a").
         public string GetPath(string storedName)
         {
@@ -78,17 +107,24 @@ namespace MeetingWeb.Services
             return path;
         }
 
+        public string? GetSidecarPath(string storedName)
+        {
+            var path = GetPath(storedName) + ".vtt";
+            return File.Exists(path) ? path : null;
+        }
+
         public bool Delete(string? storedName)
         {
             if (string.IsNullOrEmpty(storedName)) return false;
 
             var path = GetPath(storedName);
-            if (!File.Exists(path)) return false;
-
+            var sidecar = GetSidecarPath(storedName);
             try
             {
-                File.Delete(path);
-                return true;
+                var existed = File.Exists(path);
+                if (existed) File.Delete(path);
+                if (sidecar != null) File.Delete(sidecar);
+                return existed || sidecar != null;
             }
             catch (IOException)
             {

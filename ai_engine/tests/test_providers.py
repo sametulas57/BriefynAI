@@ -71,6 +71,19 @@ def test_client_falls_back_to_json_mode_when_schema_is_not_supported():
     assert bodies[-1]["response_format"]["type"] == "json_object"
 
 
+def test_timed_transcription_reads_verbose_segments(tmp_path):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={"segments": [{"start": 1.2, "end": 3.4, "text": " söz "}]})
+
+    audio = tmp_path / "part.flac"
+    audio.write_bytes(b"audio")
+    assert client_with(handler).transcribe_segments(audio, "whisper", "tr", "prompt") == [(1.2, 3.4, "söz")]
+    assert b'verbose_json' in requests[0].content
+
+
 # --- summariser ---
 
 SUMMARY = {

@@ -79,6 +79,7 @@ namespace MeetingWeb.Services
         private TimeSpan RefreshMarkLifetime => TimeSpan.FromSeconds(2 * _options.TokenTimeoutSeconds);
 
         private long MaxBytes => _configuration.GetValue("Upload:MaxMegabytes", 300) * 1024L * 1024L;
+        private const long MaxTranscriptBytes = 2 * 1024 * 1024;
 
         public string AuthorizeUrl(string state) => _api.AuthorizeUrl(state);
 
@@ -230,6 +231,28 @@ namespace MeetingWeb.Services
             var storedName = await AsUserAsync(userId, token => _api.DownloadAsync(token, audio.DownloadUrl,
                 stream => _audioStorage.SaveAsync(stream, "zoom.m4a", MaxBytes)));
             if (storedName == null) return new(ZoomImportOutcome.TooLarge);
+
+            if (recording.TranscriptFile is { } transcript)
+            {
+                if (transcript.FileSize > MaxTranscriptBytes)
+                {
+                    _logger.LogWarning("Zoom transcript was not saved.");
+                }
+                else
+                {
+                    try
+                    {
+                        var saved = await AsUserAsync(userId, token => _api.DownloadAsync(token, transcript.DownloadUrl,
+                            stream => _audioStorage.SaveSidecarAsync(storedName, stream, MaxTranscriptBytes)));
+                        if (!saved) _logger.LogWarning("Zoom transcript was not saved.");
+                    }
+                    catch (Exception ex) when (ex is ZoomApiException or ZoomGrantRejectedException or ZoomNotConnectedException
+                                               or IOException or UnauthorizedAccessException)
+                    {
+                        _logger.LogWarning("Zoom transcript was not saved.");
+                    }
+                }
+            }
 
             // The user may have left (or been removed from) the team while the file was downloading.
             if (!await _db.WorkspaceMembers.AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == userId))

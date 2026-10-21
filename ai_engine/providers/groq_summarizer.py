@@ -14,7 +14,8 @@ SYSTEM = (
     "dökümde olmayan kişi, tarih, rakam ekleme. Döküm otomatik yazıya dökülmüştür, küçük yazım hataları olabilir; "
     "bariz olanları düzelt, emin olmadığını olduğu gibi bırak. Sonradan değiştirilen kararlarda son hâli yaz; "
     "önerilip kabul edilmeyen ya da ertelenen konuları karar diye yazma. Aksiyonun sahibi ya da süresi "
-    "söylenmemişse null bırak. Türkçe yaz."
+    "söylenmemişse null bırak. Türkçe yaz. Dökümde satırlar Ad: söz biçiminde olabilir; "
+    "aksiyonun sahibini bu adlardan yalnız dökümde açıkça söylendiyse yaz."
 )
 
 SCHEMA = {

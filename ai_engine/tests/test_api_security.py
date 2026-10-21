@@ -51,6 +51,39 @@ def test_correct_key_is_accepted(client):
     assert res.json()["success"] is True
 
 
+def test_optional_speakers_are_passed_to_transcriber(client, monkeypatch):
+    seen = []
+    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin")
+    headers = {"X-Api-Key": KEY}
+    assert upload(client, headers).status_code == 200
+    response = client.post(URL, headers=headers, files={
+        "file": ("audio.m4a", b"audio", "audio/mp4"),
+        "speakers": ("names.vtt", "WEBVTT\n\nAli: söz".encode(), "text/vtt"),
+    })
+    assert response.status_code == 200
+    assert seen == [None, "WEBVTT\n\nAli: söz"]
+
+
+def test_speakers_over_two_megabytes_are_rejected(client, monkeypatch):
+    monkeypatch.setattr(api_server, "max_upload_bytes", lambda: 10 * 1024 * 1024)
+    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
+        "file": ("audio.m4a", b"audio", "audio/mp4"),
+        "speakers": ("names.vtt", b"a" * (2 * 1024 * 1024 + 1), "text/vtt"),
+    })
+    assert response.status_code == 413
+
+
+def test_invalid_utf8_speakers_are_ignored(client, monkeypatch):
+    seen = []
+    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin")
+    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
+        "file": ("audio.m4a", b"audio", "audio/mp4"),
+        "speakers": ("names.vtt", b"\xff", "text/vtt"),
+    })
+    assert response.status_code == 200
+    assert seen == [None]
+
+
 def test_service_fails_closed_when_no_key_is_configured(client, monkeypatch):
     monkeypatch.delenv("AI_ENGINE_API_KEY")
     assert upload(client, {"X-Api-Key": ""}).status_code == 503
