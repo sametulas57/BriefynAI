@@ -260,7 +260,8 @@ namespace MeetingWeb.Migrations
 
                     b.Property<string>("ExternalRecordingId")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(200)")
+                        .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()

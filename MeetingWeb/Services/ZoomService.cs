@@ -92,7 +92,21 @@ namespace MeetingWeb.Services
                 return ZoomConnectOutcome.Failed;
             }
 
-            // Connecting again replaces the old tokens (one connection per user).
+            // Connecting again replaces the old tokens (one connection per user); waits for a disconnect in progress.
+            var gate = Gate(userId);
+            await gate.WaitAsync();
+            try
+            {
+                return await SaveConnectionAsync(userId, me, tokens);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        private async Task<ZoomConnectOutcome> SaveConnectionAsync(string userId, ZoomUser me, ZoomTokens tokens)
+        {
             var connection = await _db.ZoomConnections.SingleOrDefaultAsync(z => z.UserId == userId);
             if (connection == null)
             {
@@ -130,7 +144,8 @@ namespace MeetingWeb.Services
                 var connection = await GetConnectionAsync(userId);
                 if (connection == null) return;
                 await RevokeCoreAsync(connection);
-                await _db.ZoomConnections.Where(z => z.UserId == userId).ExecuteDeleteAsync();
+                // RowVersion: a connection saved again meanwhile (another tab, another server process) stays.
+                await _db.ZoomConnections.Where(z => z.Id == connection.Id && z.RowVersion == connection.RowVersion).ExecuteDeleteAsync();
             }
             finally
             {

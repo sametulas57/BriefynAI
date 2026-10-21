@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MeetingWeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261021195100_AddZoomImport")]
+    [Migration("20261021200833_AddZoomImport")]
     partial class AddZoomImport
     {
         /// <inheritdoc />
@@ -263,7 +263,8 @@ namespace MeetingWeb.Migrations
 
                     b.Property<string>("ExternalRecordingId")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(200)")
+                        .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()

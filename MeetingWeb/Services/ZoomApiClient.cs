@@ -180,7 +180,10 @@ namespace MeetingWeb.Services
             try
             {
                 using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-                return doc.RootElement.TryGetProperty("error", out var error) && error.GetString() == "invalid_grant";
+                // Zoom answers an unusable refresh token with invalid_grant, or with invalid_request "Invalid Token!".
+                var error = doc.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null;
+                var reason = doc.RootElement.TryGetProperty("reason", out var r) ? r.GetString() : null;
+                return error == "invalid_grant" || (error == "invalid_request" && reason == "Invalid Token!");
             }
             catch (JsonException)
             {
