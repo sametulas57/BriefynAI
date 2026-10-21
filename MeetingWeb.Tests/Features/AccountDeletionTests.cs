@@ -46,10 +46,12 @@ public class AccountDeletionTests
     public async Task Owner_of_shared_team_is_refused_with_team_name()
     {
         using var app = await ReadyAsync();
+        var beforeStamp = app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).SecurityStamp);
         var (client, res) = await RequestAsync(app, Password);
         var page = WebUtility.HtmlDecode(await client.GetStringAsync(res.Headers.Location!.OriginalString));
         Assert.Contains("A Şirketi", page);
         Assert.Null(app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).DeletionRequestedAtUtc));
+        Assert.Equal(beforeStamp, app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).SecurityStamp));
     }
 
     [Fact]
@@ -76,6 +78,31 @@ public class AccountDeletionTests
         await RequestAsync(app, Password);
 
         Assert.NotEqual(before, app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).SecurityStamp));
+    }
+
+    [Fact]
+    public async Task Ownership_cannot_be_transferred_to_user_after_deletion_request_is_saved()
+    {
+        using var app = await ReadyAsync();
+        app.WithDb(db =>
+        {
+            db.WorkspaceMembers.Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.AliceId).Role = WorkspaceRole.Member;
+            db.WorkspaceMembers.Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId).Role = WorkspaceRole.Owner;
+            db.SaveChanges();
+            return 0;
+        });
+
+        var (_, request) = await RequestAsync(app, Password);
+        Assert.Equal(HttpStatusCode.Redirect, request.StatusCode);
+        Assert.NotNull(app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).DeletionRequestedAtUtc));
+
+        var carol = app.ClientFor(app.Seed.CarolId);
+        var token = await GetAntiforgeryTokenAsync(carol, "/Workspace/Members");
+        var transfer = await PostFormAsync(carol, "/Workspace/Members?handler=TransferOwnership", token, ("targetUserId", app.Seed.AliceId));
+
+        Assert.Equal(HttpStatusCode.Redirect, transfer.StatusCode);
+        Assert.Equal(WorkspaceRole.Owner, app.WithDb(db => db.WorkspaceMembers.AsNoTracking().Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId).Role));
+        Assert.Equal(WorkspaceRole.Member, app.WithDb(db => db.WorkspaceMembers.AsNoTracking().Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.AliceId).Role));
     }
 
     [Fact]

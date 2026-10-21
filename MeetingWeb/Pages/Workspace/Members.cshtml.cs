@@ -114,6 +114,13 @@ namespace MeetingWeb.Pages.Workspace
                 return RedirectToPage();
             }
             await using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            // Under Serializable, this read holds a lock on the target user until commit. Read it before
+            // changing memberships so a concurrent deletion request cannot pass the ownership check.
+            if (!await _context.Users.AnyAsync(u => u.Id == targetUserId && u.DeletionRequestedAtUtc == null))
+            {
+                TempData["ErrorMessage"] = "Kuruculuğu bu üyeye devredemezsiniz.";
+                return RedirectToPage();
+            }
             var changedCaller = await _context.WorkspaceMembers
                 .Where(m => m.WorkspaceId == workspaceId && m.UserId == callerId && m.Role == WorkspaceRole.Owner)
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.Role, WorkspaceRole.Member));
