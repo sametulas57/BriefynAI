@@ -173,7 +173,16 @@ namespace MeetingWeb.Pages.Workspace
             await _context.WorkspaceMembers.Where(m => m.TitleId == title.Id)
                 .ExecuteUpdateAsync(s => s.SetProperty(m => m.TitleId, (int?)null));
             _context.WorkspaceTitles.Remove(title);
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Someone was given this title in another tab after the members were cleared; nothing is deleted.
+                TempData["ErrorMessage"] = "Bu unvan az önce birine atandı. Sayfayı yenileyip tekrar deneyin.";
+                return RedirectToPage();
+            }
             await transaction.CommitAsync();
 
             TempData["StatusMessage"] = $"'{title.Name}' unvanı silindi; bu unvanı taşıyanlar ekipte kalır.";
