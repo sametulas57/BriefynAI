@@ -724,7 +724,6 @@
                 note.className = 'assign-note small mt-1 fw-medium text-danger';
                 return;
             }
-            button.disabled = false;
             let data;
             try {
                 data = await response.json();
@@ -733,6 +732,7 @@
                 location.reload();
                 return;
             }
+            button.disabled = false;
             if (data.reload) { location.reload(); return; }
             note.textContent = data.message;
             note.className = 'assign-note small mt-1 fw-medium ' + (data.success ? 'text-success' : 'text-danger');

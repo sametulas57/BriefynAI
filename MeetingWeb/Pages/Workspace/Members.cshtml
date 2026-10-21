@@ -311,7 +311,6 @@
                 note.className = 'assign-note small fw-medium text-danger';
                 return;
             }
-            button.disabled = false;
             let data;
             try {
                 data = await response.json();
@@ -320,6 +319,7 @@
                 location.reload();
                 return;
             }
+            button.disabled = false;
             note.textContent = data.message;
             note.className = 'assign-note small fw-medium ' + (data.success ? 'text-success' : 'text-danger');
             if (!data.success) return;
