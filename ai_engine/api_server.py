@@ -12,8 +12,8 @@ from providers import build_summarizer, build_transcriber
 from pydantic import BaseModel
 
 
-def transcribe_audio(path: str) -> str:
-    return build_transcriber().transcribe(path)
+def transcribe_audio(path: str, speakers_vtt: str | None = None) -> str:
+    return build_transcriber().transcribe(path, speakers_vtt)
 
 
 def generate_meeting_summary(text: str) -> dict:
@@ -86,7 +86,7 @@ def save_with_limit(upload: UploadFile, destination: Path) -> int:
 
 
 @app.post("/api/process-meeting")
-async def process_meeting(file: UploadFile = File(...)):
+async def process_meeting(file: UploadFile = File(...), speakers: UploadFile | None = File(None)):
     """
     Primary orchestration endpoint:
     1) Receives audio binary via multipart/form-data.
@@ -105,7 +105,16 @@ async def process_meeting(file: UploadFile = File(...)):
         
         # STEP 2: TRANSCRIPTION - Convert speech to text
         logging.info("🎧 Initializing Speech-to-Text engine...")
-        transcribed_text = transcribe_audio(str(temp_file_path))
+        speakers_vtt = None
+        if speakers is not None:
+            data = await speakers.read(2 * 1024 * 1024 + 1)
+            if len(data) > 2 * 1024 * 1024:
+                raise UploadTooLarge()
+            try:
+                speakers_vtt = data.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
+        transcribed_text = transcribe_audio(str(temp_file_path), speakers_vtt) if speakers_vtt else transcribe_audio(str(temp_file_path))
         
         if not transcribed_text:
             raise HTTPException(status_code=500, detail="Transcription failed: Audio yielded no recognizable text.")

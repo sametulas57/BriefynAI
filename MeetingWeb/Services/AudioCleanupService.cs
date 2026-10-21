@@ -56,7 +56,9 @@ namespace MeetingWeb.Services
 
             foreach (var file in new DirectoryInfo(_storage.RootPath).EnumerateFiles())
             {
-                if (referenced.Contains(file.Name) || file.LastWriteTimeUtc >= cutoff) continue;
+                if (referenced.Contains(file.Name) ||
+                    (file.Name.EndsWith(".vtt", StringComparison.Ordinal) && referenced.Contains(file.Name[..^4])) ||
+                    file.LastWriteTimeUtc >= cutoff) continue;
                 if (_storage.Delete(file.Name)) deleted++;
             }
 

@@ -34,6 +34,25 @@ namespace MeetingWeb.Tests.Security
             await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meeting.Id);
 
             Assert.Equal(BriefynFactory.AiEngineApiKey, _app.PythonApi.LastApiKey);
+            Assert.DoesNotContain("name=speakers", _app.PythonApi.LastBody);
+        }
+
+        [Fact]
+        public async Task Backend_sends_sidecar_when_present()
+        {
+            using var scope = _app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var audio = Path.Combine(_app.AudioRoot, "konusmaci.m4a");
+            File.WriteAllBytes(audio, new byte[] { 1 });
+            File.WriteAllText(audio + ".vtt", "WEBVTT\n\nAli: söz");
+            var meeting = new Meeting { WorkspaceId = _app.Seed.WorkspaceA, Title = "konuşmacı", AudioFileName = "konusmaci.m4a" };
+            db.Meetings.Add(meeting);
+            await db.SaveChangesAsync();
+
+            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(meeting.Id);
+
+            Assert.Contains("name=speakers", _app.PythonApi.LastBody);
+            Assert.Contains("Ali: söz", _app.PythonApi.LastBody);
         }
     }
 }

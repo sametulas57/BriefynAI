@@ -459,6 +459,46 @@ public class ZoomTests
     }
 
     [Fact]
+    public async Task Import_saves_transcript_beside_audio()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        var transcriptUrl = "https://zoom.us/rec/download/vtt";
+        RecordingFiles(app, Recording(Uuid, "Toplantı", "M4A", "TRANSCRIPT").Replace(
+            "\"file_type\":\"TRANSCRIPT\",\"file_size\":50000000,\"status\":\"completed\",\"download_url\":\"" + DownloadUrl + "\"",
+            "\"file_type\":\"TRANSCRIPT\",\"file_size\":30,\"status\":\"completed\",\"download_url\":\"" + transcriptUrl + "\""));
+        app.Zoom.On("GET", "/rec/download/vtt", _ => new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new StringContent("WEBVTT\n\nAli: söz") });
+
+        await ImportAsync(app.ClientFor(app.Seed.AliceId));
+
+        var stored = app.WithDb(db => db.Meetings.Single(m => m.ExternalRecordingId == Uuid).AudioFileName!);
+        Assert.Equal("WEBVTT\n\nAli: söz", File.ReadAllText(Path.Combine(app.AudioRoot, stored + ".vtt")));
+        Assert.Single(app.Zoom.To("GET", "/rec/download/vtt"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Bad_or_oversized_transcript_does_not_stop_import(bool oversized)
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        var json = Recording(Uuid, "Toplantı", "M4A", "TRANSCRIPT").Replace(
+            "\"file_type\":\"TRANSCRIPT\",\"file_size\":50000000,\"status\":\"completed\",\"download_url\":\"" + DownloadUrl + "\"",
+            $"\"file_type\":\"TRANSCRIPT\",\"file_size\":{(oversized ? 2 * 1024 * 1024 + 1 : 30)},\"status\":\"completed\",\"download_url\":\"https://zoom.us/rec/download/vtt\"");
+        RecordingFiles(app, json);
+        app.Zoom.Json("GET", "/rec/download/vtt", "{}", HttpStatusCode.InternalServerError);
+
+        await ImportAsync(app.ClientFor(app.Seed.AliceId));
+
+        var stored = app.WithDb(db => db.Meetings.Single(m => m.ExternalRecordingId == Uuid).AudioFileName!);
+        Assert.True(File.Exists(Path.Combine(app.AudioRoot, stored)));
+        Assert.False(File.Exists(Path.Combine(app.AudioRoot, stored + ".vtt")));
+        Assert.Equal(oversized ? 0 : 1, app.Zoom.To("GET", "/rec/download/vtt").Count());
+    }
+
+    [Fact]
     public async Task Download_address_outside_zoom_is_refused()
     {
         using var app = await AppAsync();

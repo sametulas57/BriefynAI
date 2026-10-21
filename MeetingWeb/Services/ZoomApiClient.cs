@@ -27,6 +27,7 @@ namespace MeetingWeb.Services
     {
         // A recording stopped and started again during the meeting has one audio file per part.
         public IReadOnlyList<ZoomRecordingFile> AudioFiles => Files.Where(f => f.FileType == "M4A" && !string.IsNullOrEmpty(f.DownloadUrl)).ToList();
+        public ZoomRecordingFile? TranscriptFile => Files.FirstOrDefault(f => f.FileType == "TRANSCRIPT" && !string.IsNullOrEmpty(f.DownloadUrl));
     }
 
     // Raw HTTP calls to Zoom's OAuth and REST API; knows nothing about the database. Only read endpoints are used.

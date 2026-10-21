@@ -436,7 +436,9 @@ public class AccountDeletionTests
         public string RootPath => "";
         public Task<string> SaveAsync(Microsoft.AspNetCore.Http.IFormFile file) => throw new NotSupportedException();
         public Task<string?> SaveAsync(Stream content, string fileName, long maxBytes) => throw new NotSupportedException();
+        public Task<bool> SaveSidecarAsync(string storedName, Stream content, long maxBytes) => throw new NotSupportedException();
         public string GetPath(string storedName) => storedName;
+        public string? GetSidecarPath(string storedName) => null;
         public bool Delete(string? storedName) => storedName == "fail.m4a" ? throw new IOException("test failure") : false;
     }
 }

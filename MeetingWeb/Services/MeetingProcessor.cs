@@ -65,7 +65,7 @@ namespace MeetingWeb.Services
                     throw new FileNotFoundException($"Meeting {meetingId} has no stored recording.");
 
                 _logger.LogInformation("Dispatching audio file to Python AI API for MeetingId: {MeetingId}", meetingId);
-                var ai = await RunPythonPipelineAsync(_audioStorage.GetPath(meeting.AudioFileName));
+                var ai = await RunPythonPipelineAsync(meeting.AudioFileName);
 
                 meeting = await SaveOnFreshCopyAsync(meetingId, m =>
                 {
@@ -249,8 +249,9 @@ namespace MeetingWeb.Services
         }
 
         // Handles secure HTTP multipart/form-data communication with the external Python API.
-        private async Task<AiApiResponse?> RunPythonPipelineAsync(string audioPath)
+        private async Task<AiApiResponse?> RunPythonPipelineAsync(string storedName)
         {
+            var audioPath = _audioStorage.GetPath(storedName);
             if (!System.IO.File.Exists(audioPath))
             {
                 _logger.LogError("Uploaded audio file not found! Path: {AudioPath}", audioPath);
@@ -268,6 +269,10 @@ namespace MeetingWeb.Services
 
             streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
             form.Add(streamContent, "file", Path.GetFileName(audioPath));
+            var sidecarPath = _audioStorage.GetSidecarPath(storedName);
+            using var sidecarStream = sidecarPath == null ? null : new FileStream(sidecarPath, FileMode.Open, FileAccess.Read);
+            if (sidecarStream != null)
+                form.Add(new StreamContent(sidecarStream), "speakers", Path.GetFileName(sidecarPath!));
 
             try
             {
