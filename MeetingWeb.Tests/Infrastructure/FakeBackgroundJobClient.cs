@@ -10,8 +10,16 @@ namespace MeetingWeb.Tests.Infrastructure
     {
         public ConcurrentBag<Job> Created { get; } = new();
 
+        // The next Create throws, like Hangfire when its storage is unreachable.
+        public bool FailNext { get; set; }
+
         public string Create(Job job, IState state)
         {
+            if (FailNext)
+            {
+                FailNext = false;
+                throw new InvalidOperationException("job storage unavailable");
+            }
             Created.Add(job);
             return Guid.NewGuid().ToString();
         }

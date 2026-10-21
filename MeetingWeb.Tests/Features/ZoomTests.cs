@@ -616,6 +616,41 @@ public class ZoomTests
         Assert.Null(ConnectionOf(app, app.Seed.AliceId));
     }
 
+    // Review round 4: a rejection of an old token does not remove a connection made again meanwhile.
+    [Fact]
+    public async Task Rejection_of_an_old_token_keeps_a_newer_connection()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        app.Zoom.On("GET", "/v2/users/me/recordings", _ =>
+        {
+            app.WithDb(db => { db.ZoomConnections.Single(z => z.UserId == app.Seed.AliceId).AccessToken = "reconnected-access"; return db.SaveChanges(); });
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized) { Content = new StringContent("{}") };
+        });
+
+        var page = WebUtility.HtmlDecode(await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Zoom/Recordings"));
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", page);
+        Assert.Equal("reconnected-access", ConnectionOf(app, app.Seed.AliceId)!.AccessToken);
+    }
+
+    // Review round 4: if the analysis cannot be queued, the meeting is marked failed (it can be retried) instead of
+    // staying "in progress" forever.
+    [Fact]
+    public async Task Meeting_whose_analysis_cannot_be_queued_is_marked_failed()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        RecordingFiles(app, Recording(Uuid, "Toplantı", "M4A"));
+        app.Jobs.FailNext = true;
+
+        var res = await ImportAsync(app.ClientFor(app.Seed.AliceId));
+
+        var meeting = app.WithDb(db => db.Meetings.AsNoTracking().Single(m => m.ExternalRecordingId == Uuid));
+        Assert.Equal($"/Details?id={meeting.Id}", res.Headers.Location!.OriginalString);
+        Assert.Equal(MeetingStatus.Failed, meeting.Status);
+    }
+
     private sealed class StalledStream : Stream
     {
         private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);

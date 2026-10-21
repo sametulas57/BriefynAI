@@ -241,7 +241,18 @@ namespace MeetingWeb.Services
                 return new(ZoomImportOutcome.AlreadyImported, existing);
             }
 
-            _jobs.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(meeting.Id));
+            try
+            {
+                _jobs.Enqueue<IMeetingProcessor>(processor => processor.ProcessMeetingJob(meeting.Id));
+            }
+            catch (Exception)
+            {
+                // Marked failed so the meeting page offers a retry (and the audio cleanup can see it) instead of
+                // showing "in progress" forever.
+                _logger.LogWarning("Analysis of imported meeting {MeetingId} could not be queued.", meeting.Id);
+                meeting.Status = MeetingStatus.Failed;
+                await _db.SaveChangesAsync();
+            }
             return new(ZoomImportOutcome.Imported, meeting.Id);
         }
 
@@ -249,17 +260,24 @@ namespace MeetingWeb.Services
             _db.Meetings.Where(m => m.WorkspaceId == workspaceId && m.ExternalRecordingId == uuid)
                 .Select(m => (int?)m.Id).FirstOrDefaultAsync();
 
-        // Runs a Zoom call with a valid access token; when Zoom rejects the grant the connection is removed.
+        // Runs a Zoom call with a valid access token; when Zoom rejects the grant the connection is removed, but only
+        // if it still holds the rejected token (the user may have connected again meanwhile).
         private async Task<T> AsUserAsync<T>(string userId, Func<string, Task<T>> call)
         {
+            string? used = null;
             try
             {
                 var connection = await ValidConnectionAsync(userId);
-                return await call(connection.AccessToken);
+                used = connection.AccessToken;
+                return await call(used);
             }
             catch (ZoomGrantRejectedException)
             {
-                await _db.ZoomConnections.Where(z => z.UserId == userId).ExecuteDeleteAsync();
+                var current = await GetConnectionAsync(userId);
+                if (current == null) throw;
+                if (used != null && current.AccessToken != used) throw new ZoomApiException(null);
+                // RowVersion: a connection saved between the read above and this delete is kept.
+                await _db.ZoomConnections.Where(z => z.Id == current.Id && z.RowVersion == current.RowVersion).ExecuteDeleteAsync();
                 _logger.LogWarning("Zoom connection removed for user {UserId}: Zoom rejected it.", userId);
                 throw;
             }
