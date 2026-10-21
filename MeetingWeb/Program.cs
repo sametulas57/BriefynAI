@@ -86,6 +86,11 @@ try
         }
     });
 
+    // ADR-0011: Zoom's API. Redirects are followed by ZoomApiClient itself, so the token goes only to zoom.us hosts.
+    builder.Services.Configure<ZoomOptions>(builder.Configuration.GetSection("Zoom"));
+    builder.Services.AddHttpClient(ZoomApiClient.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(10))
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+
     // --- 5. Background Jobs (Hangfire) ---
     // Testlerde Hangfire kurulmaz; testler IBackgroundJobClient yerine sahte bir istemci koyar.
     if (!isTesting)
@@ -111,6 +116,8 @@ try
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
     builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
+    builder.Services.AddScoped<ZoomApiClient>();
+    builder.Services.AddScoped<IZoomService, ZoomService>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
 

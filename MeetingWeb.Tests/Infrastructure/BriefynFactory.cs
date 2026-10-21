@@ -23,6 +23,10 @@ namespace MeetingWeb.Tests.Infrastructure
 
         public FakeBackgroundJobClient Jobs { get; } = new();
         public StubPythonApiHandler PythonApi { get; } = new();
+        public StubZoomHandler Zoom { get; } = new();
+        public CapturingLoggerProvider? LogCapture { get; init; }
+        // Zoom is off unless a test turns it on (the real .env may not have Zoom settings).
+        public bool ZoomEnabled { get; init; }
         public DbCommandInterceptor? CommandInterceptor { get; init; }
         public IAudioStorage? AudioStorageOverride { get; init; }
         public bool UseCookieAuthentication { get; init; }
@@ -59,6 +63,8 @@ namespace MeetingWeb.Tests.Infrastructure
             builder.UseSetting("PythonApiSettings:ApiKey", AiEngineApiKey);
             builder.UseSetting("Upload:MaxMegabytes", "1");
             builder.UseSetting("DataProtection:KeysPath", KeysPath);
+            builder.UseSetting("Zoom:ClientId", ZoomEnabled ? "test-zoom-client" : "");
+            builder.UseSetting("Zoom:ClientSecret", ZoomEnabled ? "test-zoom-secret" : "");
 
             builder.ConfigureTestServices(services =>
             {
@@ -81,6 +87,8 @@ namespace MeetingWeb.Tests.Infrastructure
 
                 services.AddSingleton<IBackgroundJobClient>(Jobs);
                 services.AddHttpClient("PythonApi").ConfigurePrimaryHttpMessageHandler(() => PythonApi);
+                services.AddHttpClient(ZoomApiClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Zoom);
+                if (LogCapture != null) services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(new Microsoft.Extensions.Logging.LoggerFactory(new[] { LogCapture }));
 
                 if (!UseCookieAuthentication)
                 {

@@ -23,6 +23,7 @@ namespace MeetingWeb.Data
         public DbSet<ActionItem> ActionItems { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<CommentReaction> CommentReactions { get; set; }
+        public DbSet<ZoomConnection> ZoomConnections { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -74,10 +75,11 @@ namespace MeetingWeb.Data
                 m.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
                 // History lists a workspace's meetings newest first.
                 m.HasIndex(x => new { x.WorkspaceId, x.CreatedAtUtc });
+                m.HasIndex(x => new { x.WorkspaceId, x.ExternalRecordingId }).IsUnique().HasFilter("[ExternalRecordingId] IS NOT NULL");
                 m.ToTable(t =>
                 {
                     t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
-                    t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1)");
+                    t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1, 2)");
                 });
             });
 
@@ -129,12 +131,21 @@ namespace MeetingWeb.Data
                 r.HasIndex(x => new { x.CommentId, x.UserId }).IsUnique();
             });
 
+            builder.Entity<ZoomConnection>(z =>
+            {
+                z.Property(x => x.AccessToken).HasConversion(new EncryptedConverter("ZoomConnections.AccessToken"));
+                z.Property(x => x.RefreshToken).HasConversion(new EncryptedConverter("ZoomConnections.RefreshToken"));
+                z.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                z.HasIndex(x => x.UserId).IsUnique();
+            });
+
             // SQLite (tests) cannot generate rowversion values; there StampRowVersions sets a new one on every save, so the
             // same concurrency check runs in tests as on SQL Server.
             if (!Database.IsSqlServer())
             {
                 builder.Entity<Meeting>().Property(x => x.RowVersion).ValueGeneratedNever();
                 builder.Entity<ActionItem>().Property(x => x.RowVersion).ValueGeneratedNever();
+                builder.Entity<ZoomConnection>().Property(x => x.RowVersion).ValueGeneratedNever();
             }
         }
 

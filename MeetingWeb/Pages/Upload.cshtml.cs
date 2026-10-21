@@ -20,13 +20,15 @@ namespace MeetingWeb.Pages
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IActiveWorkspaceService _activeWorkspace;
         private readonly IConfiguration _configuration;
+        private readonly IZoomService _zoom;
 
         // Shown on the page and checked in the browser before uploading.
         public int MaxMegabytes => _configuration.GetValue("Upload:MaxMegabytes", 300);
 
         public UploadModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IAudioStorage audioStorage,
-            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace, IConfiguration configuration)
+            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace, IConfiguration configuration, IZoomService zoom)
         {
+            _zoom = zoom;
             _configuration = configuration;
             _activeWorkspace = activeWorkspace;
             _context = context;
@@ -40,9 +42,18 @@ namespace MeetingWeb.Pages
 
         public string? ErrorMessage { get; set; }
 
+        // Shows the "Zoom'dan al" link (ADR-0011).
+        public bool ZoomConnected { get; set; }
+
+        public async Task OnGetAsync()
+        {
+            ZoomConnected = _zoom.IsEnabled && await _zoom.GetConnectionAsync(_userManager.GetUserId(User)!) != null;
+        }
+
         public async Task<IActionResult> OnPostAsync()
         {
             ErrorMessage = null;
+            await OnGetAsync();
 
             // 1. FILE VALIDATION: Prevent empty payloads.
             if (UploadFile == null || UploadFile.Length == 0)

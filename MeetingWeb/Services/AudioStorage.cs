@@ -6,6 +6,8 @@ namespace MeetingWeb.Services
     {
         string RootPath { get; }
         Task<string> SaveAsync(IFormFile file);
+        // Copies at most maxBytes; returns null (and keeps nothing) when the content is larger.
+        Task<string?> SaveAsync(Stream content, string fileName, long maxBytes);
         string GetPath(string storedName);
         bool Delete(string? storedName);
     }
@@ -35,6 +37,32 @@ namespace MeetingWeb.Services
             await using var stream = new FileStream(Path.Combine(RootPath, storedName), FileMode.CreateNew);
             await file.CopyToAsync(stream);
             return storedName;
+        }
+
+        public async Task<string?> SaveAsync(Stream content, string fileName, long maxBytes)
+        {
+            var storedName = Guid.NewGuid() + "_" + Path.GetFileName(fileName);
+            var path = Path.Combine(RootPath, storedName);
+            var complete = false;
+            try
+            {
+                await using var stream = new FileStream(path, FileMode.CreateNew);
+                var buffer = new byte[81920];
+                long total = 0;
+                int read;
+                while ((read = await content.ReadAsync(buffer)) > 0)
+                {
+                    total += read;
+                    if (total > maxBytes) return null;
+                    await stream.WriteAsync(buffer.AsMemory(0, read));
+                }
+                complete = true;
+                return storedName;
+            }
+            finally
+            {
+                if (!complete) File.Delete(path);
+            }
         }
 
         // Accepts both new values ("<guid>_name.m4a") and legacy ones ("/uploads/<guid>_name.m4a").

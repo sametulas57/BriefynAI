@@ -20,9 +20,11 @@ namespace MeetingWeb.Pages.Profile
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _db;
         private readonly IAccountDeletionService _deletion;
+        private readonly IZoomService _zoom;
 
-        public ProfileModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IWebHostEnvironment env, ApplicationDbContext db, IAccountDeletionService deletion)
+        public ProfileModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IWebHostEnvironment env, ApplicationDbContext db, IAccountDeletionService deletion, IZoomService zoom)
         {
+            _zoom = zoom;
             _userManager = userManager;
             _signInManager = signInManager;
             _env = env;
@@ -36,6 +38,9 @@ namespace MeetingWeb.Pages.Profile
         public string Username { get; set; } = "";
         public string Initials { get; set; } = "";
         public string ProfilePictureUrl { get; set; } = "";
+        public bool ZoomEnabled { get; set; }
+        // Email of the linked Zoom account; null when not connected.
+        public string? ZoomEmail { get; set; }
 
         [BindProperty]
         public ProfileInputModel ProfileInput { get; set; } = new();
@@ -244,12 +249,13 @@ namespace MeetingWeb.Pages.Profile
         }
 
         // --- HELPER METOD ---
-        private Task LoadProfileDataAsync(ApplicationUser user)
+        private async Task LoadProfileDataAsync(ApplicationUser user)
         {
             Username = user.Email ?? "";
             ProfilePictureUrl = UserDisplay.AvatarUrl(user.AvatarFileName);
             Initials = UserDisplay.Initials(user.FullName);
-            return Task.CompletedTask;
+            ZoomEnabled = _zoom.IsEnabled;
+            ZoomEmail = (await _zoom.GetConnectionAsync(user.Id))?.ZoomEmail;
         }
 
         // Saves the profile; on failure (the phone number was just taken by another account, or the account changed

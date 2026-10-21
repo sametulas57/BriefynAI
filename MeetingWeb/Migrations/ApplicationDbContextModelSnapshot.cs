@@ -258,6 +258,10 @@ namespace MeetingWeb.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("ExternalRecordingId")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -282,9 +286,13 @@ namespace MeetingWeb.Migrations
 
                     b.HasIndex("WorkspaceId", "CreatedAtUtc");
 
+                    b.HasIndex("WorkspaceId", "ExternalRecordingId")
+                        .IsUnique()
+                        .HasFilter("[ExternalRecordingId] IS NOT NULL");
+
                     b.ToTable("Meetings", t =>
                         {
-                            t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1)");
+                            t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1, 2)");
 
                             t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
                         });
@@ -487,6 +495,56 @@ namespace MeetingWeb.Migrations
                         .IsUnique();
 
                     b.ToTable("WorkspaceTitles");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.ZoomConnection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("AccessTokenExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ConnectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ZoomEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ZoomUserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("ZoomConnections");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -811,6 +869,17 @@ namespace MeetingWeb.Migrations
                         .IsRequired();
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.ZoomConnection", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

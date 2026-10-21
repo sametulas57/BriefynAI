@@ -19,10 +19,12 @@ public class AccountDeletionService : IAccountDeletionService
     private readonly IAudioStorage _audio;
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<AccountDeletionService> _logger;
+    private readonly IZoomService _zoom;
 
     public AccountDeletionService(ApplicationDbContext db, UserManager<ApplicationUser> users,
-        IAudioStorage audio, IWebHostEnvironment env, ILogger<AccountDeletionService> logger)
+        IAudioStorage audio, IWebHostEnvironment env, ILogger<AccountDeletionService> logger, IZoomService zoom)
     {
+        _zoom = zoom;
         _db = db;
         _users = users;
         _audio = audio;
@@ -72,6 +74,7 @@ public class AccountDeletionService : IAccountDeletionService
             .Where(m => ownedSpaces.Contains(m.WorkspaceId) && m.AudioFileName != null)
             .Select(m => m.AudioFileName!).ToListAsync();
         var avatar = user.AvatarFileName;
+        var zoom = await _db.ZoomConnections.AsNoTracking().SingleOrDefaultAsync(z => z.UserId == userId);
 
         await _db.MeetingPoints.Where(p => p.CreatedByUserId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.CreatedByUserId, (string?)null));
@@ -115,6 +118,7 @@ public class AccountDeletionService : IAccountDeletionService
         }
         await _db.Workspaces.Where(w => ownedSpaces.Contains(w.Id)).ExecuteDeleteAsync();
         await _db.WorkspaceMembers.Where(m => m.UserId == userId).ExecuteDeleteAsync();
+        await _db.ZoomConnections.Where(z => z.UserId == userId).ExecuteDeleteAsync();
         var result = await _users.DeleteAsync(user);
         if (!result.Succeeded) throw new InvalidOperationException("Account deletion failed.");
         if (!string.IsNullOrEmpty(avatar))
@@ -125,5 +129,7 @@ public class AccountDeletionService : IAccountDeletionService
         await tx.CommitAsync();
 
         foreach (var file in audioFiles) _audio.Delete(file);
+        // ADR-0011: the user's Zoom grant is cancelled at Zoom too (best effort; the row is already gone).
+        if (zoom != null) await _zoom.RevokeQuietlyAsync(zoom);
     }
 }

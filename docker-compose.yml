@@ -110,6 +110,9 @@ services:
       - EncryptionSettings__KeyV2=${ENCRYPTION_KEY_V2}
       # Hangfire paneli (/hangfire) yalnız bu e-postaya açılır; boşsa kimse giremez.
       - Hangfire__DashboardAdminEmails__0=${HANGFIRE_ADMIN_EMAIL:-}
+      # ADR-0011: Zoom uygulamasının bilgileri; boşsa Zoom özelliği kapalı görünür.
+      - Zoom__ClientId=${ZOOM_CLIENT_ID:-}
+      - Zoom__ClientSecret=${ZOOM_CLIENT_SECRET:-}
       
       # 1. SİNYAL: Docker içindeki .NET motorunun dosya değişikliklerini anlık yakalamasını tetikler
       - DOTNET_USE_POLLING_FILE_WATCHER=1
