@@ -516,6 +516,9 @@ namespace MeetingWeb.Migrations
                     b.Property<DateTime>("ConnectedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("RefreshStartedAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("RefreshToken")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

@@ -724,6 +724,60 @@ public class ZoomTests
         Assert.Equal("reconnected-access", ConnectionOf(app, app.Seed.AliceId)?.AccessToken);
     }
 
+    private static void MarkRefreshStarted(BriefynFactory app, string userId, DateTime at) => app.WithDb(db =>
+    {
+        db.ZoomConnections.Single(z => z.UserId == userId).RefreshStartedAtUtc = at;
+        return db.SaveChanges();
+    });
+
+    // Review round 7: while another server process refreshes, the still valid access token is used; no second refresh.
+    [Fact]
+    public async Task Refresh_started_elsewhere_uses_the_still_valid_token()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(2));
+        MarkRefreshStarted(app, app.Seed.AliceId, DateTime.UtcNow.AddSeconds(-5));
+        EmptyList(app);
+
+        var res = await app.ClientFor(app.Seed.AliceId).GetAsync("/Zoom/Recordings");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Empty(app.Zoom.To("POST", "/oauth/token"));
+        Assert.Equal("Bearer " + StubZoomHandler.AccessToken, Assert.Single(app.Zoom.To("GET", "/v2/users/me/recordings")).Authorization);
+    }
+
+    [Fact]
+    public async Task Refresh_started_elsewhere_with_expired_token_asks_to_try_later_and_keeps_connection()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(-1));
+        MarkRefreshStarted(app, app.Seed.AliceId, DateTime.UtcNow.AddSeconds(-5));
+
+        var page = WebUtility.HtmlDecode(await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Zoom/Recordings"));
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", page);
+        Assert.Empty(app.Zoom.To("POST", "/oauth/token"));
+        Assert.NotNull(ConnectionOf(app, app.Seed.AliceId));
+    }
+
+    // A refresh mark left by a process that died is ignored after a minute.
+    [Fact]
+    public async Task Old_refresh_mark_does_not_block_refreshing()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(2));
+        MarkRefreshStarted(app, app.Seed.AliceId, DateTime.UtcNow.AddMinutes(-2));
+        EmptyList(app);
+        app.Zoom.Json("POST", "/oauth/token", StubZoomHandler.TokenJson(StubZoomHandler.NewAccessToken, StubZoomHandler.NewRefreshToken));
+
+        await app.ClientFor(app.Seed.AliceId).GetAsync("/Zoom/Recordings");
+
+        Assert.Single(app.Zoom.To("POST", "/oauth/token"));
+        var saved = ConnectionOf(app, app.Seed.AliceId)!;
+        Assert.Equal(StubZoomHandler.NewRefreshToken, saved.RefreshToken);
+        Assert.Null(saved.RefreshStartedAtUtc);
+    }
+
     private sealed class StalledStream : Stream
     {
         private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MeetingWeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261021200833_AddZoomImport")]
+    [Migration("20261021201435_AddZoomImport")]
     partial class AddZoomImport
     {
         /// <inheritdoc />
@@ -517,6 +517,9 @@ namespace MeetingWeb.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("ConnectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("RefreshStartedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("RefreshToken")

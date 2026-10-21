@@ -47,6 +47,8 @@ namespace MeetingWeb.Services
         };
 
         private static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);
+        // A refresh mark older than this was left by a process that stopped; it no longer blocks refreshing.
+        private static readonly TimeSpan RefreshMarkLifetime = TimeSpan.FromMinutes(1);
         // One refresh (or revoke) at a time per user inside this process; RowVersion covers other processes.
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> RefreshLocks = new();
 
@@ -317,11 +319,32 @@ namespace MeetingWeb.Services
                 await ReloadAsync(connection);
                 if (connection.AccessTokenExpiresAtUtc > DateTime.UtcNow + RefreshMargin) return connection;
 
+                // Another server process is refreshing right now; using the same refresh token here would make Zoom
+                // reject one of the two. The mark is saved with RowVersion, so only one process wins it.
+                if (connection.RefreshStartedAtUtc > DateTime.UtcNow - RefreshMarkLifetime) return StillValid(connection);
+                connection.RefreshStartedAtUtc = DateTime.UtcNow;
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    await ReloadAsync(connection);
+                    return connection.AccessTokenExpiresAtUtc > DateTime.UtcNow + RefreshMargin ? connection : StillValid(connection);
+                }
+
                 var used = connection.RefreshToken;
                 ZoomTokens tokens;
                 try
                 {
                     tokens = await _api.RefreshAsync(used);
+                }
+                catch (ZoomApiException)
+                {
+                    // Zoom could not be reached: the mark is lifted so the next request tries again.
+                    connection.RefreshStartedAtUtc = null;
+                    try { await _db.SaveChangesAsync(); } catch (DbUpdateConcurrencyException) { }
+                    throw;
                 }
                 catch (ZoomGrantRejectedException)
                 {
@@ -346,13 +369,14 @@ namespace MeetingWeb.Services
                 }
 
                 Apply(connection, tokens);
+                connection.RefreshStartedAtUtc = null;
                 try
                 {
                     await _db.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    // Someone else saved a refresh first; theirs is the latest pair, so this request uses it.
+                    // Someone else saved first (a reconnect, or a refresh after an old mark); theirs is kept and used.
                     await ReloadAsync(connection);
                 }
                 return connection;
@@ -362,6 +386,10 @@ namespace MeetingWeb.Services
                 gate.Release();
             }
         }
+
+        // Used while another process holds the refresh mark: the current token works until it actually expires.
+        private static ZoomConnection StillValid(ZoomConnection connection) =>
+            connection.AccessTokenExpiresAtUtc > DateTime.UtcNow ? connection : throw new ZoomApiException(null);
 
         private async Task ReloadAsync(ZoomConnection connection)
         {
