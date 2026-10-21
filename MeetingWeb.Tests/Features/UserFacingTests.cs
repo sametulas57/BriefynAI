@@ -144,6 +144,34 @@ namespace MeetingWeb.Tests.Features
             Assert.DoesNotContain("İsimsiz Kullanıcı", members);
         }
 
+        // PRD 2026-10-21-ikon-secici-atama-onay-paneli: important actions ask in the app's own panel, not the browser's box.
+        [Fact]
+        public async Task Important_actions_ask_in_the_apps_own_panel()
+        {
+            var alice = _app.ClientFor(S.AliceId);
+            var meetingId = _app.WithDb(db =>
+            {
+                var m = new Meeting { WorkspaceId = S.WorkspaceA, Title = "Onay paneli", Status = MeetingStatus.Completed };
+                db.Meetings.Add(m);
+                db.SaveChanges();
+                db.Comments.Add(new Comment { MeetingId = m.Id, UserId = S.AliceId, Content = "Silinecek yorum" });
+                db.SaveChanges();
+                return m.Id;
+            });
+
+            var members = await PageTextAsync(alice, "/Workspace/Members");
+            foreach (var url in new[] { "/Workspace/Members", "/Profile", "/History", $"/Details?id={meetingId}" })
+            {
+                var page = await PageTextAsync(alice, url);
+                Assert.DoesNotContain("confirm(", page);
+                Assert.DoesNotContain("alert(", page);
+                Assert.Contains("id=\"confirmModal\"", page);
+                Assert.Contains("data-confirm=", page);
+            }
+            foreach (var handler in new[] { "TransferOwnership", "SetRole", "RemoveMember" })
+                Assert.Matches($"<form(?=[^>]*handler={handler}\")(?=[^>]*data-confirm=\"[^\"]+\")[^>]*>", members);
+        }
+
         // The privacy text still described the old offline models; recordings now go to Groq with zero data retention.
         [Fact]
         public async Task Privacy_text_describes_the_current_ai_provider()

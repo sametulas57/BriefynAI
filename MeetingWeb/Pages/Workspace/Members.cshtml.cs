@@ -207,12 +207,24 @@ namespace MeetingWeb.Pages.Workspace
             catch (DbUpdateException)
             {
                 // The title was deleted in another tab between the check above and this save.
-                TempData["ErrorMessage"] = "Bu unvan az önce silindi. Listeyi yenileyip tekrar deneyin.";
+                const string deleted = "Bu unvan az önce silindi. Listeyi yenileyip tekrar deneyin.";
+                if (WantsJson) return new JsonResult(new { success = false, message = deleted });
+                TempData["ErrorMessage"] = deleted;
                 return RedirectToPage();
             }
-            TempData["StatusMessage"] = titleId == null ? "Unvan kaldırıldı." : "Unvan atandı.";
+            var message = titleId == null ? "Unvan kaldırıldı." : "Unvan atandı.";
+            if (WantsJson)
+            {
+                var title = titleId == null ? null : await _context.WorkspaceTitles.AsNoTracking().FirstAsync(t => t.Id == titleId);
+                return new JsonResult(new { success = true, message, name = title?.Name, icon = title?.Icon });
+            }
+            TempData["StatusMessage"] = message;
             return RedirectToPage();
         }
+
+        // The page's script asks for a short answer, so saving one person's title leaves the choices in other rows as they
+        // are; a plain form post (no script) still reloads the page with the message on top.
+        private bool WantsJson => Request.GetTypedHeaders().Accept.Any(a => a.MediaType == "application/json");
 
         // --- MEMBER EVICTION LOGIC ---
         public async Task<IActionResult> OnPostRemoveMemberAsync(string targetUserId)

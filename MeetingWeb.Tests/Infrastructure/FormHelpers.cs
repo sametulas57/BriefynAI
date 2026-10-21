@@ -24,5 +24,18 @@ namespace MeetingWeb.Tests.Infrastructure
             pairs.Add(new("__RequestVerificationToken", token));
             return client.PostAsync(url, new FormUrlEncodedContent(pairs));
         }
+
+        // The same form sent by the page's script, which asks for a short answer instead of a reload.
+        public static async Task<System.Text.Json.JsonElement> PostFormForJsonAsync(
+            HttpClient client, string url, string token, params (string Key, string Value)[] fields)
+        {
+            var pairs = fields.Select(f => new KeyValuePair<string, string>(f.Key, f.Value)).ToList();
+            pairs.Add(new("__RequestVerificationToken", token));
+            using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = new FormUrlEncodedContent(pairs) };
+            request.Headers.Accept.ParseAdd("application/json");
+            var res = await client.SendAsync(request);
+            res.EnsureSuccessStatusCode();
+            return System.Text.Json.JsonDocument.Parse(await res.Content.ReadAsStringAsync()).RootElement;
+        }
     }
 }

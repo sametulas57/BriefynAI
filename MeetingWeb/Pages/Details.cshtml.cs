@@ -362,24 +362,39 @@ namespace MeetingWeb.Pages
             {
                 task.AssigneeUserId = null;
                 task.DueDate = null;
-                if (!await TrySaveTaskAsync()) return RedirectToPage(new { id = meetingId });
-                TempData["StatusMessage"] = "Görevin ataması kaldırıldı.";
-                return RedirectToPage(new { id = meetingId });
+                if (!await TrySaveTaskAsync()) return AssignFailed(meetingId, null);
+                return AssignDone(meetingId, "Görevin ataması kaldırıldı.", null, null);
             }
 
             var isTeammate = await _context.WorkspaceMembers
                 .AnyAsync(wu => wu.WorkspaceId == task.Meeting!.WorkspaceId && wu.UserId == assigneeUserId);
-            if (!isTeammate)
-            {
-                TempData["ErrorMessage"] = "Görev yalnız bu toplantının ekibindeki birine atanabilir.";
-                return RedirectToPage(new { id = meetingId });
-            }
+            if (!isTeammate) return AssignFailed(meetingId, "Görev yalnız bu toplantının ekibindeki birine atanabilir.");
 
             task.AssigneeUserId = assigneeUserId;
             task.DueDate = dueDate;
-            if (!await TrySaveTaskAsync()) return RedirectToPage(new { id = meetingId });
+            if (!await TrySaveTaskAsync()) return AssignFailed(meetingId, null);
 
-            TempData["StatusMessage"] = $"Görev atandı: {await FullNameAsync(assigneeUserId)}.";
+            var assignee = await FullNameAsync(assigneeUserId);
+            return AssignDone(meetingId, $"Görev atandı: {assignee}.", assignee, dueDate);
+        }
+
+        // The page's script asks for a short answer, so saving one task leaves the choices made in other rows as they are;
+        // a plain form post (no script) still reloads the page with the message on top.
+        private bool WantsJson => Request.GetTypedHeaders().Accept.Any(a => a.MediaType == "application/json");
+
+        private IActionResult AssignDone(int meetingId, string message, string? assignee, DateOnly? dueDate)
+        {
+            if (WantsJson)
+                return new JsonResult(new { success = true, message, assignee, dueDate = dueDate?.ToString("d MMMM yyyy", DisplayTime.Culture) });
+            TempData["StatusMessage"] = message;
+            return RedirectToPage(new { id = meetingId });
+        }
+
+        // No message: someone else changed the task meanwhile (TrySaveTaskAsync left the explanation); the page reloads.
+        private IActionResult AssignFailed(int meetingId, string? message)
+        {
+            if (WantsJson) return new JsonResult(new { success = false, message, reload = message == null });
+            if (message != null) TempData["ErrorMessage"] = message;
             return RedirectToPage(new { id = meetingId });
         }
 

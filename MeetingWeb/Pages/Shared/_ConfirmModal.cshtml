@@ -1,0 +1,52 @@
+@* The app's own confirmation panel (PRD 2026-10-21-ikon-secici-atama-onay-paneli), shown instead of the browser's box.
+   A form opts in with data-confirm="question"; data-confirm-title and data-confirm-button change the heading and the
+   button text, data-confirm-safe makes the button blue for actions that remove nothing. *@
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-light border-0 py-3">
+                <h5 class="modal-title fw-bold text-dark" id="confirmModalLabel"><i class="bi bi-exclamation-circle text-danger me-2" id="confirmModalIcon"></i><span></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted mb-0" id="confirmModalText" style="line-height: 1.7;"></p>
+            </div>
+            <div class="modal-footer bg-white border-top py-3">
+                <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm" id="confirmModalYes"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const el = document.getElementById('confirmModal');
+        const yes = document.getElementById('confirmModalYes');
+        let pending = null;
+
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!form.matches('form[data-confirm]')) return;
+            if (form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+            e.preventDefault();
+            pending = form;
+            const safe = form.hasAttribute('data-confirm-safe');
+            el.querySelector('.modal-title span').textContent = form.dataset.confirmTitle || 'Emin misiniz?';
+            document.getElementById('confirmModalIcon').className = 'bi me-2 ' + (safe ? 'bi-question-circle text-primary' : 'bi-exclamation-circle text-danger');
+            document.getElementById('confirmModalText').textContent = form.dataset.confirm;
+            yes.textContent = form.dataset.confirmButton || 'Evet';
+            yes.className = 'btn rounded-pill px-4 fw-bold shadow-sm ' + (safe ? 'btn-primary' : 'btn-danger');
+            bootstrap.Modal.getOrCreateInstance(el).show();
+        });
+
+        yes.addEventListener('click', function () {
+            if (!pending) return;
+            const form = pending;
+            pending = null;
+            bootstrap.Modal.getOrCreateInstance(el).hide();
+            form.dataset.confirmed = 'true';
+            form.requestSubmit();
+        });
+    })();
+</script>

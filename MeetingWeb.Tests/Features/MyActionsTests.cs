@@ -80,6 +80,53 @@ namespace MeetingWeb.Tests.Features
             Assert.Null(Task(id).AssigneeUserId);
         }
 
+        // PRD 2026-10-21-ikon-secici-atama-onay-paneli: saving one task's assignment must not reload the page, so a choice
+        // made in another row stays. The page's script asks for a short answer; a plain form post still redirects.
+        [Fact]
+        public async Task Assigning_from_the_page_answers_without_a_reload()
+        {
+            var id = NewMeetingWithTask("Sayfa yenilenmeden atanan iş");
+            var url = $"/Details?id={Task(id).MeetingId}";
+            var alice = _app.ClientFor(S.AliceId);
+            var token = await GetAntiforgeryTokenAsync(alice, url);
+
+            var json = await PostFormForJsonAsync(alice, "/Details?handler=AssignAction", token,
+                ("taskId", $"{id}"), ("assigneeUserId", S.CarolId), ("dueDate", "2026-11-20"));
+
+            Assert.True(json.GetProperty("success").GetBoolean());
+            Assert.Equal("Carol Demir", json.GetProperty("assignee").GetString());
+            Assert.Equal("20 Kasım 2026", json.GetProperty("dueDate").GetString());
+            Assert.Equal(S.CarolId, Task(id).AssigneeUserId);
+        }
+
+        [Fact]
+        public async Task Assigning_an_outsider_from_the_page_is_refused_with_a_plain_message()
+        {
+            var id = NewMeetingWithTask("Ekip dışına sayfa içinden verilmemeli");
+            var url = $"/Details?id={Task(id).MeetingId}";
+            var alice = _app.ClientFor(S.AliceId);
+            var token = await GetAntiforgeryTokenAsync(alice, url);
+
+            var json = await PostFormForJsonAsync(alice, "/Details?handler=AssignAction", token,
+                ("taskId", $"{id}"), ("assigneeUserId", S.BobId), ("dueDate", ""));
+
+            Assert.False(json.GetProperty("success").GetBoolean());
+            Assert.Contains("ekibindeki", json.GetProperty("message").GetString());
+            Assert.Null(Task(id).AssigneeUserId);
+        }
+
+        // A choice not yet saved must not come back after a reload (some browsers refill forms).
+        [Fact]
+        public async Task Assignment_forms_are_not_refilled_by_the_browser()
+        {
+            var id = NewMeetingWithTask("Taslak tutulmayan iş");
+            var page = await TextAsync(_app.ClientFor(S.AliceId), $"/Details?id={Task(id).MeetingId}");
+
+            var forms = System.Text.RegularExpressions.Regex.Matches(page, "<form[^>]*handler=AssignAction[^>]*>");
+            Assert.NotEmpty(forms);
+            Assert.All(forms, f => Assert.Contains("autocomplete=\"off\"", f.Value));
+        }
+
         [Fact]
         public async Task My_actions_page_shows_team_meeting_and_task_only_to_the_assignee()
         {
