@@ -297,6 +297,10 @@
             e.preventDefault();
             const row = form.closest('li');
             const note = form.querySelector('.assign-note');
+            // The button stays off until the answer arrives, so an older answer cannot overwrite a newer save.
+            const button = form.querySelector('button[type="submit"]');
+            if (button.disabled) return;
+            button.disabled = true;
             let data;
             try {
                 const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
@@ -304,6 +308,8 @@
             } catch {
                 location.reload();
                 return;
+            } finally {
+                button.disabled = false;
             }
             note.textContent = data.message;
             note.className = 'assign-note small fw-medium ' + (data.success ? 'text-success' : 'text-danger');
