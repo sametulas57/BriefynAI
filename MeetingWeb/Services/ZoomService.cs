@@ -9,7 +9,7 @@ namespace MeetingWeb.Services
 {
     public enum ZoomConnectOutcome { Connected, Failed, MissingScopes }
 
-    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, NotFound, NoAudio, TooLarge }
+    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, NotFound, NoAudio, SeveralParts, TooLarge }
 
     public record ZoomImportResult(ZoomImportOutcome Outcome, int? MeetingId = null);
 
@@ -133,7 +133,11 @@ namespace MeetingWeb.Services
             if (!IsEnabled) return;
             try
             {
-                await _api.RevokeAsync(connection.AccessToken);
+                // Zoom revokes only a valid access token; an expired one is refreshed first (the row is deleted anyway).
+                var accessToken = connection.AccessToken;
+                if (connection.AccessTokenExpiresAtUtc <= DateTime.UtcNow + RefreshMargin)
+                    accessToken = (await _api.RefreshAsync(connection.RefreshToken)).AccessToken;
+                await _api.RevokeAsync(accessToken);
             }
             catch (Exception ex) when (ex is ZoomApiException or ZoomGrantRejectedException)
             {
@@ -162,8 +166,10 @@ namespace MeetingWeb.Services
             // Always asked again from Zoom: nothing about the recording is taken from the page.
             var recording = await AsUserAsync(userId, token => _api.GetRecordingAsync(token, uuid));
             if (recording == null) return new(ZoomImportOutcome.NotFound);
-            var audio = recording.Audio;
-            if (audio == null) return new(ZoomImportOutcome.NoAudio);
+            if (recording.AudioFiles.Count == 0) return new(ZoomImportOutcome.NoAudio);
+            // Taking one part would silently leave the rest of the meeting out of the summary.
+            if (recording.AudioFiles.Count > 1) return new(ZoomImportOutcome.SeveralParts);
+            var audio = recording.AudioFiles[0];
             if (audio.FileSize > MaxBytes) return new(ZoomImportOutcome.TooLarge);
 
             var storedName = await AsUserAsync(userId, token => _api.DownloadAsync(token, audio.DownloadUrl,

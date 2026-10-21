@@ -25,7 +25,8 @@ namespace MeetingWeb.Services
     public record ZoomRecordingFile(string FileType, string DownloadUrl, long FileSize);
     public record ZoomRecording(string Uuid, string Topic, DateTime StartTimeUtc, int DurationMinutes, IReadOnlyList<ZoomRecordingFile> Files)
     {
-        public ZoomRecordingFile? Audio => Files.FirstOrDefault(f => f.FileType == "M4A" && !string.IsNullOrEmpty(f.DownloadUrl));
+        // A recording stopped and started again during the meeting has one audio file per part.
+        public IReadOnlyList<ZoomRecordingFile> AudioFiles => Files.Where(f => f.FileType == "M4A" && !string.IsNullOrEmpty(f.DownloadUrl)).ToList();
     }
 
     // Raw HTTP calls to Zoom's OAuth and REST API; knows nothing about the database. Only read endpoints are used.
@@ -33,6 +34,7 @@ namespace MeetingWeb.Services
     {
         public const string HttpClientName = "Zoom";
         private const int MaxRedirects = 5;
+        private const int MaxListPages = 10;
         private static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
         private readonly IHttpClientFactory _httpClientFactory;
@@ -83,9 +85,18 @@ namespace MeetingWeb.Services
         // Zoom allows at most one month per request; dates are UTC days.
         public async Task<IReadOnlyList<ZoomRecording>> ListRecordingsAsync(string accessToken, DateTime fromUtc, DateTime toUtc)
         {
-            var list = await GetJsonAsync<ListDto>(accessToken,
-                $"users/me/recordings?from={fromUtc:yyyy-MM-dd}&to={toUtc:yyyy-MM-dd}&page_size=300");
-            return (list?.Meetings ?? new()).Select(ToRecording).OrderByDescending(r => r.StartTimeUtc).ToList();
+            var meetings = new List<MeetingDto>();
+            string? next = null;
+            for (var page = 0; page < MaxListPages; page++)
+            {
+                var path = $"users/me/recordings?from={fromUtc:yyyy-MM-dd}&to={toUtc:yyyy-MM-dd}&page_size=300";
+                if (!string.IsNullOrEmpty(next)) path += "&next_page_token=" + Uri.EscapeDataString(next);
+                var list = await GetJsonAsync<ListDto>(accessToken, path);
+                meetings.AddRange(list?.Meetings ?? new());
+                next = list?.NextPageToken;
+                if (string.IsNullOrEmpty(next)) break;
+            }
+            return meetings.Select(ToRecording).OrderByDescending(r => r.StartTimeUtc).ToList();
         }
 
         // Null when Zoom does not know the recording (or it is not this user's).
@@ -126,8 +137,16 @@ namespace MeetingWeb.Services
 
                 if (response.StatusCode == HttpStatusCode.Unauthorized) throw new ZoomGrantRejectedException();
                 EnsureSuccess(response);
-                await using var stream = await response.Content.ReadAsStreamAsync();
-                return await read(stream);
+                try
+                {
+                    await using var stream = await response.Content.ReadAsStreamAsync();
+                    return await read(stream);
+                }
+                catch (Exception ex) when (ex is IOException or HttpRequestException)
+                {
+                    // The connection dropped in the middle of the file.
+                    throw new ZoomApiException(null);
+                }
             }
             throw new ZoomApiException(null);
         }
@@ -233,6 +252,7 @@ namespace MeetingWeb.Services
 
         private sealed class ListDto
         {
+            public string? NextPageToken { get; set; }
             public List<MeetingDto>? Meetings { get; set; }
         }
 

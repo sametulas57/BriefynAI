@@ -146,6 +146,24 @@ public class ZoomTests
         Assert.Contains("Zoom bağlantısı yapılmadı", await FollowAsync(alice, cancel));
     }
 
+    // Review finding: the state belongs to the user who started, not only to the browser.
+    [Fact]
+    public async Task State_started_by_one_user_does_not_connect_another_user_in_the_same_browser()
+    {
+        using var app = await AppAsync();
+        var browser = app.ClientFor(app.Seed.AliceId);
+        var (_, state) = await StartAsync(browser);
+
+        browser.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
+        browser.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, app.Seed.BobId);
+        var res = await browser.GetAsync("/Zoom/Callback?code=c&state=" + Uri.EscapeDataString(state));
+
+        Assert.Contains("Zoom bağlantısı tamamlanamadı", await FollowAsync(browser, res));
+        Assert.Null(ConnectionOf(app, app.Seed.BobId));
+        Assert.Null(ConnectionOf(app, app.Seed.AliceId));
+        Assert.Empty(app.Zoom.To("POST", "/oauth/token"));
+    }
+
     // 3
     [Fact]
     public async Task Successful_callback_saves_encrypted_tokens_and_never_logs_them()
@@ -327,6 +345,45 @@ public class ZoomTests
         Assert.Null(ConnectionOf(app, app.Seed.AliceId));
     }
 
+    // Review finding: an expired access token cannot be revoked, so it is refreshed first.
+    [Fact]
+    public async Task Disconnect_with_expired_token_refreshes_before_revoking()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(-30));
+        app.Zoom.Json("POST", "/oauth/token", StubZoomHandler.TokenJson(StubZoomHandler.NewAccessToken, StubZoomHandler.NewRefreshToken));
+        var alice = app.ClientFor(app.Seed.AliceId);
+
+        var token = await GetAntiforgeryTokenAsync(alice, "/Profile");
+        await PostFormAsync(alice, "/Zoom/Connect?handler=Disconnect", token);
+
+        Assert.Contains("refresh_token=" + StubZoomHandler.RefreshToken, Assert.Single(app.Zoom.To("POST", "/oauth/token")).Body);
+        Assert.Contains("token=" + StubZoomHandler.NewAccessToken, Assert.Single(app.Zoom.To("POST", "/oauth/revoke")).Body);
+        Assert.Null(ConnectionOf(app, app.Seed.AliceId));
+    }
+
+    // Review finding: Zoom pages long lists with next_page_token.
+    [Fact]
+    public async Task List_reads_every_page()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        app.Zoom.On("GET", "/v2/users/me/recordings", req =>
+        {
+            var second = HttpUtility.ParseQueryString(req.RequestUri!.Query)["next_page_token"] == "page-2";
+            var body = second
+                ? "{\"next_page_token\":\"\",\"meetings\":[" + Recording("uuid-2", "İkinci sayfa", "M4A") + "]}"
+                : "{\"next_page_token\":\"page-2\",\"meetings\":[" + Recording("uuid-1", "Birinci sayfa", "M4A") + "]}";
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+        });
+
+        var page = WebUtility.HtmlDecode(await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Zoom/Recordings"));
+
+        Assert.Contains("Birinci sayfa", page);
+        Assert.Contains("İkinci sayfa", page);
+        Assert.Equal(2, app.Zoom.To("GET", "/v2/users/me/recordings").Count());
+    }
+
     // 6
     [Fact]
     public async Task List_asks_for_the_last_30_days_and_marks_missing_audio_and_imported()
@@ -414,6 +471,51 @@ public class ZoomTests
 
         Assert.Empty(app.Zoom.To("GET", "/signed/file.m4a"));
         Assert.Equal(before, app.WithDb(db => db.Meetings.Count()));
+    }
+
+    // Review finding: a recording stopped and restarted has several audio parts; taking only the first would lose the rest.
+    [Fact]
+    public async Task Recording_with_several_audio_parts_is_not_taken_half()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        RecordingFiles(app, Recording(Uuid, "Parçalı", "M4A", "M4A"));
+        var alice = app.ClientFor(app.Seed.AliceId);
+        var before = app.WithDb(db => db.Meetings.Count());
+
+        Assert.Contains("birden çok parçadan", await FollowAsync(alice, await ImportAsync(alice)));
+        Assert.Equal(before, app.WithDb(db => db.Meetings.Count()));
+        Assert.Empty(app.Zoom.To("GET", "/rec/download/abc"));
+    }
+
+    // Review finding: the connection dropping in the middle of the file gives a plain message, not an error page.
+    [Fact]
+    public async Task Download_broken_midway_shows_a_message_and_keeps_nothing()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        RecordingFiles(app, Recording(Uuid, "Kopuk", "M4A"));
+        app.Zoom.On("GET", "/signed/file.m4a", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new BrokenStream()) });
+        var alice = app.ClientFor(app.Seed.AliceId);
+        var before = app.WithDb(db => db.Meetings.Count());
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", await FollowAsync(alice, await ImportAsync(alice)));
+        Assert.Equal(before, app.WithDb(db => db.Meetings.Count()));
+        Assert.Empty(Directory.GetFiles(app.AudioRoot));
+    }
+
+    private sealed class BrokenStream : MemoryStream
+    {
+        private bool _sent;
+        public BrokenStream() : base(new byte[1024]) { }
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_sent) throw new IOException("connection reset");
+            _sent = true;
+            return base.ReadAsync(buffer, cancellationToken);
+        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
     }
 
     // 8

@@ -28,8 +28,9 @@ namespace MeetingWeb.Pages.Zoom
 
             var expected = HttpContext.Session.GetString(ConnectModel.StateSessionKey);
             HttpContext.Session.Remove(ConnectModel.StateSessionKey);
+            var userId = _userManager.GetUserId(User)!;
             if (string.IsNullOrEmpty(expected) || string.IsNullOrEmpty(state) ||
-                !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(state)))
+                !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(ConnectModel.SessionValue(userId, state))))
             {
                 return Back("ErrorMessage", "Zoom bağlantısı tamamlanamadı. Lütfen tekrar deneyin.");
             }
@@ -39,7 +40,7 @@ namespace MeetingWeb.Pages.Zoom
                 return Back("ErrorMessage", "Zoom bağlantısı yapılmadı.");
             }
 
-            return await _zoom.ConnectAsync(_userManager.GetUserId(User)!, code) switch
+            return await _zoom.ConnectAsync(userId, code) switch
             {
                 ZoomConnectOutcome.Connected => Back("StatusMessage", "Zoom hesabınız bağlandı."),
                 ZoomConnectOutcome.MissingScopes => Back("ErrorMessage", "Zoom bağlantısı tamamlanamadı: gerekli izinler verilmedi."),

@@ -12,8 +12,11 @@ namespace MeetingWeb.Pages.Zoom
     [Authorize]
     public class ConnectModel : PageModel
     {
-        // One-time random value kept in the user's session and checked when Zoom sends the user back.
+        // One-time random value kept in the session together with the user who started, checked when Zoom sends the
+        // user back (another account signing in on the same browser meanwhile must not receive this connection).
         public const string StateSessionKey = "ZoomOAuthState";
+
+        public static string SessionValue(string userId, string state) => userId + "\n" + state;
 
         private readonly IZoomService _zoom;
         private readonly UserManager<Models.ApplicationUser> _userManager;
@@ -31,7 +34,7 @@ namespace MeetingWeb.Pages.Zoom
             if (!_zoom.IsEnabled) return NotFound();
 
             var state = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-            HttpContext.Session.SetString(StateSessionKey, state);
+            HttpContext.Session.SetString(StateSessionKey, SessionValue(_userManager.GetUserId(User)!, state));
             return Redirect(_zoom.AuthorizeUrl(state));
         }
 
