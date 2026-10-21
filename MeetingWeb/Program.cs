@@ -106,6 +106,7 @@ try
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
+    builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
@@ -278,6 +279,8 @@ try
             .AddOrUpdate<IAudioCleanupService>("audio-cleanup", s => s.RunAsync(), Cron.Daily());
         app.Services.GetRequiredService<IRecurringJobManager>()
             .AddOrUpdate<ILogCleanupService>("log-cleanup", s => s.RunAsync(), Cron.Daily());
+        app.Services.GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<IAccountDeletionService>("account-deletion", s => s.RunAsync(), Cron.Daily());
     }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");

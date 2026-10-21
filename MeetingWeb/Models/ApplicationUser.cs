@@ -18,5 +18,7 @@ namespace MeetingWeb.Models
         public string? AvatarFileName { get; set; }
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+        public DateTime? DeletionRequestedAtUtc { get; set; }
     }
 }

@@ -102,6 +102,27 @@ namespace MeetingWeb.Pages.Workspace
             return RedirectToPage();
         }
 
+        public async Task<IActionResult> OnPostTransferOwnershipAsync(string targetUserId)
+        {
+            var workspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
+            var callerId = _userManager.GetUserId(User);
+            var caller = await _context.WorkspaceMembers.FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == callerId);
+            if (caller?.Role != WorkspaceRole.Owner) return Unauthorized();
+            if (await _context.Workspaces.AnyAsync(w => w.Id == workspaceId && w.IsPersonal)) return Unauthorized();
+            var target = await _context.WorkspaceMembers.Include(m => m.User)
+                .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUserId);
+            if (target == null || target.UserId == callerId || target.User.DeletionRequestedAtUtc != null)
+            {
+                TempData["ErrorMessage"] = "Kuruculuğu bu üyeye devredemezsiniz.";
+                return RedirectToPage();
+            }
+            caller.Role = WorkspaceRole.Member;
+            target.Role = WorkspaceRole.Owner;
+            await _context.SaveChangesAsync();
+            TempData["StatusMessage"] = "Kuruculuk devredildi.";
+            return RedirectToPage();
+        }
+
         // --- VOLUNTARY DEPARTURE LOGIC ---
         public async Task<IActionResult> OnPostLeaveWorkspaceAsync()
         {

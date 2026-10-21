@@ -62,10 +62,10 @@ namespace MeetingWeb.Services
                 File.Delete(path);
                 return true;
             }
-            catch (IOException ex)
+            catch (IOException)
             {
                 // The cleanup job retries unreferenced files later, so a locked file is not fatal.
-                _logger.LogWarning(ex, "Audio file could not be deleted: {StoredName}", storedName);
+                _logger.LogWarning("Audio file could not be deleted.");
                 return false;
             }
         }

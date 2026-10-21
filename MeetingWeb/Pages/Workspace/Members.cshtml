@@ -110,6 +110,13 @@
                         <div class="ms-md-4">
                             @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner && member.UserId != Model.CurrentUserId)
                             {
+                                @if (!Model.IsPersonalWorkspace)
+                                {
+                                <form method="post" asp-page-handler="TransferOwnership" class="d-inline" onsubmit="return confirm('Kuruculuğu bu üyeye devretmek istediğinize emin misiniz?');">
+                                    <input type="hidden" name="targetUserId" value="@member.UserId" />
+                                    <button type="submit" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-4 shadow-sm">Kuruculuğu Devret</button>
+                                </form>
+                                }
                                 <form method="post" asp-page-handler="RemoveMember" class="d-inline" onsubmit="return confirm('Bu üyeyi ekipten çıkarmak istediğinize emin misiniz?');">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">
