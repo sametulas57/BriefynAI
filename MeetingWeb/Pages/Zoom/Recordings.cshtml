@@ -1,0 +1,80 @@
+@page
+@model MeetingWeb.Pages.Zoom.RecordingsModel
+@using MeetingWeb.Services
+@{
+    ViewData["Title"] = "Zoom kayıtlarım";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 rounded-3 d-flex align-items-center" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-5 me-3 text-danger"></i>
+                    <div>@TempData["ErrorMessage"]</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (Model.ErrorMessage != null)
+            {
+                <div class="alert alert-warning border-0 rounded-3 shadow-sm">@Model.ErrorMessage</div>
+            }
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="fw-bold text-dark mb-0"><i class="bi bi-camera-video text-primary me-2"></i>Zoom kayıtlarım</h2>
+                <a asp-page="/Upload" class="btn btn-light rounded-pill fw-bold text-muted px-4">Geri</a>
+            </div>
+            <p class="text-muted mb-4">Son 30 günde Zoom'da buluta kaydettiğiniz toplantılar. "Al" dediğinizde kayıt şu anki ekibinize alınır ve özeti çıkarılır.</p>
+
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+                @if (Model.Recordings.Count == 0 && Model.ErrorMessage == null)
+                {
+                    <div class="card-body p-4 text-muted">
+                        Son 30 günde buluta kaydedilmiş toplantı yok. Zoom'da toplantıyı "Buluta kaydet" ile kaydettiğinizde burada görünür (bulut kaydı ücretli Zoom hesaplarında var).
+                    </div>
+                }
+                <ul class="list-group list-group-flush">
+                    @foreach (var recording in Model.Recordings)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center gap-3 px-4 py-3">
+                            <div class="min-w-0">
+                                <div class="fw-bold text-dark text-truncate">@(string.IsNullOrWhiteSpace(recording.Topic) ? "Zoom toplantısı" : recording.Topic)</div>
+                                <small class="text-muted">@DisplayTime.Format(recording.StartTimeUtc, "d MMMM yyyy, HH:mm") · @recording.DurationMinutes dk</small>
+                            </div>
+                            <div class="flex-shrink-0">
+                                @if (Model.Imported.TryGetValue(recording.Uuid, out var meetingId))
+                                {
+                                    <a asp-page="/Details" asp-route-id="@meetingId" class="btn btn-outline-success btn-sm rounded-pill fw-bold px-3"><i class="bi bi-check-lg me-1"></i>Alındı</a>
+                                }
+                                else if (recording.Audio == null)
+                                {
+                                    <span class="text-muted small">ses dosyası yok</span>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="Import" class="m-0 zoom-import">
+                                        <input type="hidden" name="Uuid" value="@recording.Uuid" />
+                                        <button type="submit" class="btn btn-primary btn-sm rounded-pill fw-bold px-4">Al</button>
+                                    </form>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Taking a recording downloads it from Zoom first, which can take a while: show that and prevent double clicks.
+        document.querySelectorAll('form.zoom-import').forEach(form => form.addEventListener('submit', () => {
+            const button = form.querySelector('button');
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Alınıyor…';
+        }));
+    </script>
+}

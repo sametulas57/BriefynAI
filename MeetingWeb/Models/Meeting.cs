@@ -23,6 +23,10 @@ namespace MeetingWeb.Models
         [MaxLength(300)]
         public string? AudioFileName { get; set; }
 
+        // Zoom meeting UUID of an imported cloud recording; a team takes the same recording only once.
+        [MaxLength(200)]
+        public string? ExternalRecordingId { get; set; }
+
         [MaxLength(450)]
         public string? CreatedByUserId { get; set; }
         public ApplicationUser? CreatedBy { get; set; }

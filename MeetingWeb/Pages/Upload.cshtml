@@ -49,6 +49,10 @@
                 </div>
                 <h2 class="fw-bold text-dark" style="letter-spacing: -0.5px;">Toplantı Ses Kaydı Yükle</h2>
                 <p class="text-muted fs-6">Analiz edilmesini istediğiniz ses kaydını güvenli bir şekilde sisteme yükleyin.</p>
+                @if (Model.ZoomConnected)
+                {
+                    <a asp-page="/Zoom/Recordings" class="btn btn-outline-primary rounded-pill fw-bold px-4"><i class="bi bi-camera-video me-1"></i> Zoom'dan al</a>
+                }
             </div>
 
             <div class="card soft-card overflow-hidden">
