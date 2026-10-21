@@ -75,6 +75,26 @@ namespace MeetingWeb.Tests.Features
             Assert.Contains("/Workspace/Join?token=", page);
         }
 
+        // Found in review: an invitation stays usable only while its creator still runs the team.
+        [Fact]
+        public async Task Invitation_of_an_admin_who_was_demoted_no_longer_works()
+        {
+            var t = NewTeam();
+            var (admin, adminToken) = await InTeamAsync(t.Admin, t.Id);
+            var page = WebUtility.HtmlDecode(await (await PostFormAsync(admin, "/Workspace/Invite", adminToken)).Content.ReadAsStringAsync());
+            var inviteToken = System.Text.RegularExpressions.Regex.Match(page, "Join\\?token=([A-Za-z0-9_-]+)").Groups[1].Value;
+            Assert.NotEmpty(inviteToken);
+
+            var (owner, ownerToken) = await InTeamAsync(t.Owner, t.Id);
+            await MembersPostAsync(owner, ownerToken, "SetRole", ("targetUserId", t.Admin), ("makeAdmin", "false"));
+
+            var bob = _app.ClientFor(_app.Seed.BobId);
+            var bobToken = await GetAntiforgeryTokenAsync(bob, "/Profile");
+            await PostFormAsync(bob, "/Workspace/Join", bobToken, ("Token", inviteToken));
+
+            Assert.Null(RoleOf(t.Id, _app.Seed.BobId));
+        }
+
         // Criterion 2
         [Fact]
         public async Task Admin_removes_members_but_not_the_founder_or_another_admin()

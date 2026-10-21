@@ -29,6 +29,12 @@ namespace MeetingWeb.Pages.Workspace
         [BindProperty(SupportsGet = true)]
         public string Token { get; set; } = "";
 
+        // Invitations whose creator is still the team's founder or an admin.
+        private IQueryable<WorkspaceInvitation> CreatorRunsTeam() =>
+            _context.WorkspaceInvitations.Where(i => _context.WorkspaceMembers.Any(c =>
+                c.WorkspaceId == i.WorkspaceId && c.UserId == i.CreatedByUserId &&
+                (c.Role == WorkspaceRole.Owner || c.Role == WorkspaceRole.Admin)));
+
         // HTTP GET: Validates the token's existence, expiration, and status upon page entry.
         public async Task<IActionResult> OnGetAsync()
         {
@@ -56,6 +62,12 @@ namespace MeetingWeb.Pages.Workspace
                 return Page();
             }
 
+            if (!await CreatorRunsTeam().AnyAsync(i => i.Id == invitation.Id))
+            {
+                ErrorMessage = "Bu daveti oluşturan kişi artık ekibi yönetmiyor. Ekipten yeni bir davet isteyin.";
+                return Page();
+            }
+
             WorkspaceName = invitation.Workspace?.Name ?? "Bilinmeyen Ekip";
             return Page();
         }
@@ -80,9 +92,10 @@ namespace MeetingWeb.Pages.Workspace
             if (userId == null) return RedirectToPage("/Auth/Login");
 
             // CONSUME TOKEN first, with one conditional update: of two people using the same link at once, only one
-            // gets a row back; the other is refused. Joining happens in the same transaction.
+            // gets a row back; the other is refused. The creator must still run the team at this moment, so a link made
+            // by an admin who has since been made a member (or removed) no longer works. Joining is in the same transaction.
             await using var transaction = await _context.Database.BeginTransactionAsync();
-            var consumed = await _context.WorkspaceInvitations
+            var consumed = await CreatorRunsTeam()
                 .Where(i => i.Id == invitation.Id && i.UsedAtUtc == null)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(i => i.UsedAtUtc, DateTime.UtcNow)
