@@ -19,6 +19,9 @@ namespace MeetingWeb.Services
         public ZoomNotConnectedException() : base("No Zoom connection.") { }
     }
 
+    // Zoom rejected the stored grant and the connection has already been removed (inside the user's lock).
+    public class ZoomConnectionRemovedException : ZoomGrantRejectedException { }
+
     // ADR-0011: a user's own Zoom connection and importing a cloud recording into the user's active team. Every method
     // takes the user id from the caller's session only; a connection is never used for another user.
     public interface IZoomService
@@ -286,11 +289,11 @@ namespace MeetingWeb.Services
                 used = connection.AccessToken;
                 return await call(used);
             }
-            catch (ZoomGrantRejectedException)
+            catch (ZoomGrantRejectedException ex) when (ex is not ZoomConnectionRemovedException)
             {
                 var current = await GetConnectionAsync(userId);
-                if (current == null) throw;
-                if (used != null && current.AccessToken != used) throw new ZoomApiException(null);
+                if (current == null || used == null) throw;
+                if (current.AccessToken != used) throw new ZoomApiException(null);
                 // RowVersion: a connection saved between the read above and this delete is kept.
                 await _db.ZoomConnections.Where(z => z.Id == current.Id && z.RowVersion == current.RowVersion).ExecuteDeleteAsync();
                 _logger.LogWarning("Zoom connection removed for user {UserId}: Zoom rejected it.", userId);
@@ -325,7 +328,21 @@ namespace MeetingWeb.Services
                     // Another server process may have used this refresh token a moment ago and saved a newer one.
                     await ReloadAsync(connection);
                     if (connection.RefreshToken != used) return connection;
-                    throw;
+
+                    // Removed while the lock is held, so a reconnect waiting on it is saved after this, not deleted.
+                    _db.ZoomConnections.Remove(connection);
+                    try
+                    {
+                        await _db.SaveChangesAsync();
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        // Saved again by another server process meanwhile: that newer connection stays.
+                        await ReloadAsync(connection);
+                        return connection;
+                    }
+                    _logger.LogWarning("Zoom connection removed for user {UserId}: Zoom rejected it.", userId);
+                    throw new ZoomConnectionRemovedException();
                 }
 
                 Apply(connection, tokens);
