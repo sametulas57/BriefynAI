@@ -698,6 +698,32 @@ public class ZoomTests
         Assert.EndsWith("_BIN2", collation);
     }
 
+    // Review round 6: a reconnect waiting while a rejected refresh is handled is not deleted afterwards.
+    [Fact]
+    public async Task Reconnect_waiting_on_a_rejected_refresh_survives()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(-5));
+        var reconnecter = app.ClientFor(app.Seed.AliceId);
+        var (_, state) = await StartAsync(reconnecter);
+        Task<HttpResponseMessage>? reconnect = null;
+        app.Zoom.On("POST", "/oauth/token", req =>
+        {
+            var body = req.Content!.ReadAsStringAsync().Result;
+            if (body.Contains("grant_type=authorization_code"))
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(StubZoomHandler.TokenJson("reconnected-access", "reconnected-refresh")) };
+            // While this refresh is being rejected, the user finishes connecting again in another tab.
+            reconnect = Task.Run(() => reconnecter.GetAsync("/Zoom/Callback?code=c&state=" + Uri.EscapeDataString(state)));
+            Thread.Sleep(300);
+            return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("{\"error\":\"invalid_grant\"}") };
+        });
+
+        await app.ClientFor(app.Seed.AliceId).GetAsync("/Zoom/Recordings");
+        await reconnect!.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("reconnected-access", ConnectionOf(app, app.Seed.AliceId)?.AccessToken);
+    }
+
     private sealed class StalledStream : Stream
     {
         private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
