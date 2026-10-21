@@ -191,7 +191,16 @@ namespace MeetingWeb.Pages.Workspace
                 return NotFound();
 
             target.TitleId = titleId;
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // The title was deleted in another tab between the check above and this save.
+                TempData["ErrorMessage"] = "Bu unvan az önce silindi. Listeyi yenileyip tekrar deneyin.";
+                return RedirectToPage();
+            }
             TempData["StatusMessage"] = titleId == null ? "Unvan kaldırıldı." : "Unvan atandı.";
             return RedirectToPage();
         }
