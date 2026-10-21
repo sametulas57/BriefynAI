@@ -297,16 +297,18 @@
             e.preventDefault();
             const row = form.closest('li');
             const note = form.querySelector('.assign-note');
-            // The button stays off until the answer arrives, so an older answer cannot overwrite a newer save.
-            const button = form.querySelector('button[type="submit"]');
-            if (button.disabled) return;
-            button.disabled = true;
+            // The row's fields stay locked until the answer arrives, so the answer always matches what is on screen.
+            const fields = [...form.querySelectorAll('select, input:not([type="hidden"]), button')];
+            if (fields[0].disabled) return;
+            const body = new FormData(form);
+            fields.forEach(f => f.disabled = true);
+            const unlock = () => fields.forEach(f => f.disabled = false);
             let response;
             try {
-                response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' } });
+                response = await fetch(form.action, { method: 'POST', body, headers: { 'Accept': 'application/json' } });
             } catch {
                 // No connection: say so in the row and keep every choice on the page.
-                button.disabled = false;
+                unlock();
                 note.textContent = 'Bağlantı kurulamadı, kaydedilmedi. Lütfen tekrar deneyin.';
                 note.className = 'assign-note small fw-medium text-danger';
                 return;
@@ -319,7 +321,7 @@
                 location.reload();
                 return;
             }
-            button.disabled = false;
+            unlock();
             note.textContent = data.message;
             note.className = 'assign-note small fw-medium ' + (data.success ? 'text-success' : 'text-danger');
             if (!data.success) return;
