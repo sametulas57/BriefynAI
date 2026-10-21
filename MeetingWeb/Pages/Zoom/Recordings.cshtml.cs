@@ -94,6 +94,7 @@ namespace MeetingWeb.Pages.Zoom
             {
                 ZoomImportOutcome.Imported or ZoomImportOutcome.AlreadyImported => RedirectToPage("/Details", new { id = result.MeetingId }),
                 ZoomImportOutcome.NoTeam => Back("Henüz bir ekibiniz yok. Kayıt almak için önce bir ekip oluşturun ya da bir davete katılın."),
+                ZoomImportOutcome.LeftTeam => Back("Artık bu ekibin üyesi değilsiniz; kayıt alınmadı."),
                 ZoomImportOutcome.NoAudio => Back("Bu kaydın ses dosyası yok, alınamaz."),
                 ZoomImportOutcome.SeveralParts => Back("Bu kayıt birden çok parçadan oluşuyor (kayıt toplantıda durdurulup yeniden başlatılmış); şimdilik buradan alınamaz. Parçaları Zoom'dan indirip ayrı ayrı yükleyebilirsiniz."),
                 ZoomImportOutcome.TooLarge => Back($"Kayıt çok büyük. En fazla {_configuration.GetValue("Upload:MaxMegabytes", 300)} MB'lık kayıtlar alınabilir."),
