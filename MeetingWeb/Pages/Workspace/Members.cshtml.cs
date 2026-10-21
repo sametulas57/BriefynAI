@@ -196,8 +196,10 @@ namespace MeetingWeb.Pages.Workspace
             if (caller == null) return Unauthorized();
             var target = await _context.WorkspaceMembers.FirstOrDefaultAsync(m => m.WorkspaceId == caller.WorkspaceId && m.UserId == targetUserId);
             if (target == null) return NotFound();
-            if (titleId != null && !await _context.WorkspaceTitles.AnyAsync(t => t.Id == titleId && t.WorkspaceId == caller.WorkspaceId))
-                return NotFound();
+            // Read before saving: the answer to the page uses its name and icon even if someone deletes it right after.
+            var title = titleId == null ? null
+                : await _context.WorkspaceTitles.AsNoTracking().FirstOrDefaultAsync(t => t.Id == titleId && t.WorkspaceId == caller.WorkspaceId);
+            if (titleId != null && title == null) return NotFound();
 
             target.TitleId = titleId;
             try
@@ -213,11 +215,7 @@ namespace MeetingWeb.Pages.Workspace
                 return RedirectToPage();
             }
             var message = titleId == null ? "Unvan kaldırıldı." : "Unvan atandı.";
-            if (WantsJson)
-            {
-                var title = titleId == null ? null : await _context.WorkspaceTitles.AsNoTracking().FirstAsync(t => t.Id == titleId);
-                return new JsonResult(new { success = true, message, name = title?.Name, icon = title?.Icon });
-            }
+            if (WantsJson) return new JsonResult(new { success = true, message, name = title?.Name, icon = title?.Icon });
             TempData["StatusMessage"] = message;
             return RedirectToPage();
         }
