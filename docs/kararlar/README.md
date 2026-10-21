@@ -12,3 +12,4 @@ Her dosya tek bir mimari karar: bağlam, karar, sonuçlar, kaynak. Karar değiş
 - [ADR-0008: Aksiyon atama: düz cümle sürümü](0008-aksiyon-atama.md)
 - [ADR-0009: Veritabanı şeması v2 (baştan, tek migration)](0009-veritabani-semasi-v2.md)
 - [ADR-0010: Şifreleme v3: kolona bağlı, anahtar numaralı](0010-sifreleme-v3-kolona-bagli.md)
+- [ADR-0011: Zoom bağlantısı (bulut kaydını alma)](0011-zoom-baglantisi.md)
