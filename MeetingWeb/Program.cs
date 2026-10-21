@@ -44,6 +44,9 @@ try
         options.SignIn.RequireConfirmedAccount = false)
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>();
+    // A deletion request changes the security stamp; reject existing cookies on their next request.
+    builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+        options.ValidationInterval = TimeSpan.Zero);
 
     // S9b: Data Protection keys sign the login cookie, antiforgery tokens and TempData. Inside the container they
     // vanished on every rebuild (everyone logged out, open forms failed). They now live in a persistent folder:

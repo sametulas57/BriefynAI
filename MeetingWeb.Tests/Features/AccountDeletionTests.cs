@@ -5,6 +5,7 @@ using MeetingWeb.Models;
 using MeetingWeb.Services;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,6 +82,34 @@ public class AccountDeletionTests
     }
 
     [Fact]
+    public async Task Deletion_request_rejects_another_device_cookie_on_its_next_request()
+    {
+        using var app = await ReadyAsync(new BriefynFactory { UseCookieAuthentication = true });
+        app.WithDb(db => { db.WorkspaceMembers.Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.AliceId).Role = WorkspaceRole.Member; db.SaveChanges(); return 0; });
+        var options = new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false };
+        using var first = app.CreateClient(options);
+        using var second = app.CreateClient(options);
+        foreach (var client in new[] { first, second })
+        {
+            var loginToken = await GetAntiforgeryTokenAsync(client, "/Auth/Login");
+            var login = await PostFormAsync(client, "/Auth/Login", loginToken,
+                ("Input.Email", SeedData.AliceEmail), ("Input.Password", Password));
+            Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/Profile")).StatusCode);
+        }
+
+        var deletionToken = await GetAntiforgeryTokenAsync(first, "/Profile");
+        var deletion = await PostFormAsync(first, "/Profile?handler=RequestDeletion", deletionToken, ("DeletionPassword", Password));
+        Assert.Equal(HttpStatusCode.Redirect, deletion.StatusCode);
+        Assert.NotNull(app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).DeletionRequestedAtUtc));
+
+        var otherDevice = await second.GetAsync("/Profile");
+        Assert.Equal(HttpStatusCode.Redirect, otherDevice.StatusCode);
+        var location = otherDevice.Headers.Location!;
+        Assert.StartsWith("/Auth/Login", location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString);
+    }
+
+    [Fact]
     public async Task Ownership_cannot_be_transferred_to_user_after_deletion_request_is_saved()
     {
         using var app = await ReadyAsync();
@@ -154,6 +183,64 @@ public class AccountDeletionTests
         Assert.Equal(HttpStatusCode.Unauthorized, second.StatusCode);
         Assert.Equal(new[] { app.Seed.CarolId }, app.WithDb(db => db.WorkspaceMembers.AsNoTracking()
             .Where(m => m.WorkspaceId == app.Seed.WorkspaceA && m.Role == WorkspaceRole.Owner)
+            .Select(m => m.UserId).ToArray()));
+    }
+
+    [Fact]
+    public async Task Member_who_becomes_owner_cannot_leave_with_an_old_form()
+    {
+        using var app = await ReadyAsync();
+        var carol = app.ClientFor(app.Seed.CarolId);
+        var staleToken = await GetAntiforgeryTokenAsync(carol, "/Workspace/Members");
+        var alice = app.ClientFor(app.Seed.AliceId);
+        var transferToken = await GetAntiforgeryTokenAsync(alice, "/Workspace/Members");
+        await PostFormAsync(alice, "/Workspace/Members?handler=TransferOwnership", transferToken, ("targetUserId", app.Seed.CarolId));
+
+        var leave = await PostFormAsync(carol, "/Workspace/Members?handler=LeaveWorkspace", staleToken);
+
+        Assert.Equal(HttpStatusCode.Redirect, leave.StatusCode);
+        Assert.Equal(new[] { app.Seed.CarolId }, app.WithDb(db => db.WorkspaceMembers.AsNoTracking()
+            .Where(m => m.WorkspaceId == app.Seed.WorkspaceA && m.Role == WorkspaceRole.Owner)
+            .Select(m => m.UserId).ToArray()));
+    }
+
+    [Fact]
+    public async Task Former_owner_cannot_remove_new_owner_or_member_with_an_old_form()
+    {
+        using var app = await ReadyAsync();
+        app.WithDb(db => { db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = app.Seed.WorkspaceA, UserId = app.Seed.BobId, Role = WorkspaceRole.Member }); db.SaveChanges(); return 0; });
+        var alice = app.ClientFor(app.Seed.AliceId);
+        var staleToken = await GetAntiforgeryTokenAsync(alice, "/Workspace/Members");
+        await PostFormAsync(alice, "/Workspace/Members?handler=TransferOwnership", staleToken, ("targetUserId", app.Seed.CarolId));
+
+        var removeOwner = await PostFormAsync(alice, "/Workspace/Members?handler=RemoveMember", staleToken, ("targetUserId", app.Seed.CarolId));
+        var removeMember = await PostFormAsync(alice, "/Workspace/Members?handler=RemoveMember", staleToken, ("targetUserId", app.Seed.BobId));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, removeOwner.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, removeMember.StatusCode);
+        Assert.True(app.WithDb(db => db.WorkspaceMembers.AsNoTracking().Any(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.BobId)));
+        Assert.Equal(new[] { app.Seed.CarolId }, app.WithDb(db => db.WorkspaceMembers.AsNoTracking()
+            .Where(m => m.WorkspaceId == app.Seed.WorkspaceA && m.Role == WorkspaceRole.Owner)
+            .Select(m => m.UserId).ToArray()));
+    }
+
+    [Fact]
+    public async Task Owner_can_still_remove_member_and_member_can_still_leave()
+    {
+        using var app = await ReadyAsync();
+        app.WithDb(db => { db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = app.Seed.WorkspaceA, UserId = app.Seed.BobId, Role = WorkspaceRole.Member }); db.SaveChanges(); return 0; });
+        var alice = app.ClientFor(app.Seed.AliceId);
+        var ownerToken = await GetAntiforgeryTokenAsync(alice, "/Workspace/Members");
+        var carol = app.ClientFor(app.Seed.CarolId);
+        var memberToken = await GetAntiforgeryTokenAsync(carol, "/Workspace/Members");
+
+        var remove = await PostFormAsync(alice, "/Workspace/Members?handler=RemoveMember", ownerToken, ("targetUserId", app.Seed.BobId));
+        var leave = await PostFormAsync(carol, "/Workspace/Members?handler=LeaveWorkspace", memberToken);
+
+        Assert.Equal(HttpStatusCode.Redirect, remove.StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, leave.StatusCode);
+        Assert.Equal(new[] { app.Seed.AliceId }, app.WithDb(db => db.WorkspaceMembers.AsNoTracking()
+            .Where(m => m.WorkspaceId == app.Seed.WorkspaceA)
             .Select(m => m.UserId).ToArray()));
     }
 
