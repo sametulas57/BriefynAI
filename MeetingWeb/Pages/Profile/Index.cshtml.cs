@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using System.ComponentModel.DataAnnotations;
 using MeetingWeb.Models;
 using MeetingWeb.Data;
@@ -163,19 +164,19 @@ namespace MeetingWeb.Pages.Profile
                 return RedirectToPage();
             }
 
-            var teams = await _deletion.BlockingTeamsAsync(user.Id);
-            if (teams.Count != 0)
-            {
-                TempData["ErrorMessage"] = "Önce şu ekiplerin kuruculuğunu devredin veya ekipleri silin: " + string.Join(", ", teams);
-                return RedirectToPage();
-            }
-
-            await using var tx = await _db.Database.BeginTransactionAsync();
+            // Updating the user row first serializes this check with ownership transfers targeting the same user.
+            await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             user.DeletionRequestedAtUtc = DateTime.UtcNow;
             var stampResult = await _userManager.UpdateSecurityStampAsync(user);
             if (!stampResult.Succeeded)
             {
                 TempData["ErrorMessage"] = "Hesap silme isteği kaydedilemedi. Lütfen tekrar deneyin.";
+                return RedirectToPage();
+            }
+            var teams = await _deletion.BlockingTeamsAsync(user.Id);
+            if (teams.Count != 0)
+            {
+                TempData["ErrorMessage"] = "Önce şu ekiplerin kuruculuğunu devredin veya ekipleri silin: " + string.Join(", ", teams);
                 return RedirectToPage();
             }
             await tx.CommitAsync();
