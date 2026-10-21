@@ -20,7 +20,8 @@ namespace MeetingWeb.Migrations
                 table: "Meetings",
                 type: "nvarchar(200)",
                 maxLength: 200,
-                nullable: true);
+                nullable: true,
+                collation: "Latin1_General_100_BIN2");
 
             migrationBuilder.CreateTable(
                 name: "ZoomConnections",

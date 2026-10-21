@@ -76,6 +76,8 @@ namespace MeetingWeb.Data
                 // History lists a workspace's meetings newest first.
                 m.HasIndex(x => new { x.WorkspaceId, x.CreatedAtUtc });
                 m.HasIndex(x => new { x.WorkspaceId, x.ExternalRecordingId }).IsUnique().HasFilter("[ExternalRecordingId] IS NOT NULL");
+                // Zoom UUIDs are case-sensitive; SQL Server's default comparison is not.
+                if (Database.IsSqlServer()) m.Property(x => x.ExternalRecordingId).UseCollation("Latin1_General_100_BIN2");
                 m.ToTable(t =>
                 {
                     t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");

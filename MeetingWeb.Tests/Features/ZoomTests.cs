@@ -651,6 +651,53 @@ public class ZoomTests
         Assert.Equal(MeetingStatus.Failed, meeting.Status);
     }
 
+    // Review round 5: Zoom also answers an unusable refresh token with invalid_request / "Invalid Token!".
+    [Fact]
+    public async Task Invalid_token_answer_to_refresh_also_removes_connection()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(-5));
+        app.Zoom.Json("POST", "/oauth/token", """{"reason":"Invalid Token!","error":"invalid_request"}""", HttpStatusCode.BadRequest);
+        var alice = app.ClientFor(app.Seed.AliceId);
+
+        var res = await alice.GetAsync("/Zoom/Recordings");
+
+        Assert.Contains("Zoom bağlantınız koptu", await FollowAsync(alice, res));
+        Assert.Null(ConnectionOf(app, app.Seed.AliceId));
+    }
+
+    // Review round 5: a connection saved again while a disconnect waits for Zoom is not deleted by that disconnect.
+    [Fact]
+    public async Task Disconnect_does_not_delete_a_connection_saved_meanwhile()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        app.Zoom.On("POST", "/oauth/revoke", _ =>
+        {
+            app.WithDb(db => { db.ZoomConnections.Single(z => z.UserId == app.Seed.AliceId).AccessToken = "reconnected-access"; return db.SaveChanges(); });
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+        });
+        var alice = app.ClientFor(app.Seed.AliceId);
+
+        var token = await GetAntiforgeryTokenAsync(alice, "/Profile");
+        await PostFormAsync(alice, "/Zoom/Connect?handler=Disconnect", token);
+
+        Assert.Equal("reconnected-access", ConnectionOf(app, app.Seed.AliceId)!.AccessToken);
+    }
+
+    // Review round 5: Zoom UUIDs differ only by letter case sometimes; SQL Server must compare them exactly.
+    [Fact]
+    public void Recording_id_is_compared_case_sensitively_on_sql_server()
+    {
+        var options = new DbContextOptionsBuilder<MeetingWeb.Data.ApplicationDbContext>().UseSqlServer("Server=unused").Options;
+        using var db = new MeetingWeb.Data.ApplicationDbContext(options);
+
+        var model = Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions.GetService<Microsoft.EntityFrameworkCore.Metadata.IDesignTimeModel>(db).Model;
+        var collation = model.FindEntityType(typeof(Meeting))!.FindProperty(nameof(Meeting.ExternalRecordingId))!.GetCollation();
+
+        Assert.EndsWith("_BIN2", collation);
+    }
+
     private sealed class StalledStream : Stream
     {
         private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
