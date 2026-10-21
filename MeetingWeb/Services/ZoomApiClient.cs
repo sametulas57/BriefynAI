@@ -135,7 +135,8 @@ namespace MeetingWeb.Services
                     continue;
                 }
 
-                if (response.StatusCode == HttpStatusCode.Unauthorized) throw new ZoomGrantRejectedException();
+                // Only Zoom's own answer says the grant is gone; the signed address refusing is just a failed download.
+                if (response.StatusCode == HttpStatusCode.Unauthorized && IsZoomHost(uri)) throw new ZoomGrantRejectedException();
                 EnsureSuccess(response);
                 try
                 {

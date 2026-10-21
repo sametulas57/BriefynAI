@@ -44,7 +44,7 @@ namespace MeetingWeb.Services
         };
 
         private static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);
-        // One refresh at a time per user inside this process; RowVersion covers other processes.
+        // One refresh (or revoke) at a time per user inside this process; RowVersion covers other processes.
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> RefreshLocks = new();
 
         private readonly ApplicationDbContext _db;
@@ -119,16 +119,42 @@ namespace MeetingWeb.Services
         public Task<ZoomConnection?> GetConnectionAsync(string userId) =>
             _db.ZoomConnections.AsNoTracking().SingleOrDefaultAsync(z => z.UserId == userId);
 
-        // The row is deleted even when Zoom cannot be reached.
+        // The row is deleted even when Zoom cannot be reached. Waits for a refresh in progress, so the newest token is
+        // the one revoked.
         public async Task DisconnectAsync(string userId)
         {
-            var connection = await GetConnectionAsync(userId);
-            if (connection == null) return;
-            await RevokeQuietlyAsync(connection);
-            await _db.ZoomConnections.Where(z => z.UserId == userId).ExecuteDeleteAsync();
+            var gate = Gate(userId);
+            await gate.WaitAsync();
+            try
+            {
+                var connection = await GetConnectionAsync(userId);
+                if (connection == null) return;
+                await RevokeCoreAsync(connection);
+                await _db.ZoomConnections.Where(z => z.UserId == userId).ExecuteDeleteAsync();
+            }
+            finally
+            {
+                gate.Release();
+            }
         }
 
         public async Task RevokeQuietlyAsync(ZoomConnection connection)
+        {
+            var gate = Gate(connection.UserId);
+            await gate.WaitAsync();
+            try
+            {
+                await RevokeCoreAsync(connection);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        private static SemaphoreSlim Gate(string userId) => RefreshLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
+
+        private async Task RevokeCoreAsync(ZoomConnection connection)
         {
             if (!IsEnabled) return;
             try
@@ -247,7 +273,7 @@ namespace MeetingWeb.Services
                 ?? throw new ZoomNotConnectedException();
             if (connection.AccessTokenExpiresAtUtc > DateTime.UtcNow + RefreshMargin) return connection;
 
-            var gate = RefreshLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
+            var gate = Gate(userId);
             await gate.WaitAsync();
             try
             {
