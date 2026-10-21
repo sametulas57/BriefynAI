@@ -39,6 +39,7 @@ namespace MeetingWeb.Tests.Infrastructure
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            await Task.Yield(); // like a real network call, the answer arrives asynchronously
             var body = request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancellationToken);
             Requests.Enqueue(new Sent(request.Method, request.RequestUri!, request.Headers.Authorization?.ToString(), body));
             return _routes.TryGetValue(request.Method.Method + " " + request.RequestUri!.AbsolutePath, out var respond)

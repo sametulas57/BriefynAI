@@ -47,8 +47,6 @@ namespace MeetingWeb.Services
         };
 
         private static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);
-        // A refresh mark older than this was left by a process that stopped; it no longer blocks refreshing.
-        private static readonly TimeSpan RefreshMarkLifetime = TimeSpan.FromMinutes(1);
         // One refresh (or revoke) at a time per user inside this process; RowVersion covers other processes.
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> RefreshLocks = new();
 
@@ -75,6 +73,10 @@ namespace MeetingWeb.Services
         }
 
         public bool IsEnabled => _options.IsEnabled;
+
+        // A refresh mark older than this was left by a process that stopped: it outlives any token request (which is
+        // cut off after TokenTimeoutSeconds), so a refresh still running elsewhere always keeps its mark.
+        private TimeSpan RefreshMarkLifetime => TimeSpan.FromSeconds(2 * _options.TokenTimeoutSeconds);
 
         private long MaxBytes => _configuration.GetValue("Upload:MaxMegabytes", 300) * 1024L * 1024L;
 
