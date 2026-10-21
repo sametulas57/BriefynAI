@@ -36,6 +36,7 @@ namespace MeetingWeb.Migrations
                     RefreshToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AccessTokenExpiresAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ConnectedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RefreshStartedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
                 },
                 constraints: table =>

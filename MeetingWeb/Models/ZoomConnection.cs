@@ -27,6 +27,10 @@ namespace MeetingWeb.Models
 
         public DateTime ConnectedAtUtc { get; set; } = DateTime.UtcNow;
 
+        // Set while one server process refreshes the tokens, so another process does not use the same refresh token
+        // at the same time (Zoom would reject the second one). Ignored after a minute.
+        public DateTime? RefreshStartedAtUtc { get; set; }
+
         [Timestamp]
         public byte[]? RowVersion { get; set; }
     }
