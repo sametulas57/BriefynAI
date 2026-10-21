@@ -91,12 +91,18 @@ namespace MeetingWeb.Tests.Features
         public async Task Member_actions_are_inside_the_dropdown_for_founder_and_hidden_for_member()
         {
             var founderPage = WebUtility.HtmlDecode(await _app.ClientFor(S.AliceId).GetStringAsync("/Workspace/Members"));
-            var menuStart = founderPage.IndexOf("member-actions-menu", StringComparison.Ordinal);
-            Assert.True(menuStart >= 0, "founder has an actions menu");
-            var menu = founderPage[menuStart..];
+            var menuClass = founderPage.IndexOf("member-actions-menu", StringComparison.Ordinal);
+            Assert.True(menuClass >= 0, "founder has an actions menu");
+            // From the menu to the end of that member's row: one member's menu, nothing from other rows.
+            var menuEnd = founderPage.IndexOf("</li>", menuClass, StringComparison.Ordinal);
+            Assert.True(menuEnd >= 0, "founder actions menu sits in a member row");
+            var menu = founderPage[menuClass..menuEnd];
             Assert.Contains("TransferOwnership", menu);
             Assert.Contains("SetRole", menu);
             Assert.Contains("RemoveMember", menu);
+            Assert.Contains("Kuruculuğu Devret", menu);
+            Assert.Contains("Yönetici Yap", menu);
+            Assert.Contains("Ekipten Çıkar", menu);
             Assert.Contains("Diğer işlemler", founderPage);
 
             var memberPage = WebUtility.HtmlDecode(await _app.ClientFor(S.CarolId).GetStringAsync("/Workspace/Members"));

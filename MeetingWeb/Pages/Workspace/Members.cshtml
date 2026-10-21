@@ -88,9 +88,9 @@
 
                     var initials = MeetingWeb.Services.UserDisplay.Initials(fullName);
 
-                    <li class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center p-4 bg-transparent border-bottom border-light hover-bg-light transition-all">
+                    <li class="list-group-item d-flex flex-column flex-lg-row justify-content-between align-items-lg-center p-4 bg-transparent border-bottom border-light hover-bg-light transition-all">
         
-                        <div class="d-flex align-items-center mb-3 mb-md-0">
+                        <div class="member-identity d-flex align-items-center mb-3 mb-lg-0">
                             @if (!string.IsNullOrEmpty(avatarUrl))
                             {
                                 <img src="@avatarUrl" class="rounded-circle shadow-sm me-4 border" style="width: 55px; height: 55px; object-fit: cover;" alt="@fullName" />
@@ -134,13 +134,13 @@
 
                                     <span class="badge bg-light text-dark rounded-pill border member-title @(member.Title == null ? "d-none" : "")" style="font-size: 0.75rem;"><i class="bi bi-@member.Title?.Icon me-1 @(member.Title?.Icon == null ? "d-none" : "")"></i><span>@member.Title?.Name</span></span>
                                 </div>
-                                <div class="text-muted small fw-medium">
+                                <div class="text-muted small fw-medium text-break">
                                     <i class="bi bi-envelope text-secondary me-1"></i> @member.User.Email
                                 </div>
                             </div>
                         </div>
 
-                        <div class="member-actions mt-3 mt-md-0 ms-md-4 d-flex justify-content-md-end gap-2">
+                        <div class="member-actions mt-3 mt-lg-0 ms-lg-4 d-flex justify-content-lg-end gap-2">
                             @if (Model.CanManageTitles && Model.Titles.Count > 0)
                             {
                                 <form method="post" asp-page-handler="AssignTitle" class="assign-title-form" autocomplete="off">
