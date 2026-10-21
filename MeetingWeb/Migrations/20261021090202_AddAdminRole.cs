@@ -27,6 +27,9 @@ namespace MeetingWeb.Migrations
                 name: "CK_WorkspaceMembers_Role",
                 table: "WorkspaceMembers");
 
+            // Without the admin role, admins go back to being members before the old rule returns.
+            migrationBuilder.Sql("UPDATE [WorkspaceMembers] SET [Role] = 2 WHERE [Role] = 3;");
+
             migrationBuilder.AddCheckConstraint(
                 name: "CK_WorkspaceMembers_Role",
                 table: "WorkspaceMembers",
