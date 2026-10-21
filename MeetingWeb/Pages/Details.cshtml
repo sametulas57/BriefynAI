@@ -570,13 +570,36 @@
                 <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
                 <div class="modal-body px-4 pb-4">
                     <p class="text-muted mb-4 small">Bu toplantı özetini e-postayla göndermek istediğiniz ekip arkadaşlarınızı seçin.</p>
-                    <div class="list-group rounded-4 border-0 gap-2">
-                        @if (Model.WorkspaceMembers != null && Model.WorkspaceMembers.Any())
+                    @{
+                        // People are grouped under their titles, untitled ones last; nobody is selected by default so a
+                        // report never goes to the whole team by accident (PRD roller-ve-unvanlar).
+                        var shareGroups = Model.WorkspaceMembers
+                            .GroupBy(m => m.Title)
+                            .OrderBy(g => g.Key == null).ThenBy(g => g.Key?.Name)
+                            .ToList();
+                        var showGroupHeaders = shareGroups.Any(g => g.Key != null);
+                        var groupIndex = 0;
+                    }
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-light btn-sm rounded-pill px-3 fw-bold" id="shareSelectAll">Tümünü seç</button>
+                        <button type="button" class="btn btn-light btn-sm rounded-pill px-3 fw-bold text-muted" id="shareSelectNone">Hiçbirini seçme</button>
+                    </div>
+                    @foreach (var group in shareGroups)
+                    {
+                        var groupKey = "share-group-" + groupIndex++;
+                        @if (showGroupHeaders)
                         {
-                            foreach (var member in Model.WorkspaceMembers)
+                            <label class="d-flex align-items-center gap-2 mt-3 mb-2 fw-bold text-dark small cursor-pointer">
+                                <input class="form-check-input mt-0 border-secondary share-group-toggle" type="checkbox" data-group="@groupKey" aria-label="Bu gruptaki herkesi seç">
+                                @if (group.Key?.Icon != null) { <i class="bi bi-@group.Key.Icon text-secondary"></i> }
+                                <span>@(group.Key?.Name ?? "Unvansız")</span>
+                            </label>
+                        }
+                    <div class="list-group rounded-4 border-0 gap-2">
+                            @foreach (var member in group)
                             {
                                 <label class="list-group-item d-flex gap-3 align-items-center cursor-pointer border rounded-4 py-3 bg-soft-light transition-all hover-bg-white shadow-sm-hover">
-                                    <input class="form-check-input flex-shrink-0 fs-5 mt-0 border-secondary" type="checkbox" name="selectedEmails" value="@member.User.Email" checked>
+                                    <input class="form-check-input flex-shrink-0 fs-5 mt-0 border-secondary share-recipient" type="checkbox" name="selectedEmails" value="@member.User.Email" data-group="@groupKey">
                                     <div class="d-flex flex-column">
                                         <span class="fw-bold text-dark" style="font-size: 0.95rem;">@member.User.Email</span>
                                         @if (member.Role == MeetingWeb.Models.WorkspaceRole.Owner)
@@ -586,8 +609,8 @@
                                     </div>
                                 </label>
                             }
-                        }
                     </div>
+                    }
 
                     <div class="mt-4">
                         <label for="extraEmails" class="form-label small fw-bold text-dark">Ekip dışından birine de göndermek ister misiniz?</label>
@@ -633,6 +656,25 @@
             connection.start().catch(err => console.error(err.toString()));
             </text>
         }
+
+        // Share dialog: a title's box selects everyone under it and shows a half mark when only some are selected.
+        (function () {
+            const recipients = () => [...document.querySelectorAll('.share-recipient')];
+            const refreshGroups = () => document.querySelectorAll('.share-group-toggle').forEach(toggle => {
+                const members = recipients().filter(r => r.dataset.group === toggle.dataset.group);
+                const selected = members.filter(r => r.checked).length;
+                toggle.checked = members.length > 0 && selected === members.length;
+                toggle.indeterminate = selected > 0 && selected < members.length;
+            });
+            document.querySelectorAll('.share-group-toggle').forEach(toggle => toggle.addEventListener('change', () => {
+                recipients().filter(r => r.dataset.group === toggle.dataset.group).forEach(r => r.checked = toggle.checked);
+                refreshGroups();
+            }));
+            recipients().forEach(r => r.addEventListener('change', refreshGroups));
+            const setAll = value => { recipients().forEach(r => r.checked = value); refreshGroups(); };
+            document.getElementById('shareSelectAll')?.addEventListener('click', () => setAll(true));
+            document.getElementById('shareSelectNone')?.addEventListener('click', () => setAll(false));
+        })();
 
         // AJAX Fetch API: Asynchronously toggle task completion status
         function toggleTask(id) {

@@ -42,6 +42,10 @@ namespace MeetingWeb.Pages.Workspace
         public Dictionary<string, string> UserNames { get; set; } = new Dictionary<string, string>();
         public Dictionary<string, string> UserAvatars { get; set; } = new Dictionary<string, string>();
 
+        // The team's titles, for the title list and the assignment choices.
+        public List<WorkspaceTitle> Titles { get; set; } = new();
+        public bool CanManageTitles { get; set; }
+
         // HTTP GET: Initializes the dashboard and resolves tenant context.
         public async Task<IActionResult> OnGetAsync()
         {
@@ -60,14 +64,17 @@ namespace MeetingWeb.Pages.Workspace
 
             TeamMembers = await _context.WorkspaceMembers
                 .Include(wu => wu.User)
+                .Include(wu => wu.Title)
                 .Where(wu => wu.WorkspaceId == activeWorkspaceId)
                 .ToListAsync();
+            Titles = await _context.WorkspaceTitles.Where(t => t.WorkspaceId == activeWorkspaceId).OrderBy(t => t.Name).ToListAsync();
 
             // Establish the Role-Based Access Control (RBAC) context for the viewing user.
             var currentUserRecord = TeamMembers.FirstOrDefault(wu => wu.UserId == CurrentUserId);
             if (currentUserRecord == null) return RedirectToPage("/Index");
 
             CurrentUserRole = currentUserRecord.Role;
+            CanManageTitles = currentUserRecord.CanManageTitles && !IsPersonalWorkspace;
 
             // Names and photos come with the members (Include above).
             foreach (var member in TeamMembers)
@@ -77,6 +84,116 @@ namespace MeetingWeb.Pages.Workspace
             }
 
             return Page();
+        }
+
+        // --- TITLES ---
+        // Like the other actions here, the team is the one the user was looking at (session); the permission is checked
+        // against the database. The personal space has no titles.
+        private async Task<WorkspaceMember?> TitleManagerAsync()
+        {
+            var workspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
+            var userId = _userManager.GetUserId(User);
+            var caller = await _context.WorkspaceMembers.Include(m => m.Workspace)
+                .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == userId);
+            return caller != null && caller.CanManageTitles && !caller.Workspace.IsPersonal ? caller : null;
+        }
+
+        // Returns an error message, or null when the name and icon can be saved.
+        private async Task<string?> ValidateTitleAsync(int workspaceId, string name, string? icon, int? exceptId)
+        {
+            if (name.Length == 0 || name.Length > WorkspaceTitle.NameMaxLength)
+                return $"Unvan adı boş olamaz ve en fazla {WorkspaceTitle.NameMaxLength} karakter olabilir.";
+            if (!TitleIcons.IsAllowed(icon)) return "Lütfen listedeki ikonlardan birini seçin.";
+            if (await _context.WorkspaceTitles.AnyAsync(t => t.WorkspaceId == workspaceId && t.Name == name && t.Id != exceptId))
+                return "Bu adda bir unvan zaten var.";
+            return null;
+        }
+
+        // The unique index still guards against two saves at the same moment.
+        private async Task<IActionResult> SaveTitleAsync(string doneMessage)
+        {
+            try
+            {
+                await _context.SaveChangesAsync();
+                TempData["StatusMessage"] = doneMessage;
+            }
+            catch (DbUpdateException)
+            {
+                TempData["ErrorMessage"] = "Bu adda bir unvan zaten var.";
+            }
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostCreateTitleAsync(string? titleName, string? titleIcon)
+        {
+            var caller = await TitleManagerAsync();
+            if (caller == null) return Unauthorized();
+
+            var name = (titleName ?? "").Trim();
+            var icon = string.IsNullOrEmpty(titleIcon) ? null : titleIcon;
+            if (await ValidateTitleAsync(caller.WorkspaceId, name, icon, null) is { } error)
+            {
+                TempData["ErrorMessage"] = error;
+                return RedirectToPage();
+            }
+
+            _context.WorkspaceTitles.Add(new WorkspaceTitle { WorkspaceId = caller.WorkspaceId, Name = name, Icon = icon });
+            return await SaveTitleAsync($"'{name}' unvanı eklendi.");
+        }
+
+        public async Task<IActionResult> OnPostUpdateTitleAsync(int titleId, string? titleName, string? titleIcon)
+        {
+            var caller = await TitleManagerAsync();
+            if (caller == null) return Unauthorized();
+            var title = await _context.WorkspaceTitles.FirstOrDefaultAsync(t => t.Id == titleId && t.WorkspaceId == caller.WorkspaceId);
+            if (title == null) return NotFound();
+
+            var name = (titleName ?? "").Trim();
+            var icon = string.IsNullOrEmpty(titleIcon) ? null : titleIcon;
+            if (await ValidateTitleAsync(caller.WorkspaceId, name, icon, title.Id) is { } error)
+            {
+                TempData["ErrorMessage"] = error;
+                return RedirectToPage();
+            }
+
+            title.Name = name;
+            title.Icon = icon;
+            return await SaveTitleAsync("Unvan güncellendi.");
+        }
+
+        // People with the title stay in the team; only their title is cleared.
+        public async Task<IActionResult> OnPostDeleteTitleAsync(int titleId)
+        {
+            var caller = await TitleManagerAsync();
+            if (caller == null) return Unauthorized();
+            var title = await _context.WorkspaceTitles.FirstOrDefaultAsync(t => t.Id == titleId && t.WorkspaceId == caller.WorkspaceId);
+            if (title == null) return NotFound();
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await _context.WorkspaceMembers.Where(m => m.TitleId == title.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.TitleId, (int?)null));
+            _context.WorkspaceTitles.Remove(title);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["StatusMessage"] = $"'{title.Name}' unvanı silindi; bu unvanı taşıyanlar ekipte kalır.";
+            return RedirectToPage();
+        }
+
+        // An empty titleId clears the person's title.
+        public async Task<IActionResult> OnPostAssignTitleAsync(string targetUserId, int? titleId)
+        {
+            var caller = await TitleManagerAsync();
+            if (caller == null) return Unauthorized();
+            var target = await _context.WorkspaceMembers.FirstOrDefaultAsync(m => m.WorkspaceId == caller.WorkspaceId && m.UserId == targetUserId);
+            if (target == null) return NotFound();
+            if (titleId != null && !await _context.WorkspaceTitles.AnyAsync(t => t.Id == titleId && t.WorkspaceId == caller.WorkspaceId))
+                return NotFound();
+
+            target.TitleId = titleId;
+            await _context.SaveChangesAsync();
+            TempData["StatusMessage"] = titleId == null ? "Unvan kaldırıldı." : "Unvan atandı.";
+            return RedirectToPage();
         }
 
         // --- MEMBER EVICTION LOGIC ---
