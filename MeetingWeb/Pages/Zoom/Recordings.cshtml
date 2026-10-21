@@ -48,9 +48,13 @@
                                 {
                                     <a asp-page="/Details" asp-route-id="@meetingId" class="btn btn-outline-success btn-sm rounded-pill fw-bold px-3"><i class="bi bi-check-lg me-1"></i>Alındı</a>
                                 }
-                                else if (recording.Audio == null)
+                                else if (recording.AudioFiles.Count == 0)
                                 {
                                     <span class="text-muted small">ses dosyası yok</span>
+                                }
+                                else if (recording.AudioFiles.Count > 1)
+                                {
+                                    <span class="text-muted small" title="Kayıt toplantıda durdurulup yeniden başlatılmış; parçaları Zoom'dan indirip ayrı ayrı yükleyebilirsiniz.">birden çok parça, alınamaz</span>
                                 }
                                 else
                                 {
