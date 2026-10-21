@@ -25,6 +25,7 @@ namespace MeetingWeb.Tests.Infrastructure
         public StubPythonApiHandler PythonApi { get; } = new();
         public DbCommandInterceptor? CommandInterceptor { get; init; }
         public IAudioStorage? AudioStorageOverride { get; init; }
+        public bool UseCookieAuthentication { get; init; }
 
         // Per-factory folders, so parallel test classes never share files.
         public string WebRoot => Path.Combine(_tempRoot, "wwwroot");
@@ -81,14 +82,17 @@ namespace MeetingWeb.Tests.Infrastructure
                 services.AddSingleton<IBackgroundJobClient>(Jobs);
                 services.AddHttpClient("PythonApi").ConfigurePrimaryHttpMessageHandler(() => PythonApi);
 
-                services.AddAuthentication(TestAuthHandler.SchemeName)
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
-                services.PostConfigure<AuthenticationOptions>(o =>
+                if (!UseCookieAuthentication)
                 {
-                    o.DefaultScheme = TestAuthHandler.SchemeName;
-                    o.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
-                    o.DefaultChallengeScheme = TestAuthHandler.SchemeName;
-                });
+                    services.AddAuthentication(TestAuthHandler.SchemeName)
+                        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+                    services.PostConfigure<AuthenticationOptions>(o =>
+                    {
+                        o.DefaultScheme = TestAuthHandler.SchemeName;
+                        o.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                        o.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+                    });
+                }
             });
         }
 

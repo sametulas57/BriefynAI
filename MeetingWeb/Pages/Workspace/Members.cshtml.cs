@@ -90,15 +90,16 @@ namespace MeetingWeb.Pages.Workspace
             var caller = await _context.WorkspaceMembers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == CurrentUserId);
             if (caller == null || caller.Role != WorkspaceRole.Owner) return Unauthorized();
 
-            var targetUser = await _context.WorkspaceMembers.FirstOrDefaultAsync(w => w.WorkspaceId == activeWorkspaceId && w.UserId == targetUserId);
-
-            // Privilege Escalation Prevention: An Owner cannot evict another Owner.
-            if (targetUser != null && targetUser.Role != WorkspaceRole.Owner)
-            {
-                _context.WorkspaceMembers.Remove(targetUser);
-                await _context.SaveChangesAsync();
-                TempData["StatusMessage"] = "Üye başarıyla ekipten çıkarıldı.";
-            }
+            // Recheck both roles in the DELETE itself: ownership may have changed since the read above.
+            var removed = await _context.WorkspaceMembers
+                .Where(m => m.WorkspaceId == activeWorkspaceId && m.UserId == targetUserId &&
+                    m.Role == WorkspaceRole.Member &&
+                    _context.WorkspaceMembers.Any(owner => owner.WorkspaceId == m.WorkspaceId &&
+                        owner.UserId == CurrentUserId && owner.Role == WorkspaceRole.Owner))
+                .ExecuteDeleteAsync();
+            TempData[removed == 1 ? "StatusMessage" : "ErrorMessage"] = removed == 1
+                ? "Üye başarıyla ekipten çıkarıldı."
+                : "Üye çıkarılamadı. Ekip üyeliklerini yeniden kontrol edin.";
 
             return RedirectToPage();
         }
@@ -158,8 +159,15 @@ namespace MeetingWeb.Pages.Workspace
                     return RedirectToPage();
                 }
 
-                _context.WorkspaceMembers.Remove(me);
-                await _context.SaveChangesAsync();
+                var removed = await _context.WorkspaceMembers
+                    .Where(m => m.WorkspaceId == activeWorkspaceId && m.UserId == CurrentUserId &&
+                        m.Role == WorkspaceRole.Member)
+                    .ExecuteDeleteAsync();
+                if (removed != 1)
+                {
+                    TempData["ErrorMessage"] = "Ekipten ayrılamadınız. Üyeliğinizi yeniden kontrol edin.";
+                    return RedirectToPage();
+                }
 
                 // Clear session context upon departure.
                 HttpContext.Session.Remove(ActiveWorkspaceService.SessionKey);
