@@ -36,7 +36,7 @@
                 </button>
             }
             
-            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Owner)
+            @if (Model.CurrentUserRole is { } myRole && MeetingWeb.Models.WorkspaceMember.RunsTeam(myRole))
             {
                 <a asp-page="/Workspace/Invite" class="btn btn-primary fw-bold shadow-sm rounded-pill px-4">
                     <i class="bi bi-person-plus-fill me-1"></i> Yeni Üye Davet Et
@@ -44,7 +44,7 @@
             }
             else
             {
-                <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Davet bağlantısını yalnız ekip kurucusu oluşturabilir">
+                <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Davet bağlantısını yalnız ekip kurucusu ve yöneticiler oluşturabilir">
                     <button class="btn btn-secondary fw-bold rounded-pill px-4 opacity-50" type="button" disabled style="pointer-events: none;">
                         <i class="bi bi-lock-fill me-1"></i> Yeni Üye Davet Et
                     </button>
@@ -85,6 +85,12 @@
                                     {
                                         <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill border border-primary border-opacity-25" style="font-size: 0.75rem;">
                                             <i class="bi bi-star-fill me-1"></i> Kurucu
+                                        </span>
+                                    }
+                                    else if (member.Role == MeetingWeb.Models.WorkspaceRole.Admin)
+                                    {
+                                        <span class="badge bg-info bg-opacity-10 text-info-emphasis rounded-pill border border-info border-opacity-25" style="font-size: 0.75rem;">
+                                            <i class="bi bi-shield-check me-1"></i> Yönetici
                                         </span>
                                     }
                                     else
@@ -137,6 +143,13 @@
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
                                     <button type="submit" class="btn btn-outline-primary btn-sm fw-bold rounded-pill px-4 shadow-sm">Kuruculuğu Devret</button>
                                 </form>
+                                <form method="post" asp-page-handler="SetRole" class="d-inline">
+                                    <input type="hidden" name="targetUserId" value="@member.UserId" />
+                                    <input type="hidden" name="makeAdmin" value="@(member.Role == MeetingWeb.Models.WorkspaceRole.Member ? "true" : "false")" />
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm fw-bold rounded-pill px-4 shadow-sm">
+                                        @(member.Role == MeetingWeb.Models.WorkspaceRole.Member ? "Yönetici Yap" : "Üye Yap")
+                                    </button>
+                                </form>
                                 }
                                 <form method="post" asp-page-handler="RemoveMember" class="d-inline" onsubmit="return confirm('Bu üyeyi ekipten çıkarmak istediğinize emin misiniz?');">
                                     <input type="hidden" name="targetUserId" value="@member.UserId" />
@@ -145,8 +158,17 @@
                                     </button>
                                 </form>
                             }
+                            else if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Admin && member.Role == MeetingWeb.Models.WorkspaceRole.Member)
+                            {
+                                <form method="post" asp-page-handler="RemoveMember" class="d-inline" onsubmit="return confirm('Bu üyeyi ekipten çıkarmak istediğinize emin misiniz?');">
+                                    <input type="hidden" name="targetUserId" value="@member.UserId" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">
+                                        <i class="bi bi-person-dash me-1"></i> Ekipten Çıkar
+                                    </button>
+                                </form>
+                            }
 
-                            @if (Model.CurrentUserRole == MeetingWeb.Models.WorkspaceRole.Member && member.UserId == Model.CurrentUserId)
+                            @if (Model.CurrentUserRole != MeetingWeb.Models.WorkspaceRole.Owner && member.UserId == Model.CurrentUserId)
                             {
                                 <form method="post" asp-page-handler="LeaveWorkspace" class="d-inline" onsubmit="return confirm('Bu ekipten ayrılmak istediğinize emin misiniz?');">
                                     <button type="submit" class="btn btn-danger btn-sm fw-bold rounded-pill px-4 shadow-sm hover-scale">

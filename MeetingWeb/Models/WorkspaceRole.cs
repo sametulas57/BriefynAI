@@ -4,6 +4,7 @@ namespace MeetingWeb.Models
     public enum WorkspaceRole
     {
         Owner = 1,
-        Member = 2
+        Member = 2,
+        Admin = 3
     }
 }
