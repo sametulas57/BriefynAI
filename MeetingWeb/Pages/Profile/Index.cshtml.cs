@@ -170,8 +170,15 @@ namespace MeetingWeb.Pages.Profile
                 return RedirectToPage();
             }
 
+            await using var tx = await _db.Database.BeginTransactionAsync();
             user.DeletionRequestedAtUtc = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            var stampResult = await _userManager.UpdateSecurityStampAsync(user);
+            if (!stampResult.Succeeded)
+            {
+                TempData["ErrorMessage"] = "Hesap silme isteği kaydedilemedi. Lütfen tekrar deneyin.";
+                return RedirectToPage();
+            }
+            await tx.CommitAsync();
             await _signInManager.SignOutAsync();
             TempData["StatusMessage"] = "Hesabınız 7 gün sonra silinecek. Bu sürede giriş yaparsanız silme isteğiniz iptal edilir.";
             return RedirectToPage("/Auth/Login");

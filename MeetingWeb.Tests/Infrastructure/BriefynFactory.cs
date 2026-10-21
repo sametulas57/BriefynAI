@@ -1,5 +1,6 @@
 using Hangfire;
 using MeetingWeb.Data;
+using MeetingWeb.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -7,7 +8,9 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MeetingWeb.Tests.Infrastructure
 {
@@ -20,6 +23,8 @@ namespace MeetingWeb.Tests.Infrastructure
 
         public FakeBackgroundJobClient Jobs { get; } = new();
         public StubPythonApiHandler PythonApi { get; } = new();
+        public DbCommandInterceptor? CommandInterceptor { get; init; }
+        public IAudioStorage? AudioStorageOverride { get; init; }
 
         // Per-factory folders, so parallel test classes never share files.
         public string WebRoot => Path.Combine(_tempRoot, "wwwroot");
@@ -61,7 +66,17 @@ namespace MeetingWeb.Tests.Infrastructure
                     d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>) ||
                     d.ServiceType == typeof(IDbContextOptionsConfiguration<ApplicationDbContext>)).ToList();
                 foreach (var d in efDescriptors) services.Remove(d);
-                services.AddDbContext<ApplicationDbContext>(o => o.UseSqlite(_connection));
+                services.AddDbContext<ApplicationDbContext>(o =>
+                {
+                    o.UseSqlite(_connection);
+                    if (CommandInterceptor != null) o.AddInterceptors(CommandInterceptor);
+                });
+
+                if (AudioStorageOverride != null)
+                {
+                    services.RemoveAll<IAudioStorage>();
+                    services.AddSingleton(AudioStorageOverride);
+                }
 
                 services.AddSingleton<IBackgroundJobClient>(Jobs);
                 services.AddHttpClient("PythonApi").ConfigurePrimaryHttpMessageHandler(() => PythonApi);

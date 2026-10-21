@@ -1,10 +1,12 @@
 using System.Net;
+using System.Data.Common;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
@@ -14,9 +16,9 @@ public class AccountDeletionTests
 {
     private const string Password = "Test-Parola-123";
 
-    private static async Task<BriefynFactory> ReadyAsync()
+    private static async Task<BriefynFactory> ReadyAsync(BriefynFactory? app = null)
     {
-        var app = new BriefynFactory();
+        app ??= new BriefynFactory();
         await app.InitializeAsync();
         using var scope = app.Services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -65,6 +67,18 @@ public class AccountDeletionTests
     }
 
     [Fact]
+    public async Task Deletion_request_invalidates_other_sessions()
+    {
+        using var app = await ReadyAsync();
+        app.WithDb(db => { db.WorkspaceMembers.Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.AliceId).Role = WorkspaceRole.Member; db.SaveChanges(); return 0; });
+        var before = app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).SecurityStamp);
+
+        await RequestAsync(app, Password);
+
+        Assert.NotEqual(before, app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).SecurityStamp));
+    }
+
+    [Fact]
     public async Task Successful_login_cancels_pending_request()
     {
         using var app = await ReadyAsync();
@@ -101,6 +115,22 @@ public class AccountDeletionTests
     }
 
     [Fact]
+    public async Task Second_transfer_by_former_owner_is_rejected_and_only_one_owner_remains()
+    {
+        using var app = await ReadyAsync();
+        var alice = app.ClientFor(app.Seed.AliceId);
+        var token = await GetAntiforgeryTokenAsync(alice, "/Workspace/Members");
+        var first = await PostFormAsync(alice, "/Workspace/Members?handler=TransferOwnership", token, ("targetUserId", app.Seed.CarolId));
+        var second = await PostFormAsync(alice, "/Workspace/Members?handler=TransferOwnership", token, ("targetUserId", app.Seed.BobId));
+
+        Assert.Equal(HttpStatusCode.Redirect, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, second.StatusCode);
+        Assert.Equal(new[] { app.Seed.CarolId }, app.WithDb(db => db.WorkspaceMembers.AsNoTracking()
+            .Where(m => m.WorkspaceId == app.Seed.WorkspaceA && m.Role == WorkspaceRole.Owner)
+            .Select(m => m.UserId).ToArray()));
+    }
+
+    [Fact]
     public async Task Sweep_respects_seven_day_wait()
     {
         using var app = await ReadyAsync();
@@ -110,6 +140,70 @@ public class AccountDeletionTests
         app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.BobId).DeletionRequestedAtUtc = DateTime.UtcNow.AddDays(-8); db.SaveChanges(); return 0; });
         using (var scope = app.Services.CreateScope()) await scope.ServiceProvider.GetRequiredService<IAccountDeletionService>().RunAsync();
         Assert.False(app.WithDb(db => db.Users.Any(u => u.Id == app.Seed.BobId)));
+    }
+
+    [Fact]
+    public async Task Sweep_loads_only_comments_from_affected_meetings()
+    {
+        var commands = new CommentSelectInterceptor();
+        using var app = await ReadyAsync(new BriefynFactory { CommandInterceptor = commands });
+        app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.CarolId).DeletionRequestedAtUtc = DateTime.UtcNow.AddDays(-8); db.SaveChanges(); return 0; });
+
+        using (var scope = app.Services.CreateScope()) await scope.ServiceProvider.GetRequiredService<IAccountDeletionService>().RunAsync();
+
+        Assert.NotEmpty(commands.Selects);
+        Assert.DoesNotContain(commands.Selects, sql => !sql.Contains("WHERE", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Sweep_continues_after_one_account_fails()
+    {
+        using var app = await ReadyAsync(new BriefynFactory { AudioStorageOverride = new FailingAudioStorage() });
+        app.WithDb(db =>
+        {
+            db.Users.Single(u => u.Id == app.Seed.BobId).DeletionRequestedAtUtc = DateTime.UtcNow.AddDays(-9);
+            db.Users.Single(u => u.Id == app.Seed.CarolId).DeletionRequestedAtUtc = DateTime.UtcNow.AddDays(-8);
+            db.Meetings.Single(m => m.Id == app.Seed.MeetingB).AudioFileName = "fail.m4a";
+            db.SaveChanges(); return 0;
+        });
+
+        using (var scope = app.Services.CreateScope()) await scope.ServiceProvider.GetRequiredService<IAccountDeletionService>().RunAsync();
+
+        Assert.False(app.WithDb(db => db.Users.Any(u => u.Id == app.Seed.CarolId)));
+    }
+
+    [Fact]
+    public async Task Avatar_delete_failure_keeps_account_for_retry()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        using var app = await ReadyAsync();
+        var avatarFolder = Path.Combine(app.WebRoot, "uploads", "avatars");
+        var protectedFolder = Path.Combine(app.WebRoot, "protected-avatar");
+        Directory.CreateDirectory(protectedFolder);
+        File.WriteAllText(Path.Combine(protectedFolder, "locked.jpg"), "photo");
+        Directory.Delete(avatarFolder);
+        Directory.CreateSymbolicLink(avatarFolder, protectedFolder);
+        File.SetUnixFileMode(protectedFolder, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            app.WithDb(db =>
+            {
+                var bob = db.Users.Single(u => u.Id == app.Seed.BobId);
+                bob.AvatarFileName = "locked.jpg";
+                bob.DeletionRequestedAtUtc = DateTime.UtcNow.AddDays(-8);
+                db.SaveChanges(); return 0;
+            });
+
+            using (var scope = app.Services.CreateScope()) await scope.ServiceProvider.GetRequiredService<IAccountDeletionService>().RunAsync();
+
+            Assert.True(app.WithDb(db => db.Users.Any(u => u.Id == app.Seed.BobId)));
+            Assert.True(File.Exists(Path.Combine(protectedFolder, "locked.jpg")));
+        }
+        finally
+        {
+            File.SetUnixFileMode(protectedFolder, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Directory.Delete(avatarFolder);
+        }
     }
 
     [Fact]
@@ -201,9 +295,33 @@ public class AccountDeletionTests
     {
         using var app = await ReadyAsync();
         var bob = app.ClientFor(app.Seed.BobId);
-        var token = await GetAntiforgeryTokenAsync(bob, "/Workspace/Members");
+        var token = await GetAntiforgeryTokenAsync(bob, "/Profile");
+        bob.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
+        bob.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, app.Seed.AliceId);
+        await bob.GetAsync($"/Workspace/Switch?workspaceId={app.Seed.WorkspaceA}");
+        bob.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
+        bob.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, app.Seed.BobId);
         var res = await PostFormAsync(bob, "/Workspace/Members?handler=TransferOwnership", token, ("targetUserId", app.Seed.CarolId));
-        Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
         Assert.Equal(WorkspaceRole.Owner, app.WithDb(db => db.WorkspaceMembers.AsNoTracking().Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.AliceId).Role));
+        Assert.Equal(WorkspaceRole.Member, app.WithDb(db => db.WorkspaceMembers.AsNoTracking().Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId).Role));
+    }
+
+    private sealed class CommentSelectInterceptor : DbCommandInterceptor
+    {
+        public List<string> Selects { get; } = new();
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("FROM \"Comments\"", StringComparison.OrdinalIgnoreCase)) Selects.Add(command.CommandText);
+            return new(result);
+        }
+    }
+
+    private sealed class FailingAudioStorage : IAudioStorage
+    {
+        public string RootPath => "";
+        public Task<string> SaveAsync(Microsoft.AspNetCore.Http.IFormFile file) => throw new NotSupportedException();
+        public string GetPath(string storedName) => storedName;
+        public bool Delete(string? storedName) => storedName == "fail.m4a" ? throw new IOException("test failure") : false;
     }
 }

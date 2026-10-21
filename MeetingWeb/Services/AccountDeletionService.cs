@@ -41,8 +41,17 @@ public class AccountDeletionService : IAccountDeletionService
         var cutoff = DateTime.UtcNow.AddDays(-7);
         var ids = await _db.Users.AsNoTracking()
             .Where(u => u.DeletionRequestedAtUtc != null && u.DeletionRequestedAtUtc <= cutoff)
+            .OrderBy(u => u.DeletionRequestedAtUtc).ThenBy(u => u.Id)
             .Select(u => u.Id).ToListAsync();
-        foreach (var id in ids) await DeleteOneAsync(id, cutoff);
+        foreach (var id in ids)
+        {
+            try { await DeleteOneAsync(id, cutoff); }
+            catch (Exception)
+            {
+                _db.ChangeTracker.Clear();
+                _logger.LogWarning("Account deletion failed for user {UserId}", id);
+            }
+        }
     }
 
     private async Task DeleteOneAsync(string userId, DateTime cutoff)
@@ -82,7 +91,12 @@ public class AccountDeletionService : IAccountDeletionService
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.UsedByUserId, (string?)null));
 
         // A user's comment takes its whole reply thread with it, including other members' replies.
-        var comments = await _db.Comments.AsNoTracking().Select(c => new { c.Id, c.ParentCommentId, c.UserId, c.Meeting!.WorkspaceId }).ToListAsync();
+        var affectedMeetings = await _db.Comments.AsNoTracking().Where(c => c.UserId == userId)
+            .Select(c => c.MeetingId)
+            .Concat(_db.Meetings.AsNoTracking().Where(m => ownedSpaces.Contains(m.WorkspaceId)).Select(m => m.Id))
+            .Distinct().ToListAsync();
+        var comments = await _db.Comments.AsNoTracking().Where(c => affectedMeetings.Contains(c.MeetingId))
+            .Select(c => new { c.Id, c.ParentCommentId, c.UserId, c.Meeting!.WorkspaceId }).ToListAsync();
         var toDelete = comments.Where(c => c.UserId == userId || ownedSpaces.Contains(c.WorkspaceId)).Select(c => c.Id).ToHashSet();
         while (true)
         {
@@ -103,13 +117,13 @@ public class AccountDeletionService : IAccountDeletionService
         await _db.WorkspaceMembers.Where(m => m.UserId == userId).ExecuteDeleteAsync();
         var result = await _users.DeleteAsync(user);
         if (!result.Succeeded) throw new InvalidOperationException("Account deletion failed.");
-        await tx.CommitAsync();
-
-        foreach (var file in audioFiles) _audio.Delete(file);
         if (!string.IsNullOrEmpty(avatar))
         {
             var path = Path.Combine(_env.WebRootPath, "uploads", "avatars", Path.GetFileName(avatar));
-            if (File.Exists(path)) File.Delete(path);
+            File.Delete(path);
         }
+        await tx.CommitAsync();
+
+        foreach (var file in audioFiles) _audio.Delete(file);
     }
 }
