@@ -81,6 +81,7 @@ namespace MeetingWeb.Pages
             // Fetch the members of the meeting's own workspace for the sharing/collaboration module.
             WorkspaceMembers = await _context.WorkspaceMembers
                 .Include(wu => wu.User)
+                .Include(wu => wu.Title)
                 .Where(wu => wu.WorkspaceId == meeting.WorkspaceId)
                 .ToListAsync();
 

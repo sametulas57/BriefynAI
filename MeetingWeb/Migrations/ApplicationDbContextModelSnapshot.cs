@@ -443,7 +443,12 @@ namespace MeetingWeb.Migrations
                     b.Property<int>("Role")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TitleId")
+                        .HasColumnType("int");
+
                     b.HasKey("WorkspaceId", "UserId");
+
+                    b.HasIndex("TitleId");
 
                     b.HasIndex("UserId");
 
@@ -451,6 +456,37 @@ namespace MeetingWeb.Migrations
                         {
                             t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)");
                         });
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.WorkspaceTitle", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("WorkspaceId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("WorkspaceTitles");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -743,6 +779,10 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("MeetingWeb.Models.WorkspaceMember", b =>
                 {
+                    b.HasOne("MeetingWeb.Models.WorkspaceTitle", "Title")
+                        .WithMany()
+                        .HasForeignKey("TitleId");
+
                     b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -755,7 +795,20 @@ namespace MeetingWeb.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Title");
+
                     b.Navigation("User");
+
+                    b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.WorkspaceTitle", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Workspace");
                 });

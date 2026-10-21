@@ -16,6 +16,7 @@ namespace MeetingWeb.Data
         public DbSet<Workspace> Workspaces { get; set; }
         public DbSet<WorkspaceMember> WorkspaceMembers { get; set; }
         public DbSet<WorkspaceInvitation> WorkspaceInvitations { get; set; }
+        public DbSet<WorkspaceTitle> WorkspaceTitles { get; set; }
         public DbSet<Meeting> Meetings { get; set; }
         public DbSet<MeetingTranscript> MeetingTranscripts { get; set; }
         public DbSet<MeetingPoint> MeetingPoints { get; set; }
@@ -46,7 +47,17 @@ namespace MeetingWeb.Data
                 m.HasOne(x => x.Workspace).WithMany(w => w.Members).HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
                 m.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
                 m.HasIndex(x => x.UserId);
+                // Not a database cascade: SQL Server refuses a second cascade path from Workspaces to WorkspaceMembers.
+                // DeleteTitle clears the members first; deleting a team removes titles and members in the same cascade.
+                m.HasOne(x => x.Title).WithMany().HasForeignKey(x => x.TitleId).OnDelete(DeleteBehavior.ClientSetNull);
+                m.Ignore(x => x.CanManageTitles);
                 m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2)"));
+            });
+
+            builder.Entity<WorkspaceTitle>(t =>
+            {
+                t.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+                t.HasIndex(x => new { x.WorkspaceId, x.Name }).IsUnique();
             });
 
             builder.Entity<WorkspaceInvitation>(i =>
