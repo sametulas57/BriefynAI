@@ -1,3 +1,6 @@
+# Sabit proje adı: Docker birimleri klasör adından bağımsız (briefynai_sql_data). 2026-10-21, klasör/depo adı BriefynAI oldu.
+name: briefynai
+
 services:
   # ==========================================
   # 1. VERİTABANI (Microsoft SQL Server)
