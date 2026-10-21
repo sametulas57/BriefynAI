@@ -9,7 +9,7 @@ namespace MeetingWeb.Services
 {
     public enum ZoomConnectOutcome { Connected, Failed, MissingScopes }
 
-    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, NotFound, NoAudio, SeveralParts, TooLarge }
+    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, LeftTeam, NotFound, NoAudio, SeveralParts, TooLarge }
 
     public record ZoomImportResult(ZoomImportOutcome Outcome, int? MeetingId = null);
 
@@ -165,7 +165,14 @@ namespace MeetingWeb.Services
 
             // Always asked again from Zoom: nothing about the recording is taken from the page.
             var recording = await AsUserAsync(userId, token => _api.GetRecordingAsync(token, uuid));
-            if (recording == null) return new(ZoomImportOutcome.NotFound);
+            if (recording == null || string.IsNullOrEmpty(recording.Uuid) || recording.Uuid.Length > 200) return new(ZoomImportOutcome.NotFound);
+            // Zoom also accepts the numeric meeting id here; the recording is stored and matched by its UUID.
+            var recordingId = recording.Uuid;
+            if (recordingId != uuid)
+            {
+                existing = await ExistingAsync(workspaceId.Value, recordingId);
+                if (existing != null) return new(ZoomImportOutcome.AlreadyImported, existing);
+            }
             if (recording.AudioFiles.Count == 0) return new(ZoomImportOutcome.NoAudio);
             // Taking one part would silently leave the rest of the meeting out of the summary.
             if (recording.AudioFiles.Count > 1) return new(ZoomImportOutcome.SeveralParts);
@@ -176,13 +183,20 @@ namespace MeetingWeb.Services
                 stream => _audioStorage.SaveAsync(stream, "zoom.m4a", MaxBytes)));
             if (storedName == null) return new(ZoomImportOutcome.TooLarge);
 
+            // The user may have left (or been removed from) the team while the file was downloading.
+            if (!await _db.WorkspaceMembers.AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == userId))
+            {
+                _audioStorage.Delete(storedName);
+                return new(ZoomImportOutcome.LeftTeam);
+            }
+
             var meeting = new Meeting
             {
                 Title = string.IsNullOrWhiteSpace(recording.Topic) ? "Zoom toplantısı" : recording.Topic,
                 WorkspaceId = workspaceId.Value,
                 Status = MeetingStatus.Processing,
                 Source = MeetingSource.Zoom,
-                ExternalRecordingId = uuid,
+                ExternalRecordingId = recordingId,
                 AudioFileName = storedName,
                 CreatedByUserId = userId
             };
@@ -196,7 +210,7 @@ namespace MeetingWeb.Services
                 // The same recording was taken into this team a moment ago (unique index): keep that one.
                 _db.ChangeTracker.Clear();
                 _audioStorage.Delete(storedName);
-                existing = await ExistingAsync(workspaceId.Value, uuid);
+                existing = await ExistingAsync(workspaceId.Value, recordingId);
                 if (existing == null) throw;
                 return new(ZoomImportOutcome.AlreadyImported, existing);
             }

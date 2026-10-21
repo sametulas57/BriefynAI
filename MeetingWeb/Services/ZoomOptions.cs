@@ -9,6 +9,8 @@ namespace MeetingWeb.Services
         public string RedirectUri { get; set; } = "";
         public string AuthBaseUrl { get; set; } = "https://zoom.us/";
         public string ApiBaseUrl { get; set; } = "https://api.zoom.us/v2/";
+        // Upper limit for downloading one recording; a download that stalls is cut off after this.
+        public int DownloadTimeoutSeconds { get; set; } = 1800;
 
         public bool IsEnabled => !string.IsNullOrEmpty(ClientId) && !string.IsNullOrEmpty(ClientSecret);
     }

@@ -27,6 +27,7 @@ namespace MeetingWeb.Tests.Infrastructure
         public CapturingLoggerProvider? LogCapture { get; init; }
         // Zoom is off unless a test turns it on (the real .env may not have Zoom settings).
         public bool ZoomEnabled { get; init; }
+        public Dictionary<string, string> ExtraSettings { get; } = new();
         public DbCommandInterceptor? CommandInterceptor { get; init; }
         public IAudioStorage? AudioStorageOverride { get; init; }
         public bool UseCookieAuthentication { get; init; }
@@ -65,6 +66,7 @@ namespace MeetingWeb.Tests.Infrastructure
             builder.UseSetting("DataProtection:KeysPath", KeysPath);
             builder.UseSetting("Zoom:ClientId", ZoomEnabled ? "test-zoom-client" : "");
             builder.UseSetting("Zoom:ClientSecret", ZoomEnabled ? "test-zoom-secret" : "");
+            foreach (var (key, value) in ExtraSettings) builder.UseSetting(key, value);
 
             builder.ConfigureTestServices(services =>
             {

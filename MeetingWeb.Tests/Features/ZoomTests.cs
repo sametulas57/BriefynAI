@@ -504,6 +504,85 @@ public class ZoomTests
         Assert.Empty(Directory.GetFiles(app.AudioRoot));
     }
 
+    // Review round 2: a download that stalls is cut off after Zoom:DownloadTimeoutSeconds.
+    [Fact]
+    public async Task Stalled_download_is_cut_off()
+    {
+        using var app = new BriefynFactory { ZoomEnabled = true, ExtraSettings = { ["Zoom:DownloadTimeoutSeconds"] = "1" } };
+        await app.InitializeAsync();
+        Connect(app, app.Seed.AliceId);
+        RecordingFiles(app, Recording(Uuid, "Takılan", "M4A"));
+        app.Zoom.On("GET", "/signed/file.m4a", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StalledStream()) });
+        var alice = app.ClientFor(app.Seed.AliceId);
+
+        var res = await ImportAsync(alice).WaitAsync(TimeSpan.FromSeconds(20));
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", await FollowAsync(alice, res));
+        Assert.Equal(0, app.WithDb(db => db.Meetings.Count(m => m.ExternalRecordingId == Uuid)));
+        Assert.Empty(Directory.GetFiles(app.AudioRoot));
+    }
+
+    // Review round 2: membership is checked again after the download, right before the meeting is saved.
+    [Fact]
+    public async Task User_removed_from_team_during_download_adds_nothing()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.CarolId);
+        RecordingFiles(app, Recording(Uuid, "Toplantı", "M4A"));
+        app.Zoom.On("GET", "/signed/file.m4a", _ =>
+        {
+            app.WithDb(db => { db.WorkspaceMembers.Remove(db.WorkspaceMembers.Single(m => m.UserId == app.Seed.CarolId)); return db.SaveChanges(); });
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Encoding.UTF8.GetBytes("audio")) };
+        });
+        var carol = app.ClientFor(app.Seed.CarolId);
+
+        Assert.Contains("ekibin üyesi değilsiniz", await FollowAsync(carol, await ImportAsync(carol)));
+        Assert.Equal(0, app.WithDb(db => db.Meetings.Count(m => m.ExternalRecordingId == Uuid)));
+        Assert.Empty(Directory.GetFiles(app.AudioRoot));
+        Assert.Empty(app.Jobs.Created);
+    }
+
+    // Review round 2: Zoom also accepts the numeric meeting id; the stored id is always the UUID Zoom returns.
+    [Fact]
+    public async Task Recording_asked_by_numeric_id_is_stored_and_matched_by_its_uuid()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        RecordingFiles(app, Recording(Uuid, "Toplantı", "M4A"));
+        app.Zoom.Json("GET", "/v2/meetings/123/recordings", Recording(Uuid, "Toplantı", "M4A"));
+        var alice = app.ClientFor(app.Seed.AliceId);
+
+        var first = await ImportAsync(alice, "123");
+        var second = await ImportAsync(alice);
+
+        Assert.Equal(first.Headers.Location, second.Headers.Location);
+        Assert.Equal(1, app.WithDb(db => db.Meetings.Count(m => m.ExternalRecordingId == Uuid)));
+        Assert.Equal(0, app.WithDb(db => db.Meetings.Count(m => m.ExternalRecordingId == "123")));
+    }
+
+    private sealed class StalledStream : Stream
+    {
+        private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => 0; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await _closed.Task.WaitAsync(cancellationToken);
+            throw new ObjectDisposedException(nameof(StalledStream));
+        }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+        protected override void Dispose(bool disposing) { _closed.TrySetResult(); base.Dispose(disposing); }
+    }
+
     private sealed class BrokenStream : MemoryStream
     {
         private bool _sent;

@@ -139,12 +139,15 @@ namespace MeetingWeb.Services
                 EnsureSuccess(response);
                 try
                 {
+                    // The client's timeout stops at the headers; closing the response ends a read that stalls.
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(_options.DownloadTimeoutSeconds));
+                    using var stop = timeout.Token.Register(response.Dispose);
                     await using var stream = await response.Content.ReadAsStreamAsync();
                     return await read(stream);
                 }
-                catch (Exception ex) when (ex is IOException or HttpRequestException)
+                catch (Exception ex) when (ex is IOException or HttpRequestException or ObjectDisposedException or OperationCanceledException)
                 {
-                    // The connection dropped in the middle of the file.
+                    // The connection dropped or stalled in the middle of the file.
                     throw new ZoomApiException(null);
                 }
             }
