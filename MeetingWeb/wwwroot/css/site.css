@@ -38,6 +38,7 @@ body {
 .member-actions-spacer { height: 2.25rem; }
 .member-actions-menu > button { width: 2.25rem; height: 2.25rem; padding: 0; }
 .member-actions > form.d-inline { flex: 0 0 auto; }
+.member-identity, .member-identity > div:last-child { min-width: 0; }
 
 .title-row { grid-template-columns: minmax(12rem, 16rem) 4rem auto minmax(0, 1fr) auto; }
 .title-row .contents { display: contents; }
@@ -47,7 +48,7 @@ body {
 .title-row .title-delete { grid-column: 5; justify-self: end; }
 .title-row:not(.title-create)::after { content: ""; }
 .title-row.title-create::after { content: ""; }
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     .member-actions { width: 26rem; flex: 0 0 26rem; }
     .member-actions-menu { align-self: center; }
 }
