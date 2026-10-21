@@ -1,3 +1,4 @@
+using System.Data;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
@@ -106,19 +107,27 @@ namespace MeetingWeb.Pages.Workspace
         {
             var workspaceId = HttpContext.Session.GetInt32(ActiveWorkspaceService.SessionKey);
             var callerId = _userManager.GetUserId(User);
-            var caller = await _context.WorkspaceMembers.FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == callerId);
-            if (caller?.Role != WorkspaceRole.Owner) return Unauthorized();
             if (await _context.Workspaces.AnyAsync(w => w.Id == workspaceId && w.IsPersonal)) return Unauthorized();
-            var target = await _context.WorkspaceMembers.Include(m => m.User)
-                .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUserId);
-            if (target == null || target.UserId == callerId || target.User.DeletionRequestedAtUtc != null)
+            if (targetUserId == callerId)
             {
                 TempData["ErrorMessage"] = "Kuruculuğu bu üyeye devredemezsiniz.";
                 return RedirectToPage();
             }
-            caller.Role = WorkspaceRole.Member;
-            target.Role = WorkspaceRole.Owner;
-            await _context.SaveChangesAsync();
+            await using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var changedCaller = await _context.WorkspaceMembers
+                .Where(m => m.WorkspaceId == workspaceId && m.UserId == callerId && m.Role == WorkspaceRole.Owner)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.Role, WorkspaceRole.Member));
+            if (changedCaller != 1) return Unauthorized();
+            var changedTarget = await _context.WorkspaceMembers
+                .Where(m => m.WorkspaceId == workspaceId && m.UserId == targetUserId &&
+                    m.Role == WorkspaceRole.Member && m.User.DeletionRequestedAtUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.Role, WorkspaceRole.Owner));
+            if (changedTarget != 1)
+            {
+                TempData["ErrorMessage"] = "Kuruculuğu bu üyeye devredemezsiniz.";
+                return RedirectToPage();
+            }
+            await tx.CommitAsync();
             TempData["StatusMessage"] = "Kuruculuk devredildi.";
             return RedirectToPage();
         }
