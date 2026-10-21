@@ -560,6 +560,62 @@ public class ZoomTests
         Assert.Equal(0, app.WithDb(db => db.Meetings.Count(m => m.ExternalRecordingId == "123")));
     }
 
+    // Review round 3: a 401 from the signed file address (not Zoom) says nothing about the user's Zoom connection.
+    [Fact]
+    public async Task Refused_signed_address_keeps_the_connection()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId);
+        RecordingFiles(app, Recording(Uuid, "Toplantı", "M4A"));
+        app.Zoom.Json("GET", "/signed/file.m4a", "{}", HttpStatusCode.Unauthorized);
+        var alice = app.ClientFor(app.Seed.AliceId);
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", await FollowAsync(alice, await ImportAsync(alice)));
+        Assert.NotNull(ConnectionOf(app, app.Seed.AliceId));
+    }
+
+    // Review round 3: disconnecting while another request refreshes waits for it and revokes the newest token.
+    [Fact]
+    public async Task Disconnect_during_a_refresh_revokes_the_new_token()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(1));
+        var refreshing = new TaskCompletionSource();
+        var releaseRefresh = new TaskCompletionSource();
+        var disconnected = new TaskCompletionSource();
+        app.Zoom.On("POST", "/oauth/token", _ =>
+        {
+            refreshing.TrySetResult();
+            releaseRefresh.Task.Wait();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(StubZoomHandler.TokenJson(StubZoomHandler.NewAccessToken, StubZoomHandler.NewRefreshToken)) };
+        });
+        // The list waits until the disconnect is done, so the two requests never use the test database at once.
+        app.Zoom.On("GET", "/v2/users/me/recordings", _ =>
+        {
+            disconnected.Task.Wait();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"meetings\":[]}") };
+        });
+        var lister = app.ClientFor(app.Seed.AliceId);
+        var disconnecter = app.ClientFor(app.Seed.AliceId);
+        var token = await GetAntiforgeryTokenAsync(disconnecter, "/Profile");
+
+        var list = Task.Run(() => lister.GetAsync("/Zoom/Recordings"));
+        await refreshing.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var disconnect = Task.Run(() => PostFormAsync(disconnecter, "/Zoom/Connect?handler=Disconnect", token));
+        await Task.Delay(300);
+        Assert.False(disconnect.IsCompleted);
+        Assert.Empty(app.Zoom.To("POST", "/oauth/revoke"));
+
+        releaseRefresh.SetResult();
+        await disconnect.WaitAsync(TimeSpan.FromSeconds(10));
+        disconnected.SetResult();
+        await list.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Single(app.Zoom.To("POST", "/oauth/token"));
+        Assert.Contains("token=" + StubZoomHandler.NewAccessToken, Assert.Single(app.Zoom.To("POST", "/oauth/revoke")).Body);
+        Assert.Null(ConnectionOf(app, app.Seed.AliceId));
+    }
+
     private sealed class StalledStream : Stream
     {
         private readonly TaskCompletionSource _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);

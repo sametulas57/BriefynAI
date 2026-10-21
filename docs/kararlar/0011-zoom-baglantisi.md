@@ -6,7 +6,7 @@
 Ücretli Zoom kullananlar toplantıyı buluta kaydediyor; Briefyn'e almak için dosyayı elle indirip yüklemeleri gerekiyor. Zoom'un resmi API'si kişinin kendi hesabına izin vermesiyle (OAuth) bulut kayıtlarını okumaya izin veriyor. Ayrıntı: iç proje notu.
 
 ## Karar
-- Zoom Marketplace'te kullanıcı düzeyinde "General app", yetki kodu akışı; yalnız okuma izinleri (`cloud_recording:read:list_user_recordings`, `cloud_recording:read:list_recording_files`). Briefyn Zoom'daki hiçbir şeyi silmez, değiştirmez.
+- Zoom Marketplace'te kullanıcı düzeyinde "General app", yetki kodu akışı; yalnız okuma izinleri (`cloud_recording:read:list_user_recordings`, `cloud_recording:read:list_recording_files`, `user:read:user`). Üçüncüsü uygulamada eklendi (2026-10-21): Profil'de bağlı Zoom hesabının e-postasını göstermek için `GET /users/me` bunu ister; üçü verilmezse bağlantı kaydedilmez. Briefyn Zoom'daki hiçbir şeyi silmez, değiştirmez.
 - Bağlantı kişiye aittir (`ZoomConnections`, kullanıcı başına bir). Erişim ve yenileme anahtarları şifreleme v3 ile saklanır (ADR-0010), loglanmaz. Kesilince Zoom'da iptal edilir ve satır silinir; hesap silinince de.
 - Alınan kayıt mevcut hatta girer: ses `IAudioStorage`'a, aynı taslak toplantı ve Hangfire işi (`MeetingSource.Zoom`). Yazıya dökme Groq'ta kalır (ADR-0001 değişmez). Zoom'un dökümü yalnız konuşmacı adı için kullanılır, işten sonra silinir (ADR-0002).
 - İlk aşama elle seçerek alma; webhook ve herkese açık adres yok. Otomatik çekme ayrı karar.
