@@ -760,6 +760,21 @@ public class ZoomTests
         Assert.NotNull(ConnectionOf(app, app.Seed.AliceId));
     }
 
+    // Review round 8: Zoom may already reject the old token while another process saves the new pair; not a broken link.
+    [Fact]
+    public async Task Rejection_during_a_refresh_elsewhere_keeps_connection()
+    {
+        using var app = await AppAsync();
+        Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(2));
+        MarkRefreshStarted(app, app.Seed.AliceId, DateTime.UtcNow.AddSeconds(-5));
+        app.Zoom.Json("GET", "/v2/users/me/recordings", "{}", HttpStatusCode.Unauthorized);
+
+        var page = WebUtility.HtmlDecode(await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Zoom/Recordings"));
+
+        Assert.Contains("Zoom'a şu an ulaşılamıyor", page);
+        Assert.NotNull(ConnectionOf(app, app.Seed.AliceId));
+    }
+
     // A refresh mark left by a process that died is ignored after a minute.
     [Fact]
     public async Task Old_refresh_mark_does_not_block_refreshing()

@@ -296,6 +296,8 @@ namespace MeetingWeb.Services
                 var current = await GetConnectionAsync(userId);
                 if (current == null || used == null) throw;
                 if (current.AccessToken != used) throw new ZoomApiException(null);
+                // Another process is saving a new pair; Zoom may already refuse the old token. Temporary, not broken.
+                if (current.RefreshStartedAtUtc > DateTime.UtcNow - RefreshMarkLifetime) throw new ZoomApiException(null);
                 // RowVersion: a connection saved between the read above and this delete is kept.
                 await _db.ZoomConnections.Where(z => z.Id == current.Id && z.RowVersion == current.RowVersion).ExecuteDeleteAsync();
                 _logger.LogWarning("Zoom connection removed for user {UserId}: Zoom rejected it.", userId);
