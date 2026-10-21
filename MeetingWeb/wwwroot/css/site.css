@@ -26,3 +26,38 @@ body {
     grid-template-columns: repeat(8, 2.25rem);
     gap: 0.25rem;
 }
+
+/* Ekip üyelerinde seçim ve işlemler satır içinde, menü alanı her zaman sabit. */
+.member-actions { width: 100%; flex-flow: row nowrap; align-items: center; }
+.assign-title-form { display: flex; flex: 1 1 auto; min-width: 0; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.assign-title-form select { flex: 1 1 12rem; min-width: 0; }
+.assign-title-form button { flex: 0 0 auto; }
+.assign-title-form .assign-note { flex: 1 0 100%; line-height: 1.2; }
+.member-actions-menu, .member-actions-spacer { flex: 0 0 2.25rem; width: 2.25rem; }
+.member-actions-menu { align-self: center; }
+.member-actions-spacer { height: 2.25rem; }
+.member-actions-menu > button { width: 2.25rem; height: 2.25rem; padding: 0; }
+.member-actions > form.d-inline { flex: 0 0 auto; }
+
+.title-row { grid-template-columns: minmax(12rem, 16rem) 4rem auto minmax(0, 1fr) auto; }
+.title-row .contents { display: contents; }
+.title-row input { min-width: 0; }
+.title-row .icon-picker-button { justify-self: start; white-space: nowrap; }
+.title-row .dropdown { align-self: center; justify-self: start; height: auto; }
+.title-row .title-delete { grid-column: 5; justify-self: end; }
+.title-row:not(.title-create)::after { content: ""; }
+.title-row.title-create::after { content: ""; }
+@media (min-width: 768px) {
+    .member-actions { width: 26rem; flex: 0 0 26rem; }
+    .member-actions-menu { align-self: center; }
+}
+@media (max-width: 575.98px) {
+    .member-actions { width: 100%; }
+    .title-row { grid-template-columns: auto auto auto; }
+    .title-row input { grid-column: 1 / -1; }
+    .title-row .title-delete { grid-column: 3; grid-row: 2; }
+    .title-row .icon-picker-button, .title-row .dropdown { grid-column: 1; grid-row: 2; }
+    .title-row button[type="submit"] { grid-column: 2; grid-row: 2; }
+    .title-row:not(.title-create)::after { display: none; }
+    .title-row.title-create::after { display: none; }
+}
