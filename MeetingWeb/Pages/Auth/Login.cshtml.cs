@@ -12,10 +12,12 @@ namespace MeetingWeb.Pages.Auth
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager)
+        public LoginModel(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
         {
             _signInManager = signInManager;
+            _userManager = userManager;
         }
 
         [BindProperty]
@@ -64,6 +66,15 @@ namespace MeetingWeb.Pages.Auth
 
                 if (result.Succeeded)
                 {
+                    var user = await _userManager.FindByEmailAsync(Input.Email);
+                    if (user?.DeletionRequestedAtUtc != null)
+                    {
+                        user.DeletionRequestedAtUtc = null;
+                        if (!(await _userManager.UpdateAsync(user)).Succeeded)
+                            throw new InvalidOperationException("Deletion request could not be cancelled.");
+                        TempData["StatusMessage"] = "Hesap silme isteğiniz iptal edildi.";
+                        return RedirectToPage("/Profile/Index");
+                    }
                     // SECURITY: Use LocalRedirect to prevent Open Redirect vulnerabilities.
                     return LocalRedirect(returnUrl);
                 }

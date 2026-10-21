@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using MeetingWeb.Models;
+using MeetingWeb.Data;
 using MeetingWeb.Services;
 
 namespace MeetingWeb.Pages.Profile
@@ -16,12 +17,16 @@ namespace MeetingWeb.Pages.Profile
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IWebHostEnvironment _env;
+        private readonly ApplicationDbContext _db;
+        private readonly IAccountDeletionService _deletion;
 
-        public ProfileModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IWebHostEnvironment env)
+        public ProfileModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IWebHostEnvironment env, ApplicationDbContext db, IAccountDeletionService deletion)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _env = env;
+            _db = db;
+            _deletion = deletion;
         }
 
         // Avatars are the only public uploads (see the /uploads guard in Program.cs); one current file per user.
@@ -143,6 +148,33 @@ namespace MeetingWeb.Pages.Profile
             await _signInManager.RefreshSignInAsync(user);
             TempData["StatusMessage"] = "Şifreniz başarıyla değiştirildi.";
             return RedirectToPage();
+        }
+
+        [BindProperty]
+        public string DeletionPassword { get; set; } = "";
+
+        public async Task<IActionResult> OnPostRequestDeletionAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound();
+            if (!await _userManager.CheckPasswordAsync(user, DeletionPassword ?? ""))
+            {
+                TempData["ErrorMessage"] = "Şifreniz yanlış. Hesap silme isteği alınmadı.";
+                return RedirectToPage();
+            }
+
+            var teams = await _deletion.BlockingTeamsAsync(user.Id);
+            if (teams.Count != 0)
+            {
+                TempData["ErrorMessage"] = "Önce şu ekiplerin kuruculuğunu devredin veya ekipleri silin: " + string.Join(", ", teams);
+                return RedirectToPage();
+            }
+
+            user.DeletionRequestedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            await _signInManager.SignOutAsync();
+            TempData["StatusMessage"] = "Hesabınız 7 gün sonra silinecek. Bu sürede giriş yaparsanız silme isteğiniz iptal edilir.";
+            return RedirectToPage("/Auth/Login");
         }
 
         // --- AJAX AVATAR UPLOAD HANDLER ---

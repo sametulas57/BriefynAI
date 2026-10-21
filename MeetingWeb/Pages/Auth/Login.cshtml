@@ -17,6 +17,10 @@
 
                 <!-- Login Form -->
                 <div class="card-body p-5 bg-white">
+                    @if (TempData["StatusMessage"] != null)
+                    {
+                        <div class="alert alert-success rounded-3">@TempData["StatusMessage"]</div>
+                    }
                     <form method="post">
                         <!-- Validation Summary Alert -->
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm rounded-3 border-0 py-2 px-3 mb-4 d-none d-flex align-items-center">
