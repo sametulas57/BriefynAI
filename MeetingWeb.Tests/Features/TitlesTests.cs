@@ -87,6 +87,22 @@ namespace MeetingWeb.Tests.Features
             Assert.NotEqual(existing, TitleOf(S.WorkspaceA, S.CarolId));
         }
 
+        [Fact]
+        public async Task Member_actions_are_inside_the_dropdown_for_founder_and_hidden_for_member()
+        {
+            var founderPage = WebUtility.HtmlDecode(await _app.ClientFor(S.AliceId).GetStringAsync("/Workspace/Members"));
+            var menuStart = founderPage.IndexOf("member-actions-menu", StringComparison.Ordinal);
+            Assert.True(menuStart >= 0, "founder has an actions menu");
+            var menu = founderPage[menuStart..];
+            Assert.Contains("TransferOwnership", menu);
+            Assert.Contains("SetRole", menu);
+            Assert.Contains("RemoveMember", menu);
+            Assert.Contains("Diğer işlemler", founderPage);
+
+            var memberPage = WebUtility.HtmlDecode(await _app.ClientFor(S.CarolId).GetStringAsync("/Workspace/Members"));
+            Assert.DoesNotContain("aria-label=\"Diğer işlemler\"", memberPage);
+        }
+
         // Criterion 5
         [Fact]
         public async Task Title_names_are_unique_within_a_team_only()
