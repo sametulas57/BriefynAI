@@ -21,13 +21,16 @@ namespace MeetingWeb.Pages
         private readonly IActiveWorkspaceService _activeWorkspace;
         private readonly IConfiguration _configuration;
         private readonly IZoomService _zoom;
+        private readonly IMeetingSeriesService _series;
 
         // Shown on the page and checked in the browser before uploading.
         public int MaxMegabytes => _configuration.GetValue("Upload:MaxMegabytes", 300);
 
         public UploadModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IAudioStorage audioStorage,
-            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace, IConfiguration configuration, IZoomService zoom)
+            IBackgroundJobClient backgroundJobClient, IActiveWorkspaceService activeWorkspace, IConfiguration configuration, IZoomService zoom,
+            IMeetingSeriesService series)
         {
+            _series = series;
             _zoom = zoom;
             _configuration = configuration;
             _activeWorkspace = activeWorkspace;
@@ -41,13 +44,19 @@ namespace MeetingWeb.Pages
         public IFormFile? UploadFile { get; set; }
 
         public string? ErrorMessage { get; set; }
+        [BindProperty]
+        public int? SeriesId { get; set; }
+        public List<SeriesSummary> AvailableSeries { get; private set; } = new();
 
         // Shows the "Zoom'dan al" link (ADR-0011).
         public bool ZoomConnected { get; set; }
 
         public async Task OnGetAsync()
         {
-            ZoomConnected = _zoom.IsEnabled && await _zoom.GetConnectionAsync(_userManager.GetUserId(User)!) != null;
+            var userId = _userManager.GetUserId(User);
+            ZoomConnected = _zoom.IsEnabled && await _zoom.GetConnectionAsync(userId!) != null;
+            var membership = await _activeWorkspace.GetActiveMembershipAsync(userId);
+            if (membership != null) AvailableSeries = await _series.ListAsync(userId, membership.WorkspaceId);
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -88,6 +97,12 @@ namespace MeetingWeb.Pages
                 return Page();
             }
 
+            if (SeriesId != null && !await _series.BelongsToWorkspaceAsync(SeriesId.Value, activeWorkspaceId.Value))
+            {
+                ErrorMessage = "Seçilen seri bulunamadı.";
+                return Page();
+            }
+
             // 3. PRIVATE STORAGE: the recording goes to a folder outside wwwroot and is deleted after analysis (S2).
             var storedName = await _audioStorage.SaveAsync(UploadFile);
 
@@ -98,6 +113,7 @@ namespace MeetingWeb.Pages
                 WorkspaceId = activeWorkspaceId.Value,
                 Status = MeetingStatus.Processing,
                 Source = MeetingSource.Upload,
+                SeriesId = SeriesId,
                 AudioFileName = storedName,
                 CreatedByUserId = userId
             };

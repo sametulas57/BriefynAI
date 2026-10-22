@@ -1,0 +1,51 @@
+@page "/Series"
+@model MeetingWeb.Pages.Series.IndexModel
+@{
+    ViewData["Title"] = "Seriler";
+}
+<style>
+    .soft-card { border: 1px solid rgba(0, 0, 0, .04); border-radius: 1.25rem; box-shadow: 0 4px 24px rgba(0, 0, 0, .02); }
+</style>
+
+<div class="container mt-5 mb-5" style="max-width: 1100px;">
+    <h2 class="fw-bold text-dark mb-4">Seriler</h2>
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger" role="alert">@TempData["ErrorMessage"]</div>
+    }
+    <div class="card soft-card mb-4">
+        <div class="card-body p-4">
+            <form method="post" asp-page-handler="Create" class="d-flex flex-wrap align-items-end gap-2">
+                <div class="flex-grow-1">
+                    <label for="name" class="form-label fw-medium">Yeni seri</label>
+                    <input id="name" name="name" class="form-control" maxlength="100" required placeholder="Örn. haftalık ekip toplantısı" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-soft">Yeni seri</button>
+            </form>
+        </div>
+    </div>
+    @if (Model.Series.Count == 0)
+    {
+        <p class="text-muted">Henüz seri yok. Tekrar eden toplantılarınızı (ör. haftalık ekip toplantısı) bir seride toplayın; sıradaki toplantının gündemi seri sayfasında hazırlanır.</p>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var series in Model.Series)
+            {
+                <div class="col-md-6">
+                    <a asp-page="/Series/Show" asp-route-id="@series.Id" class="card soft-card h-100 text-decoration-none text-dark">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold">@series.Name</h5>
+                            <span class="badge bg-white text-secondary border rounded-pill">@series.MeetingCount toplantı</span>
+                            @if (series.LastMeetingAtUtc != null)
+                            {
+                                <span class="text-muted small ms-2">Son toplantı: @MeetingWeb.Services.DisplayTime.Format(series.LastMeetingAtUtc.Value, "dd MMM yyyy")</span>
+                            }
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -73,7 +73,17 @@
                                 <input asp-for="UploadFile" id="UploadFile" type="file" class="file-input-hidden" accept=".m4a,.mp3,.wav" required />
                             </div>
                         </div>
-                        
+                        <div class="mb-4">
+                            <label asp-for="SeriesId" class="form-label fw-bold small">Seri</label>
+                            <select asp-for="SeriesId" class="form-select">
+                                <option value="">Seri yok</option>
+                                @foreach (var series in Model.AvailableSeries)
+                                {
+                                    <option value="@series.Id">@series.Name</option>
+                                }
+                            </select>
+                        </div>
+
                         <div class="d-grid">
                             <button id="uploadBtn" type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill shadow-sm transition-all hover-scale" onclick="return showLoader()">
                                 <i class="bi bi-robot me-2" id="btnIcon"></i> <span id="btnText">Yükle ve Analizi Başlat</span>
