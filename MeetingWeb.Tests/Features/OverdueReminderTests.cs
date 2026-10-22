@@ -112,6 +112,24 @@ public class OverdueReminderTests
     }
 
     [Fact]
+    public async Task Membership_is_checked_again_right_before_each_person_is_emailed()
+    {
+        // While the first mail is being sent, the other person is removed from team A; their mail must not carry A's tasks.
+        BriefynFactory? running = null;
+        var mail = new RecordingEmail(onSend: address => running!.WithDb(db =>
+        {
+            var otherId = address == SeedData.CarolEmail ? running!.Seed.AliceId : running!.Seed.CarolId;
+            db.WorkspaceMembers.Remove(db.WorkspaceMembers.Single(m => m.WorkspaceId == running.Seed.WorkspaceA && m.UserId == otherId));
+            db.SaveChanges(); return 0;
+        }));
+        using var app = await ReadyAsync(mail); running = app;
+        AddTask(app, app.Seed.CarolId, new(2026, 10, 22), "Carol A görevi");
+        AddTask(app, app.Seed.AliceId, new(2026, 10, 22), "Alice A görevi");
+        await RunAsync(app);
+        Assert.Single(mail.Sent);
+    }
+
+    [Fact]
     public async Task Profile_handler_changes_only_own_setting_and_requires_antiforgery()
     {
         using var app = await ReadyAsync(new RecordingEmail()); var client = app.ClientFor(app.Seed.CarolId);
@@ -150,13 +168,14 @@ public class OverdueReminderTests
     private static void AddTask(BriefynFactory app, string assignee, DateOnly due, string text, int? meetingId = null) => app.WithDb(db => { db.ActionItems.Add(new ActionItem { MeetingId = meetingId ?? app.Seed.MeetingA, AssigneeUserId = assignee, DueDate = due, Text = text }); db.SaveChanges(); return 0; });
 
     private sealed class FixedTimeProvider(DateTime utc) : TimeProvider { public override DateTimeOffset GetUtcNow() => new(DateTime.SpecifyKind(utc, DateTimeKind.Utc)); }
-    private sealed class RecordingEmail(string? failAddress = null) : IEmailService
+    private sealed class RecordingEmail(string? failAddress = null, Action<string>? onSend = null) : IEmailService
     {
         public List<(string Address, string Name, IReadOnlyList<OverdueTask> Tasks)> Sent { get; } = [];
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks)
         {
             Sent.Add((toEmail, fullName, tasks));
+            if (Sent.Count == 1) onSend?.Invoke(toEmail);
             if (toEmail == failAddress) throw new InvalidOperationException("private failure detail");
             return Task.CompletedTask;
         }
