@@ -272,12 +272,16 @@ public class ZoomAutoImportTests
         using var app = await WebhookAppAsync();
         Connect(app, app.Seed.AliceId);
         Connect(app, app.Seed.BobId);
-        string Removed(string userId, string clientId) =>
-            $$$"""{"event":"app_deauthorized","event_ts":1,"payload":{"account_id":"acc-1","user_id":"zoom-{{{userId}}}","signature":"s-1","deauthorization_time":"2026-10-22T10:00:00Z","client_id":"{{{clientId}}}"}}""";
+        string Removed(string userId, string clientId, DateTime? at = null) =>
+            $$$"""{"event":"app_deauthorized","event_ts":1,"payload":{"account_id":"acc-1","user_id":"zoom-{{{userId}}}","signature":"s-1","deauthorization_time":"{{{(at ?? DateTime.UtcNow.AddMinutes(1)):yyyy-MM-ddTHH:mm:ssZ}}}","client_id":"{{{clientId}}}"}}""";
 
         // Another app's notice changes nothing.
         Assert.Equal(HttpStatusCode.OK, (await PostAsync(app, Removed(app.Seed.AliceId, "other-client"))).StatusCode);
         Assert.Equal(2, app.WithDb(db => db.ZoomConnections.Count()));
+
+        // A late notice about an earlier removal keeps the connection made again after it.
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(app, Removed(app.Seed.AliceId, "test-zoom-client", DateTime.UtcNow.AddHours(-1)))).StatusCode);
+        Assert.True(app.WithDb(db => db.ZoomConnections.Any(z => z.UserId == app.Seed.AliceId)));
 
         Assert.Equal(HttpStatusCode.OK, (await PostAsync(app, Removed(app.Seed.AliceId, "test-zoom-client"))).StatusCode);
         Assert.False(app.WithDb(db => db.ZoomConnections.Any(z => z.UserId == app.Seed.AliceId)));
@@ -426,6 +430,26 @@ public class ZoomAutoImportTests
         Assert.Equal($"/Details?id={id}", manual.Headers.Location!.OriginalString);
         Assert.Single(app.Zoom.To("GET", "/rec/download/abc"));
         Assert.Equal(1, app.Jobs.CountFor("ProcessMeetingJob"));
+    }
+
+    [Fact]
+    public async Task Choice_changed_during_the_download_adds_nothing_to_the_old_team()
+    {
+        using var app = await WebhookAppAsync();
+        var alice = "zoom-" + app.Seed.AliceId;
+        Connect(app, app.Seed.AliceId, app.Seed.WorkspaceA);
+        Recording(app, alice);
+        app.Zoom.On("GET", "/rec/download/abc", _ =>
+        {
+            app.WithDb(db => db.ZoomConnections.ExecuteUpdate(s => s.SetProperty(z => z.AutoImportWorkspaceId, (int?)null)));
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("fake-m4a-bytes") };
+        });
+
+        await RunAsync(app, alice);
+
+        Assert.Equal(0, ZoomMeetings(app));
+        Assert.Empty(Directory.GetFiles(app.AudioRoot));
+        Assert.Empty(app.Jobs.Created);
     }
 
     // 11

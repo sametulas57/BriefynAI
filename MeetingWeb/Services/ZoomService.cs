@@ -9,7 +9,7 @@ namespace MeetingWeb.Services
 {
     public enum ZoomConnectOutcome { Connected, Failed, MissingScopes }
 
-    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, LeftTeam, NotFound, NoAudio, SeveralParts, TooLarge, NotHost }
+    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, LeftTeam, NotFound, NoAudio, SeveralParts, TooLarge, NotHost, ChoiceChanged }
 
     public record ZoomImportResult(ZoomImportOutcome Outcome, int? MeetingId = null);
 
@@ -321,6 +321,12 @@ namespace MeetingWeb.Services
             {
                 _audioStorage.Delete(storedName);
                 return new(ZoomImportOutcome.LeftTeam);
+            }
+            // Automatic import: the user may have turned it off or picked another team meanwhile.
+            if (requiredHostId != null && !await _db.ZoomConnections.AnyAsync(z => z.UserId == userId && z.AutoImportWorkspaceId == workspaceId))
+            {
+                _audioStorage.Delete(storedName);
+                return new(ZoomImportOutcome.ChoiceChanged);
             }
 
             var meeting = new Meeting
