@@ -85,6 +85,7 @@ namespace MeetingWeb.Data
                 m.ToTable(t =>
                 {
                     t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
+                    t.HasCheckConstraint("CK_Meetings_FailureReason", "[FailureReason] IS NULL OR [FailureReason] IN (1)");
                     t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1, 2)");
                 });
             });

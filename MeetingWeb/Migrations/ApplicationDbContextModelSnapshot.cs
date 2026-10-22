@@ -266,6 +266,9 @@ namespace MeetingWeb.Migrations
                         .HasColumnType("nvarchar(200)")
                         .UseCollation("Latin1_General_100_BIN2");
 
+                    b.Property<int?>("FailureReason")
+                        .HasColumnType("int");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -301,6 +304,8 @@ namespace MeetingWeb.Migrations
 
                     b.ToTable("Meetings", t =>
                         {
+                            t.HasCheckConstraint("CK_Meetings_FailureReason", "[FailureReason] IS NULL OR [FailureReason] IN (1)");
+
                             t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1, 2)");
 
                             t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");

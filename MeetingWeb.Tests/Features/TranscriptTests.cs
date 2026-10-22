@@ -91,6 +91,114 @@ namespace MeetingWeb.Tests.Features
         }
 
         [Fact]
+        public async Task No_speech_marks_the_reason_and_finishes_without_a_failed_job()
+        {
+            var audio = Path.Combine(_app.AudioRoot, "konusmasiz.m4a");
+            File.WriteAllBytes(audio, new byte[] { 1 });
+            var id = NewMeeting(MeetingStatus.Processing, "konusmasiz.m4a");
+            var previousStatus = _app.PythonApi.Status;
+            var previousBody = _app.PythonApi.Body;
+            _app.PythonApi.Status = HttpStatusCode.UnprocessableEntity;
+            _app.PythonApi.Body = """{"detail":"no_speech"}""";
+            try
+            {
+                using var scope = _app.Services.CreateScope();
+                await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
+            }
+            finally { _app.PythonApi.Status = previousStatus; _app.PythonApi.Body = previousBody; }
+
+            var meeting = Load(id);
+            Assert.Equal(MeetingStatus.Failed, meeting.Status);
+            Assert.Equal(MeetingFailureReason.NoSpeech, meeting.FailureReason);
+            Assert.True(File.Exists(audio));
+        }
+
+        [Fact]
+        public async Task Other_ai_error_keeps_a_general_failure_reason()
+        {
+            var audio = Path.Combine(_app.AudioRoot, "genel-hata.m4a");
+            File.WriteAllBytes(audio, new byte[] { 1 });
+            var id = NewMeeting(MeetingStatus.Processing, "genel-hata.m4a");
+            var previousStatus = _app.PythonApi.Status;
+            var previousBody = _app.PythonApi.Body;
+            _app.PythonApi.Status = HttpStatusCode.UnprocessableEntity;
+            _app.PythonApi.Body = """{"detail":"other_error"}""";
+            try
+            {
+                using var scope = _app.Services.CreateScope();
+                await Assert.ThrowsAnyAsync<Exception>(() => scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id));
+            }
+            finally { _app.PythonApi.Status = previousStatus; _app.PythonApi.Body = previousBody; }
+
+            var meeting = Load(id);
+            Assert.Equal(MeetingStatus.Failed, meeting.Status);
+            Assert.Null(meeting.FailureReason);
+        }
+
+        [Fact]
+        public async Task No_speech_message_appears_on_history_and_details_only_for_that_reason()
+        {
+            var noSpeechId = NewMeeting(MeetingStatus.Failed, audio: null);
+            var generalId = NewMeeting(MeetingStatus.Failed, audio: null);
+            _app.WithDb(db =>
+            {
+                db.Meetings.Single(m => m.Id == noSpeechId).FailureReason = MeetingFailureReason.NoSpeech;
+                return db.SaveChanges();
+            });
+            var alice = _app.ClientFor(S.AliceId);
+            const string message = "Kayıtta anlaşılır bir konuşma bulunamadı. Sesin net olduğu bir kaydı yeniden yükleyebilirsiniz.";
+
+            var history = System.Net.WebUtility.HtmlDecode(await alice.GetStringAsync("/History"));
+            var details = System.Net.WebUtility.HtmlDecode(await alice.GetStringAsync($"/Details?id={noSpeechId}"));
+            var generalDetails = System.Net.WebUtility.HtmlDecode(await alice.GetStringAsync($"/Details?id={generalId}"));
+
+            Assert.Contains(message, history);
+            Assert.Contains(message, details);
+            Assert.DoesNotContain(message, generalDetails);
+            Assert.Contains("Yapay zeka sunucularında anlık bir sorun oluştu. Lütfen yeniden deneyiniz.", generalDetails);
+        }
+
+        [Fact]
+        public async Task Manual_retry_clears_the_no_speech_reason()
+        {
+            var audio = Path.Combine(_app.AudioRoot, "yeniden-dene.m4a");
+            File.WriteAllBytes(audio, new byte[] { 1 });
+            var id = NewMeeting(MeetingStatus.Failed, "yeniden-dene.m4a");
+            _app.WithDb(db =>
+            {
+                db.Meetings.Single(m => m.Id == id).FailureReason = MeetingFailureReason.NoSpeech;
+                return db.SaveChanges();
+            });
+            var alice = _app.ClientFor(S.AliceId);
+            var token = await GetAntiforgeryTokenAsync(alice, $"/Details?id={id}");
+
+            await PostFormAsync(alice, $"/Details?id={id}&handler=RetryProcessing", token, ("id", $"{id}"));
+
+            Assert.Equal(MeetingStatus.Processing, Load(id).Status);
+            Assert.Null(Load(id).FailureReason);
+            Assert.Equal(1, _app.Jobs.CountFor("ProcessMeetingJob", a => (int)a[0]! == id));
+        }
+
+        [Fact]
+        public async Task Successful_processing_clears_an_earlier_failure_reason()
+        {
+            var audio = Path.Combine(_app.AudioRoot, "basarili.m4a");
+            File.WriteAllBytes(audio, new byte[] { 1 });
+            var id = NewMeeting(MeetingStatus.Processing, "basarili.m4a");
+            _app.WithDb(db =>
+            {
+                db.Meetings.Single(m => m.Id == id).FailureReason = MeetingFailureReason.NoSpeech;
+                return db.SaveChanges();
+            });
+
+            using var scope = _app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
+
+            Assert.Equal(MeetingStatus.Completed, Load(id).Status);
+            Assert.Null(Load(id).FailureReason);
+        }
+
+        [Fact]
         public async Task Retry_without_audio_but_with_transcript_regenerates_only_the_summary()
         {
             var id = NewMeeting(MeetingStatus.Failed, audio: null, transcript: "kayıtlı döküm");

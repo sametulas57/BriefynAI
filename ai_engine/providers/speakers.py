@@ -35,6 +35,17 @@ def is_hallucinated_caption(text: str) -> bool:
     return any(candidate == _normalise_text(phrase) for phrase in HALLUCINATED_PHRASES)
 
 
+def is_only_hallucinated_captions(text: str) -> bool:
+    remaining = _normalise_text(text).replace(" ", "")
+    phrases = tuple(_normalise_text(phrase).replace(" ", "") for phrase in HALLUCINATED_PHRASES)
+    while remaining:
+        match = next((phrase for phrase in phrases if remaining.startswith(phrase)), None)
+        if match is None:
+            return False
+        remaining = remaining[len(match):]
+    return True
+
+
 def clean_segment_text(text: str, prompt: str) -> str:
     text = text.strip()
     if is_prompt_echo(text, prompt) or is_hallucinated_caption(text):
