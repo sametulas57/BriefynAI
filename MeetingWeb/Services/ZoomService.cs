@@ -69,18 +69,20 @@ namespace MeetingWeb.Services
         private readonly ZoomOptions _options;
         private readonly IActiveWorkspaceService _activeWorkspace;
         private readonly IAudioStorage _audioStorage;
+        private readonly IMeetingSeriesService _series;
         private readonly IBackgroundJobClient _jobs;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ZoomService> _logger;
 
         public ZoomService(ApplicationDbContext db, ZoomApiClient api, IOptions<ZoomOptions> options, IActiveWorkspaceService activeWorkspace,
-            IAudioStorage audioStorage, IBackgroundJobClient jobs, IConfiguration configuration, ILogger<ZoomService> logger)
+            IAudioStorage audioStorage, IMeetingSeriesService series, IBackgroundJobClient jobs, IConfiguration configuration, ILogger<ZoomService> logger)
         {
             _db = db;
             _api = api;
             _options = options.Value;
             _activeWorkspace = activeWorkspace;
             _audioStorage = audioStorage;
+            _series = series;
             _jobs = jobs;
             _configuration = configuration;
             _logger = logger;
@@ -339,6 +341,10 @@ namespace MeetingWeb.Services
                 return new(ZoomImportOutcome.ChoiceChanged);
             }
 
+            int? seriesId = null;
+            if (MeetingSeriesService.StartsSeries(recording.Type) && recording.MeetingNumber > 0)
+                seriesId = await _series.FindOrCreateForZoomAsync(workspaceId, recording.MeetingNumber, recording.Topic, userId);
+
             var meeting = new Meeting
             {
                 Title = string.IsNullOrWhiteSpace(recording.Topic) ? "Zoom toplantısı" : recording.Topic,
@@ -347,6 +353,7 @@ namespace MeetingWeb.Services
                 Source = MeetingSource.Zoom,
                 ExternalRecordingId = recordingId,
                 AudioFileName = storedName,
+                SeriesId = seriesId,
                 CreatedByUserId = userId
             };
             _db.Meetings.Add(meeting);

@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
 namespace MeetingWeb.Services
@@ -25,6 +26,11 @@ namespace MeetingWeb.Services
     public record ZoomRecordingFile(string FileType, string DownloadUrl, long FileSize);
     public record ZoomRecording(string Uuid, string Topic, DateTime StartTimeUtc, int DurationMinutes, IReadOnlyList<ZoomRecordingFile> Files, string HostId = "")
     {
+        internal long MeetingNumber { get; init; }
+        public int Type { get; init; }
+        public override string ToString() =>
+            $"ZoomRecording {{ Uuid = {Uuid}, Topic = {Topic}, StartTimeUtc = {StartTimeUtc}, DurationMinutes = {DurationMinutes}, Files = {Files}, HostId = {HostId}, Type = {Type} }}";
+
         // A recording stopped and started again during the meeting has one audio file per part.
         public IReadOnlyList<ZoomRecordingFile> AudioFiles => Files.Where(f => f.FileType == "M4A" && !string.IsNullOrEmpty(f.DownloadUrl)).ToList();
         public ZoomRecordingFile? TranscriptFile => Files.FirstOrDefault(f => f.FileType == "TRANSCRIPT" && !string.IsNullOrEmpty(f.DownloadUrl));
@@ -245,7 +251,7 @@ namespace MeetingWeb.Services
             m.StartTime?.ToUniversalTime() ?? DateTime.MinValue,
             m.Duration,
             (m.RecordingFiles ?? new()).Select(f => new ZoomRecordingFile(f.FileType ?? "", f.DownloadUrl ?? "", f.FileSize)).ToList(),
-            m.HostId ?? "");
+            m.HostId ?? "") { MeetingNumber = m.Id, Type = m.Type };
 
         private sealed class TokenDto
         {
@@ -270,6 +276,9 @@ namespace MeetingWeb.Services
         private sealed class MeetingDto
         {
             public string? Uuid { get; set; }
+            public long Id { get; set; }
+            [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+            public int Type { get; set; }
             public string? Topic { get; set; }
             public string? HostId { get; set; }
             public DateTime? StartTime { get; set; }
