@@ -39,6 +39,7 @@ namespace MeetingWeb.Pages.Profile
         public string Initials { get; set; } = "";
         public string ProfilePictureUrl { get; set; } = "";
         public bool ZoomEnabled { get; set; }
+        public bool OverdueRemindersEnabled { get; set; }
         public bool ZoomAutoImportEnabled { get; set; }
         public int? ZoomAutoImportWorkspaceId { get; set; }
         public List<MeetingWeb.Models.Workspace> ZoomWorkspaces { get; set; } = new();
@@ -269,10 +270,20 @@ namespace MeetingWeb.Pages.Profile
             return RedirectToPage("/Profile/Index");
         }
 
+        public async Task<IActionResult> OnPostOverdueRemindersAsync(bool enabled)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound("Kullanıcı bulunamadı.");
+            user.OverdueRemindersEnabled = enabled;
+            if (await TryUpdateAsync(user)) TempData["StatusMessage"] = enabled ? "Geciken görev hatırlatmaları açıldı." : "Geciken görev hatırlatmaları kapatıldı.";
+            return RedirectToPage();
+        }
+
         // --- HELPER METOD ---
         private async Task LoadProfileDataAsync(ApplicationUser user)
         {
             Username = user.Email ?? "";
+            OverdueRemindersEnabled = user.OverdueRemindersEnabled;
             ProfilePictureUrl = UserDisplay.AvatarUrl(user.AvatarFileName);
             Initials = UserDisplay.Initials(user.FullName);
             ZoomEnabled = _zoom.IsEnabled;

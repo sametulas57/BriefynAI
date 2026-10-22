@@ -133,6 +133,9 @@ namespace MeetingWeb.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<bool>("OverdueRemindersEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
