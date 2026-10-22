@@ -16,7 +16,7 @@ public class ZoomTests
     [Fact]
     public void NeedsReconnect_checks_all_required_scopes_and_ignores_unknown_scopes()
     {
-        Assert.False(ZoomService.NeedsReconnect(null));
+        Assert.True(ZoomService.NeedsReconnect(null));
         Assert.False(ZoomService.NeedsReconnect(StubZoomHandler.Scopes));
         Assert.True(ZoomService.NeedsReconnect("cloud_recording:read:list_user_recordings cloud_recording:read:list_recording_files user:read:user"));
     }
@@ -228,7 +228,7 @@ public class ZoomTests
 
     [Theory]
     [InlineData("cloud_recording:read:list_user_recordings cloud_recording:read:list_recording_files user:read:user", true)]
-    [InlineData(null, false)]
+    [InlineData(null, true)] // linked before scopes were stored: its permissions are unknown, so ask once
     [InlineData(StubZoomHandler.Scopes, false)]
     public async Task Profile_shows_reconnect_notice_only_when_a_required_scope_is_missing(string? scopes, bool noticeExpected)
     {

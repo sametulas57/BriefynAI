@@ -22,8 +22,8 @@ def _normalise_text(text: str) -> str:
 
 def is_prompt_echo(text: str, prompt: str) -> bool:
     candidate, hint = _normalise_text(text), _normalise_text(prompt)
-    # A few words of the hint, matched as whole words; a single spoken term such as "Docker" is real speech.
-    echo = len(candidate.split()) >= 3 and f" {candidate} " in f" {hint} "
+    # A long run of the hint, matched as whole words; a few spoken terms such as "Docker, GitHub" are real speech.
+    echo = len(candidate.split()) >= 6 and f" {candidate} " in f" {hint} "
     return bool(candidate and (candidate == _normalise_text(OLD_TECH_INSTRUCTION) or candidate == hint or echo))
 
 
@@ -31,10 +31,8 @@ def is_hallucinated_caption(text: str) -> bool:
     candidate = _normalise_text(text)
     if not candidate:
         return False
-    if any(candidate == _normalise_text(phrase) for phrase in HALLUCINATED_PHRASES):
-        return True
-    # Standalone short caption credit, optionally followed by initials/name.
-    return candidate.split()[0] == _normalise_text("Altyazı") and len(candidate.split()) <= 4
+    # Exact matches only: a real sentence such as "Altyazı desteğini ekleyelim." must stay.
+    return any(candidate == _normalise_text(phrase) for phrase in HALLUCINATED_PHRASES)
 
 
 def clean_segment_text(text: str, prompt: str) -> str:
@@ -49,9 +47,11 @@ def clean_plain_chunk(text: str, prompt: str) -> str:
     if not text or is_prompt_echo(text, prompt):
         return ""
     # Only remove a matching final sentence; occurrences inside a sentence are spoken content.
+    # The last two pieces are tried too, because initials such as "M.K." split a phrase into two.
     spans = list(re.finditer(r"[^.!?…]+[.!?…]*", text))
-    if spans and is_hallucinated_caption(spans[-1].group().strip()):
-        text = text[:spans[-1].start()].rstrip()
+    for span in reversed(spans[-2:]):
+        if is_hallucinated_caption(text[span.start():]):
+            return text[:span.start()].rstrip()
     return text
 
 
