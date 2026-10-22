@@ -61,6 +61,23 @@ public class SeriesAgendaTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Agenda_recipients_with_the_same_title_share_one_group()
+    {
+        var id = Series(S.WorkspaceA, "Unvanlar");
+        _app.WithDb(db =>
+        {
+            var title = new WorkspaceTitle { WorkspaceId = S.WorkspaceA, Name = "Ortak Unvan" };
+            db.WorkspaceTitles.Add(title); db.SaveChanges();
+            foreach (var m in db.WorkspaceMembers.Where(m => m.WorkspaceId == S.WorkspaceA && (m.UserId == S.AliceId || m.UserId == S.CarolId)))
+                m.TitleId = title.Id;
+            return db.SaveChanges();
+        });
+        using var alice = _app.ClientFor(S.AliceId);
+        var html = WebUtility.HtmlDecode(await alice.GetStringAsync($"/Series/{id}"));
+        Assert.Equal(1, html.Split("<span>Ortak Unvan</span>").Length - 1);
+    }
+
+    [Fact]
     public async Task Empty_series_has_no_agenda()
     {
         var result = await Build(Series(S.WorkspaceA, "Boş"), new DateOnly(2026, 10, 22));
