@@ -35,8 +35,13 @@ def is_hallucinated_caption(text: str) -> bool:
     return any(candidate == _normalise_text(phrase) for phrase in HALLUCINATED_PHRASES)
 
 
-def is_only_hallucinated_captions(text: str) -> bool:
-    remaining = _normalise_text(text).replace(" ", "")
+def is_only_hallucinated_captions(text: str, speakers: set[str] = frozenset()) -> bool:
+    # Zoom lines start with "Name: "; the name is not speech.
+    lines = []
+    for line in text.splitlines():
+        name, _, rest = line.partition(": ")
+        lines.append(rest if rest and name in speakers else line)
+    remaining = _normalise_text(" ".join(lines)).replace(" ", "")
     phrases = tuple(_normalise_text(phrase).replace(" ", "") for phrase in HALLUCINATED_PHRASES)
     while remaining:
         match = next((phrase for phrase in phrases if remaining.startswith(phrase)), None)
