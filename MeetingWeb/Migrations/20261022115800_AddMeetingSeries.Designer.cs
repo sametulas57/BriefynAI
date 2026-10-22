@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MeetingWeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261022113024_AddMeetingSeries")]
+    [Migration("20261022115800_AddMeetingSeries")]
     partial class AddMeetingSeries
     {
         /// <inheritdoc />
@@ -135,6 +135,9 @@ namespace MeetingWeb.Migrations
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("OverdueRemindersEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
