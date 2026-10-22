@@ -139,6 +139,9 @@ namespace MeetingWeb.Data
                 z.Property(x => x.RefreshToken).HasConversion(new EncryptedConverter("ZoomConnections.RefreshToken"));
                 z.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
                 z.HasIndex(x => x.UserId).IsUnique();
+                z.HasOne(x => x.AutoImportWorkspace).WithMany().HasForeignKey(x => x.AutoImportWorkspaceId).OnDelete(DeleteBehavior.SetNull);
+                // Zoom's notifications name the Zoom user (ADR-0012).
+                z.HasIndex(x => x.ZoomUserId);
             });
 
             // SQLite (tests) cannot generate rowversion values; there StampRowVersions sets a new one on every save, so the

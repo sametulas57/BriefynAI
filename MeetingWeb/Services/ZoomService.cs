@@ -34,6 +34,7 @@ namespace MeetingWeb.Services
         Task RevokeQuietlyAsync(ZoomConnection connection);
         Task<IReadOnlyList<ZoomRecording>> ListRecentAsync(string userId);
         Task<ZoomImportResult> ImportAsync(string userId, string uuid);
+        Task<bool> SetAutoImportAsync(string userId, int? workspaceId);
     }
 
     public class ZoomService : IZoomService
@@ -192,6 +193,14 @@ namespace MeetingWeb.Services
             {
                 _logger.LogWarning("Zoom token could not be revoked for user {UserId}: {Reason}", connection.UserId, ex.Message);
             }
+        }
+
+        // ADR-0012: null turns automatic import off; a team is accepted only if the user is a member (ADR-0005).
+        public async Task<bool> SetAutoImportAsync(string userId, int? workspaceId)
+        {
+            if (workspaceId != null && !await _db.WorkspaceMembers.AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == userId)) return false;
+            return await _db.ZoomConnections.Where(z => z.UserId == userId)
+                .ExecuteUpdateAsync(s => s.SetProperty(z => z.AutoImportWorkspaceId, workspaceId)) > 0;
         }
 
         public async Task<IReadOnlyList<ZoomRecording>> ListRecentAsync(string userId)
