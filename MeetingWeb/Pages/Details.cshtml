@@ -167,7 +167,7 @@
             </div>
             <div class="flex-grow-1">
                 <h5 class="fw-bold mb-1" style="color: #856404;">Özetleme İşlemi Tamamlanamadı</h5>
-                <p class="mb-0 text-dark opacity-75 small">Yapay zeka sunucularında anlık bir sorun oluştu. Lütfen yeniden deneyiniz.</p>
+                <p class="mb-0 text-dark opacity-75 small">@(Model.Meeting.FailureReason == MeetingWeb.Models.MeetingFailureReason.NoSpeech ? "Kayıtta anlaşılır bir konuşma bulunamadı. Sesin net olduğu bir kaydı yeniden yükleyebilirsiniz." : "Yapay zeka sunucularında anlık bir sorun oluştu. Lütfen yeniden deneyiniz.")</p>
             </div>
             <div class="ms-4 border-start border-warning border-opacity-50 ps-4 py-2">
                 <form method="post" asp-page-handler="RetryProcessing">

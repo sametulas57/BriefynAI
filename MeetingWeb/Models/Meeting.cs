@@ -17,6 +17,8 @@ namespace MeetingWeb.Models
 
         public MeetingStatus Status { get; set; } = MeetingStatus.Processing;
 
+        public MeetingFailureReason? FailureReason { get; set; }
+
         public MeetingSource Source { get; set; } = MeetingSource.Upload;
 
         // Stored file name in the private audio store; cleared once the recording is deleted (ADR-0002).

@@ -191,7 +191,8 @@ namespace MeetingWeb.Pages
         {
             var started = await _context.Meetings
                 .Where(m => m.Id == meetingId && m.Status == MeetingStatus.Failed)
-                .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, MeetingStatus.Processing));
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, MeetingStatus.Processing)
+                    .SetProperty(m => m.FailureReason, (MeetingFailureReason?)null));
             if (started == 1) return true;
 
             TempData["StatusMessage"] = "Bu toplantı zaten yeniden işleniyor. Bittiğinde bu sayfa kendiliğinden yenilenir.";

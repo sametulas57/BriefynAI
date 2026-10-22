@@ -59,6 +59,11 @@
             .navbar .nav-link[aria-current="page"] { color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .09); font-weight: 600; }
             .account-menu { min-width: 290px; max-height: min(75vh, 560px); overflow-y: auto; }
             .account-menu .dropdown-item { border-radius: .4rem; }
+            @@media (min-width: 992px) and (max-width: 1199.98px) {
+                .navbar-brand { margin-right: .5rem !important; }
+                .navbar-nav { gap: .25rem !important; }
+                .navbar .gap-lg-3 { column-gap: .5rem !important; }
+            }
             @@media (max-width: 991.98px) {
                 .navbar-collapse { padding-top: .75rem; }
                 .navbar-nav .nav-item { width: 100%; margin: 0 !important; }

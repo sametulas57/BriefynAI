@@ -51,6 +51,30 @@ def test_correct_key_is_accepted(client):
     assert res.json()["success"] is True
 
 
+@pytest.mark.parametrize("transcript", [
+    None, "", " \n ", "Altyazı M.K.", "  altyazı   m k !! ",
+    "İZLEDİĞİNİZ İÇİN TEŞEKKÜRLER!", "İzlediğiniz için teşekkür ederim.",
+    "Altyazı M.K. İzlediğiniz için teşekkürler!",
+])
+def test_no_speech_returns_distinct_response(client, monkeypatch, transcript):
+    monkeypatch.setattr(api_server, "transcribe_audio", lambda path: transcript)
+    monkeypatch.setattr(api_server, "generate_meeting_summary", lambda text: pytest.fail("silence must not be summarized"))
+
+    response = upload(client, {"X-Api-Key": KEY})
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "no_speech"}
+
+
+def test_caption_with_real_speech_is_processed(client, monkeypatch):
+    monkeypatch.setattr(api_server, "transcribe_audio", lambda path: "Altyazı M.K. Bugün toplantıyı açıyorum.")
+
+    response = upload(client, {"X-Api-Key": KEY})
+
+    assert response.status_code == 200
+    assert response.json()["transkript"] == "Altyazı M.K. Bugün toplantıyı açıyorum."
+
+
 def test_optional_speakers_are_passed_to_transcriber(client, monkeypatch):
     seen = []
     monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin")

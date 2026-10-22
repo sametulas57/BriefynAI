@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Hangfire;
 using System.Net.Http.Headers;
+using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using MeetingWeb.Hubs;
@@ -89,6 +90,7 @@ namespace MeetingWeb.Services
                         // An empty answer is a failed analysis; leaving it "Processing" made the meeting spin forever.
                         _logger.LogWarning("Python API returned no summary for MeetingId: {MeetingId}; marking as Failed.", meetingId);
                         m.Status = MeetingStatus.Failed;
+                        m.FailureReason = null;
                     }
                 });
                 if (meeting == null) return;
@@ -99,6 +101,11 @@ namespace MeetingWeb.Services
 
                 // Push real-time completion notification to the meeting's workspace members via SignalR.
                 await NotifyWorkspaceAsync(meetingId, meeting.WorkspaceId);
+            }
+            catch (NoSpeechException ex)
+            {
+                await MarkFailedAsync(meetingId, ex, MeetingFailureReason.NoSpeech);
+                // No usable speech will not improve on an automatic retry; the user can upload a clearer recording.
             }
             catch (Exception ex)
             {
@@ -123,7 +130,11 @@ namespace MeetingWeb.Services
                 meeting = await SaveOnFreshCopyAsync(meetingId, m =>
                 {
                     if (summary != null) ApplySummary(m, summary);
-                    else m.Status = MeetingStatus.Failed;
+                    else
+                    {
+                        m.Status = MeetingStatus.Failed;
+                        m.FailureReason = null;
+                    }
                 });
                 if (meeting == null) return;
                 await NotifyWorkspaceAsync(meetingId, meeting.WorkspaceId);
@@ -171,7 +182,7 @@ namespace MeetingWeb.Services
             return meeting;
         }
 
-        private async Task MarkFailedAsync(int meetingId, Exception ex)
+        private async Task MarkFailedAsync(int meetingId, Exception ex, MeetingFailureReason? reason = null)
         {
             _logger.LogError(ex, "Critical failure during processing for MeetingId: {MeetingId}", meetingId);
 
@@ -182,6 +193,7 @@ namespace MeetingWeb.Services
             if (errorMeeting != null)
             {
                 errorMeeting.Status = MeetingStatus.Failed;
+                errorMeeting.FailureReason = reason;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Status reverted to Failed for MeetingId: {MeetingId}", meetingId);
 
@@ -196,6 +208,7 @@ namespace MeetingWeb.Services
         {
             if (!string.IsNullOrWhiteSpace(data.ToplantiKonusu)) meeting.Title = data.ToplantiKonusu;
             meeting.Status = MeetingStatus.Completed;
+            meeting.FailureReason = null;
             meeting.CompletedAtUtc = DateTime.UtcNow;
 
             // Lines users added by hand are separate rows and survive a regenerated summary; earlier AI lines are
@@ -296,6 +309,17 @@ namespace MeetingWeb.Services
                 }
 
                 string errorDetail = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                {
+                    try
+                    {
+                        using var error = JsonDocument.Parse(errorDetail);
+                        if (error.RootElement.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String
+                            && detail.GetString() == "no_speech")
+                            throw new NoSpeechException();
+                    }
+                    catch (JsonException) { /* Keep malformed API responses on the general error path. */ }
+                }
                 _logger.LogError("Python API responded with status code: {StatusCode}. Details: {ErrorDetail}", response.StatusCode, errorDetail);
                 throw new HttpRequestException($"Python API Error: {response.StatusCode} - {errorDetail}");
             }
@@ -305,5 +329,7 @@ namespace MeetingWeb.Services
                 throw new Exception("Unable to reach the Python server. Please verify that the API is running.");
             }
         }
+
+        private sealed class NoSpeechException : Exception;
     }
 }
