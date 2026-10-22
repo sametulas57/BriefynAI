@@ -36,6 +36,23 @@ public class ZoomAutoImportTests
     }
 
     [Fact]
+    public async Task Profile_says_whether_auto_import_is_on_and_offers_to_turn_it_off()
+    {
+        using var app = await WebhookAppAsync();
+        Connect(app, app.Seed.AliceId);
+        var client = app.ClientFor(app.Seed.AliceId);
+
+        var off = WebUtility.HtmlDecode(await client.GetStringAsync("/Profile"));
+        Assert.Contains("Şu an kapalı", off);
+        Assert.DoesNotContain("Otomatik almayı kapat", off);
+
+        Assert.True(await SetAsync(app, app.Seed.AliceId, app.Seed.WorkspaceA));
+        var on = WebUtility.HtmlDecode(await client.GetStringAsync("/Profile"));
+        Assert.Contains("Şu an açık: yeni kayıtlar A Şirketi ekibine geliyor.", on);
+        Assert.Contains("Otomatik almayı kapat", on);
+    }
+
+    [Fact]
     public async Task Profile_auto_import_form_saves_and_closes_selection()
     {
         using var app = await WebhookAppAsync();

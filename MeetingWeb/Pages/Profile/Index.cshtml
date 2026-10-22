@@ -130,6 +130,21 @@
                         <p class="text-muted">Bağlı Zoom hesabı: <strong class="text-dark">@Model.ZoomEmail</strong></p>
                         @if (Model.ZoomAutoImportEnabled)
                         {
+                            var autoTeam = Model.ZoomWorkspaces.FirstOrDefault(w => w.Id == Model.ZoomAutoImportWorkspaceId);
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                @if (autoTeam != null)
+                                {
+                                    <span class="text-success fw-bold small"><i class="bi bi-check-circle me-1"></i>Şu an açık: yeni kayıtlar @autoTeam.Name ekibine geliyor.</span>
+                                    <form method="post" asp-page-handler="ZoomAutoImport" class="m-0">
+                                        <input type="hidden" name="workspaceId" value="" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3">Otomatik almayı kapat</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted fw-bold small"><i class="bi bi-pause-circle me-1"></i>Şu an kapalı: yeni kayıtlar kendiliğinden gelmez.</span>
+                                }
+                            </div>
                             <form method="post" asp-page-handler="ZoomAutoImport" class="mb-3">
                                 <label for="workspaceId" class="form-label fw-bold text-muted small">Yeni Zoom kayıtlarını kendiliğinden al</label>
                                 <div class="d-flex flex-wrap gap-2">
