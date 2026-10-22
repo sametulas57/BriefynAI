@@ -188,6 +188,27 @@
                         <i class="bi bi-calendar3 me-1"></i> @MeetingWeb.Services.DisplayTime.Format(Model.Meeting.CreatedAtUtc, "dd MMMM yyyy, HH:mm")
                     </span>
                     <h2 class="mb-0 fw-bold text-dark" style="letter-spacing: -0.5px;">@Model.Meeting.Title</h2>
+                    <form method="post" asp-page-handler="SetSeries" class="mt-3 d-flex flex-wrap align-items-end gap-2">
+                        <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                        <div>
+                            <label for="series-select" class="form-label small mb-1">Seri</label>
+                            <select id="series-select" name="seriesId" class="form-select form-select-sm">
+                                <option value="" selected="@(Model.Meeting.SeriesId == null)">Seri yok</option>
+                                @foreach (var series in Model.AvailableSeries)
+                                {
+                                    <option value="@series.Id" selected="@(Model.Meeting.SeriesId == series.Id)">@series.Name</option>
+                                }
+                                <option value="" data-new-series="true">Yeni seri…</option>
+                            </select>
+                        </div>
+                        <input id="new-series-name" name="newSeriesName" class="form-control form-control-sm d-none" maxlength="100" placeholder="Seri adı" aria-label="Yeni seri adı" />
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Kaydet</button>
+                        @if (Model.CurrentSeries != null)
+                        {
+                            <a asp-page="/Series/Show" asp-route-id="@Model.CurrentSeries.Id" class="small">@Model.CurrentSeries.Name</a>
+                            <a asp-page="/Series/Show" asp-route-id="@Model.CurrentSeries.Id" asp-fragment="agenda" class="small">Sıradaki gündem</a>
+                        }
+                    </form>
                 </div>
                 <div>
                     <button type="button" class="btn btn-primary btn-soft shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#shareModal">
@@ -670,6 +691,19 @@
 </div>
 
 @section Scripts {
+    <script>
+        const seriesSelect = document.getElementById('series-select');
+        if (seriesSelect) {
+            const newSeriesName = document.getElementById('new-series-name');
+            seriesSelect.addEventListener('change', () => {
+                const isNew = seriesSelect.selectedOptions[0].dataset.newSeries === 'true';
+                newSeriesName.classList.toggle('d-none', !isNew);
+                newSeriesName.required = isNew;
+                if (isNew) newSeriesName.focus();
+                else newSeriesName.value = '';
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     
     <script>

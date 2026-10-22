@@ -145,6 +145,11 @@
                                 </span>
                             </div>
 
+                            @if (item.Series != null)
+                            {
+                                <a asp-page="/Series/Show" asp-route-id="@item.Series.Id" class="badge bg-white text-primary border rounded-pill text-decoration-none mb-3">@item.Series.Name</a>
+                            }
+
                             @if (item.Status == MeetingWeb.Models.MeetingStatus.Processing)
                             {
                                 <h5 class="card-title text-primary fw-bold mb-1" style="letter-spacing: -0.3px;">Analiz Ediliyor</h5>

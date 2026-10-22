@@ -19,6 +19,7 @@ namespace MeetingWeb.Pages
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IAudioStorage _audioStorage;
         private readonly IMeetingAccessService _access;
+        private readonly IMeetingSeriesService _series;
 
         // Constructor injection for required services and physical path resolution.
         public DetailsModel(
@@ -26,8 +27,9 @@ namespace MeetingWeb.Pages
             UserManager<ApplicationUser> userManager,
             IBackgroundJobClient backgroundJobClient,
             IAudioStorage audioStorage,
-            IMeetingAccessService access)
+            IMeetingAccessService access, IMeetingSeriesService series)
         {
+            _series = series;
             _context = context;
             _userManager = userManager;
             _backgroundJobClient = backgroundJobClient;
@@ -48,6 +50,8 @@ namespace MeetingWeb.Pages
         }
 
         public Meeting Meeting { get; set; } = default!;
+        public List<SeriesSummary> AvailableSeries { get; private set; } = new();
+        public MeetingSeries? CurrentSeries { get; private set; }
         public List<WorkspaceMember> WorkspaceMembers { get; set; } = new();
         public List<Comment> Comments { get; set; } = new();
 
@@ -77,6 +81,8 @@ namespace MeetingWeb.Pages
 
             if (meeting == null) return MeetingUnavailable();
             Meeting = meeting;
+            AvailableSeries = await _series.ListAsync(_userManager.GetUserId(User), meeting.WorkspaceId);
+            if (meeting.SeriesId != null) CurrentSeries = await _series.FindAsync(_userManager.GetUserId(User), meeting.SeriesId.Value);
 
             // Fetch the members of the meeting's own workspace for the sharing/collaboration module.
             WorkspaceMembers = await _context.WorkspaceMembers
@@ -118,6 +124,32 @@ namespace MeetingWeb.Pages
             }
 
             return Page();
+        }
+
+        public async Task<IActionResult> OnPostSetSeriesAsync(int meetingId, int? seriesId, string? newSeriesName)
+        {
+            if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
+            var userId = _userManager.GetUserId(User);
+            if (!string.IsNullOrWhiteSpace(newSeriesName))
+            {
+                var workspaceId = await _context.Meetings.Where(m => m.Id == meetingId).Select(m => m.WorkspaceId).SingleAsync();
+                var created = await _series.CreateAsync(userId, workspaceId, newSeriesName);
+                if (created == null)
+                {
+                    TempData["ErrorMessage"] = "Seri adı boş olamaz ve en çok 100 karakter olabilir.";
+                    return RedirectToPage(new { id = meetingId });
+                }
+                seriesId = created.Id;
+            }
+            else if (newSeriesName != null)
+            {
+                TempData["ErrorMessage"] = "Seri adı boş olamaz ve en çok 100 karakter olabilir.";
+                return RedirectToPage(new { id = meetingId });
+            }
+
+            var result = await _series.SetMeetingSeriesAsync(userId, meetingId, seriesId);
+            if (result == SeriesResult.NotFound) return MeetingUnavailable();
+            return RedirectToPage(new { id = meetingId });
         }
 
         // --- FAULT TOLERANCE: RETRY MECHANISM ---

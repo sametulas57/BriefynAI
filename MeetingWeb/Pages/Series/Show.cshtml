@@ -1,0 +1,54 @@
+@page "/Series/{id:int}"
+@model MeetingWeb.Pages.Series.ShowModel
+@{
+    ViewData["Title"] = Model.Series.Name;
+}
+<style>
+    .soft-card { border: 1px solid rgba(0, 0, 0, .04); border-radius: 1.25rem; box-shadow: 0 4px 24px rgba(0, 0, 0, .02); }
+</style>
+
+<div class="container mt-5 mb-5" style="max-width: 1100px;">
+    <a asp-page="/Series/Index" class="text-decoration-none text-muted">← Seriler</a>
+    <div class="card soft-card my-4">
+        <div class="card-body p-4">
+            <h2 class="fw-bold text-dark">@Model.Series.Name</h2>
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger" role="alert">@TempData["ErrorMessage"]</div>
+            }
+            @if (Model.CanManage)
+            {
+                <div class="d-flex flex-wrap gap-3 align-items-end">
+                    <form method="post" asp-page-handler="Rename" asp-route-id="@Model.Series.Id" class="d-flex gap-2 align-items-end">
+                        <div><label for="name" class="form-label small">Adı değiştir</label><input id="name" name="name" value="@Model.Series.Name" maxlength="100" required class="form-control" /></div>
+                        <button type="submit" class="btn btn-outline-primary">Kaydet</button>
+                    </form>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Series.Id"
+                          data-confirm-title="Seriyi sil" data-confirm-button="Evet, sil" data-confirm="Seri silinir, toplantılar silinmez, yalnız seriden çıkar.">
+                        <button type="submit" class="btn btn-outline-danger">Seriyi sil</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+    <div id="agenda"></div>
+    <h4 class="fw-bold mb-3">Toplantılar</h4>
+    @if (Model.Meetings.Count == 0)
+    {
+        <p class="text-muted">Bu seride henüz toplantı yok. Toplantı sayfasındaki seri seçiciyle ekleyebilirsiniz.</p>
+    }
+    else
+    {
+        <div class="card soft-card">
+            <div class="list-group list-group-flush">
+                @foreach (var meeting in Model.Meetings)
+                {
+                    <a asp-page="/Details" asp-route-id="@meeting.Id" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-3">
+                        <span class="fw-medium">@meeting.Title</span>
+                        <span class="text-muted small">@MeetingWeb.Services.DisplayTime.Format(meeting.CreatedAtUtc, "dd MMM yyyy") · @(meeting.Status == MeetingWeb.Models.MeetingStatus.Completed ? "Tamamlandı" : meeting.Status == MeetingWeb.Models.MeetingStatus.Failed ? "Başarısız" : "İşleniyor")</span>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+</div>

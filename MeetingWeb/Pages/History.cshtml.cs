@@ -61,6 +61,7 @@ namespace MeetingWeb.Pages
             // Topic lines are loaded for the card preview and the search; the transcript stays in its own table.
             var sqlQuery = _context.Meetings
                 .Include(m => m.Points.Where(p => p.Kind == MeetingPointKind.Topic))
+                .Include(m => m.Series)
                 .Where(m => m.WorkspaceId == activeWorkspaceId)
                 .AsQueryable();
 
