@@ -9,13 +9,13 @@ from pathlib import Path
 
 from . import audio
 from .groq_client import GroqClient
-from .speakers import assign_speakers, format_lines, parse_vtt
+from .speakers import (OLD_TECH_INSTRUCTION, assign_speakers, clean_plain_chunk,
+                       clean_segment_text, format_lines, parse_vtt)
 
 # Keeps English technical terms as spoken instead of translating or mangling them.
 TECH_PROMPT = (
-    "Bu bir yazılım toplantısı transkripti. İngilizce teknik terimleri orijinal yazımıyla koru: "
     "backend, frontend, API, endpoint, database, SQL, server, client, microservice, "
-    "Docker, Kubernetes, GitHub, pull request, merge, deployment, CI/CD, bug, ticket."
+    "Docker, Kubernetes, GitHub, pull request, merge, deployment, CI/CD, bug, ticket"
 )
 
 
@@ -35,10 +35,12 @@ class GroqTranscriber:
             for i, (start, end) in enumerate(zip(cuts, cuts[1:])):
                 piece = audio.cut(mono, start, end, work / f"part{i}.flac")
                 if named:
-                    segments.extend((cuts[i] + a, cuts[i] + b, text) for a, b, text in
-                                    self._client.transcribe_segments(piece, self._model, self._language, TECH_PROMPT))
+                    segments.extend((cuts[i] + a, cuts[i] + b, cleaned) for a, b, text in
+                                    self._client.transcribe_segments(piece, self._model, self._language, TECH_PROMPT)
+                                    if (cleaned := clean_segment_text(text, TECH_PROMPT)))
                 else:
-                    parts.append(self._client.transcribe(piece, self._model, self._language, TECH_PROMPT))
+                    parts.append(clean_plain_chunk(self._client.transcribe(piece, self._model, self._language, TECH_PROMPT),
+                                                   TECH_PROMPT))
         if named:
             return format_lines(assign_speakers(segments, cues))
         return " ".join(p for p in parts if p)

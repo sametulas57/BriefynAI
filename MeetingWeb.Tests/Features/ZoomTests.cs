@@ -13,6 +13,14 @@ namespace MeetingWeb.Tests.Features;
 // PRD 2026-10-21-zoom-asama-1, 1a acceptance criteria 1–11. Every call to Zoom goes to StubZoomHandler.
 public class ZoomTests
 {
+    [Fact]
+    public void NeedsReconnect_checks_all_required_scopes_and_ignores_unknown_scopes()
+    {
+        Assert.False(ZoomService.NeedsReconnect(null));
+        Assert.False(ZoomService.NeedsReconnect(StubZoomHandler.Scopes));
+        Assert.True(ZoomService.NeedsReconnect("cloud_recording:read:list_user_recordings cloud_recording:read:list_recording_files user:read:user"));
+    }
+
     private const string Uuid = "Zx/9Q+abc==";
     private const string RecordingPath = "/v2/meetings/Zx%2F9Q%2Babc%3D%3D/recordings";
     private const string DownloadUrl = "https://zoom.us/rec/download/abc";
@@ -188,6 +196,7 @@ public class ZoomTests
         var saved = ConnectionOf(app, app.Seed.AliceId)!;
         Assert.Equal("zoom-user-1", saved.ZoomUserId);
         Assert.Equal(StubZoomHandler.RefreshToken, saved.RefreshToken);
+        Assert.Equal(StubZoomHandler.Scopes, saved.GrantedScopes);
         Assert.InRange(saved.AccessTokenExpiresAtUtc, DateTime.UtcNow.AddMinutes(55), DateTime.UtcNow.AddMinutes(61));
 
         var raw = app.WithDb(db =>
@@ -217,6 +226,34 @@ public class ZoomTests
         Assert.DoesNotContain("test-zoom-secret", logText);
     }
 
+    [Theory]
+    [InlineData("cloud_recording:read:list_user_recordings cloud_recording:read:list_recording_files user:read:user", true)]
+    [InlineData(null, false)]
+    [InlineData(StubZoomHandler.Scopes, false)]
+    public async Task Profile_shows_reconnect_notice_only_when_a_required_scope_is_missing(string? scopes, bool noticeExpected)
+    {
+        using var app = await AppAsync();
+        app.WithDb(db =>
+        {
+            db.ZoomConnections.Add(new ZoomConnection
+            {
+                UserId = app.Seed.AliceId,
+                ZoomUserId = "zoom-user-1",
+                ZoomEmail = "ulas@zoom.test",
+                AccessToken = "encrypted-access",
+                RefreshToken = "encrypted-refresh",
+                AccessTokenExpiresAtUtc = DateTime.UtcNow.AddMinutes(50),
+                GrantedScopes = scopes
+            });
+            return db.SaveChanges();
+        });
+
+        var html = WebUtility.HtmlDecode(await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Profile"));
+        const string notice = "Zoom bağlantınızın yenilenmesi gerekiyor. Yeni kayıtların gelmeye devam etmesi için Zoom'u yeniden bağlayın.";
+        Assert.Equal(noticeExpected, html.Contains(notice));
+        Assert.Equal(noticeExpected, html.Contains("Zoom'u yeniden bağla"));
+    }
+
     private static void EmptyList(BriefynFactory app) =>
         app.Zoom.Json("GET", "/v2/users/me/recordings", """{"from":"x","to":"y","meetings":[]}""");
 
@@ -227,7 +264,8 @@ public class ZoomTests
         using var app = await AppAsync();
         Connect(app, app.Seed.AliceId, TimeSpan.FromMinutes(2));
         EmptyList(app);
-        app.Zoom.Json("POST", "/oauth/token", StubZoomHandler.TokenJson(StubZoomHandler.NewAccessToken, StubZoomHandler.NewRefreshToken));
+        const string refreshedScopes = StubZoomHandler.Scopes + " extra:scope";
+        app.Zoom.Json("POST", "/oauth/token", StubZoomHandler.TokenJson(StubZoomHandler.NewAccessToken, StubZoomHandler.NewRefreshToken, refreshedScopes));
 
         var res = await app.ClientFor(app.Seed.AliceId).GetAsync("/Zoom/Recordings");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
@@ -239,6 +277,7 @@ public class ZoomTests
         var saved = ConnectionOf(app, app.Seed.AliceId)!;
         Assert.Equal(StubZoomHandler.NewRefreshToken, saved.RefreshToken);
         Assert.Equal(StubZoomHandler.NewAccessToken, saved.AccessToken);
+        Assert.Equal(refreshedScopes, saved.GrantedScopes);
     }
 
     [Fact]

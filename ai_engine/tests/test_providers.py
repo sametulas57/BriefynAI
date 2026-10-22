@@ -134,3 +134,102 @@ def test_short_transcript_is_one_call():
 
     GroqSummarizer(client_with(handler)).summarize("Kısa toplantı.")
     assert len(asked) == 1
+
+
+def test_summary_system_excludes_off_topic_small_talk_for_short_transcripts():
+    systems = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        systems.extend(m["content"] for m in body["messages"] if m["role"] == "system")
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(SUMMARY)}}]})
+
+    GroqSummarizer(client_with(handler)).summarize("Maç hakkında kısa sohbet.")
+    assert systems and all("işiyle ilgisi olmayan yan sohbet" in system for system in systems)
+
+
+def test_summary_system_and_merge_keep_off_topic_rule_for_long_transcripts():
+    systems, users = [], []
+
+    def handler(request):
+        body = json.loads(request.content)
+        systems.extend(m["content"] for m in body["messages"] if m["role"] == "system")
+        users.extend(m["content"] for m in body["messages"] if m["role"] == "user")
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(SUMMARY)}}]})
+
+    GroqSummarizer(client_with(handler), max_chars=100).summarize("Maç hakkında uzun sohbet. " * 30)
+    assert len(systems) > 1
+    assert all("işiyle ilgisi olmayan yan sohbet" in system for system in systems)
+    assert "işiyle ilgisi olmayan yan sohbet" in users[-1]
+
+
+# --- transcription cleanup ---
+
+from providers.groq_transcriber import GroqTranscriber, TECH_PROMPT  # noqa: E402
+
+
+class FakeTranscriptionClient:
+    def __init__(self, plain=None, segments=None):
+        self.plain, self.segments = plain or [], segments or []
+
+    def transcribe(self, *args):
+        return self.plain.pop(0)
+
+    def transcribe_segments(self, *args):
+        return self.segments
+
+
+def fake_audio(monkeypatch, tmp_path, named=False):
+    from providers import groq_transcriber
+    source = tmp_path / "input.wav"
+    source.write_bytes(b"audio")
+    monkeypatch.setattr(groq_transcriber.audio, "to_mono_flac", lambda src, dst: (dst.write_bytes(b"mono"), dst)[1])
+    monkeypatch.setattr(groq_transcriber.audio, "duration_seconds", lambda path: 60)
+    monkeypatch.setattr(groq_transcriber.audio, "silence_midpoints", lambda path: [])
+    monkeypatch.setattr(groq_transcriber.audio, "plan_cuts", lambda *args: [0, 60])
+    monkeypatch.setattr(groq_transcriber.audio, "cut", lambda src, start, end, dst: (dst.write_bytes(b"part"), dst)[1])
+    return source
+
+
+def test_segmented_transcription_drops_prompt_and_known_hallucinations(monkeypatch, tmp_path):
+    from providers.groq_transcriber import OLD_TECH_INSTRUCTION
+    source = fake_audio(monkeypatch, tmp_path)
+    client = FakeTranscriptionClient(segments=[
+        (0, 1, "Altyazı M.K."), (1, 2, OLD_TECH_INSTRUCTION), (2, 3, "Gerçek sözler burada.")
+    ])
+    result = GroqTranscriber(client, "whisper").transcribe(str(source), "WEBVTT\n\n00:00:00.000 --> 00:00:03.000\nBucky Barnes: Merhaba")
+    assert result == "Bucky Barnes: Gerçek sözler burada."
+
+
+def test_segmented_transcription_keeps_a_spoken_term_and_drops_other_caption_credits(monkeypatch, tmp_path):
+    source = fake_audio(monkeypatch, tmp_path)
+    client = FakeTranscriptionClient(segments=[(0, 1, "Docker."), (1, 2, "Altyazı: Ayşe Yılmaz"), (2, 3, "Bug var.")])
+    result = GroqTranscriber(client, "whisper").transcribe(str(source), "WEBVTT\n\n00:00:00.000 --> 00:00:03.000\nBucky Barnes: Merhaba")
+    assert result == "Bucky Barnes: Docker. Bug var."
+
+
+def test_plain_transcription_drops_final_hallucination_only(monkeypatch, tmp_path):
+    source = fake_audio(monkeypatch, tmp_path)
+    text = "Gerçek konuşma. İzlediğiniz için teşekkür ederim."
+    client = FakeTranscriptionClient(plain=[text])
+    assert GroqTranscriber(client, "whisper").transcribe(str(source)) == "Gerçek konuşma."
+
+
+def test_plain_transcription_keeps_hallucination_phrase_inside_sentence(monkeypatch, tmp_path):
+    source = fake_audio(monkeypatch, tmp_path)
+    text = "Bunu izlediğiniz için teşekkür ederim dedi ve devam etti."
+    client = FakeTranscriptionClient(plain=[text])
+    assert GroqTranscriber(client, "whisper").transcribe(str(source)) == text
+
+
+def test_plain_transcription_drops_prompt_as_complete_chunk(monkeypatch, tmp_path):
+    source = fake_audio(monkeypatch, tmp_path)
+    from providers.groq_transcriber import OLD_TECH_INSTRUCTION
+    client = FakeTranscriptionClient(plain=[OLD_TECH_INSTRUCTION])
+    assert GroqTranscriber(client, "whisper").transcribe(str(source)) == ""
+
+
+def test_tech_prompt_is_a_term_list_not_an_instruction():
+    assert "backend" in TECH_PROMPT and "CI/CD" in TECH_PROMPT
+    assert "İngilizce" not in TECH_PROMPT
+    assert ":" not in TECH_PROMPT

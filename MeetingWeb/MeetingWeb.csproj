@@ -26,6 +26,8 @@
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Sinks.MSSqlServer" Version="9.0.3" />
+    <!-- S10: Microsoft.Data.SqlClient 6.1.1 brings 9.0.4, which has known advisories; pinned to a patched version. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
 </Project>

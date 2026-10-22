@@ -16,7 +16,7 @@ namespace MeetingWeb.Tests.Infrastructure
         public const string RefreshToken = "zoom-refresh-token-PLAIN-1";
         public const string NewAccessToken = "zoom-access-token-PLAIN-2";
         public const string NewRefreshToken = "zoom-refresh-token-PLAIN-2";
-        public const string Scopes = "cloud_recording:read:list_user_recordings cloud_recording:read:list_recording_files user:read:user";
+        public const string Scopes = "cloud_recording:read:list_user_recordings cloud_recording:read:list_recording_files user:read:user cloud_recording:read:recording";
 
         public StubZoomHandler()
         {
