@@ -9,7 +9,7 @@ namespace MeetingWeb.Services
 {
     public enum ZoomConnectOutcome { Connected, Failed, MissingScopes }
 
-    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, LeftTeam, NotFound, NoAudio, SeveralParts, TooLarge }
+    public enum ZoomImportOutcome { Imported, AlreadyImported, NoTeam, LeftTeam, NotFound, NoAudio, SeveralParts, TooLarge, NotHost }
 
     public record ZoomImportResult(ZoomImportOutcome Outcome, int? MeetingId = null);
 
@@ -27,6 +27,7 @@ namespace MeetingWeb.Services
     public interface IZoomService
     {
         bool IsEnabled { get; }
+        bool IsAutoImportEnabled { get; }
         string AuthorizeUrl(string state);
         Task<ZoomConnectOutcome> ConnectAsync(string userId, string code);
         Task<ZoomConnection?> GetConnectionAsync(string userId);
@@ -35,6 +36,8 @@ namespace MeetingWeb.Services
         Task<IReadOnlyList<ZoomRecording>> ListRecentAsync(string userId);
         Task<ZoomImportResult> ImportAsync(string userId, string uuid);
         Task<bool> SetAutoImportAsync(string userId, int? workspaceId);
+        // Hangfire job queued by Zoom's notification (ADR-0012); receives only Zoom's ids, never a token.
+        Task AutoImportAsync(string zoomUserId, string uuid);
     }
 
     public class ZoomService : IZoomService
@@ -74,6 +77,7 @@ namespace MeetingWeb.Services
         }
 
         public bool IsEnabled => _options.IsEnabled;
+        public bool IsAutoImportEnabled => _options.IsWebhookEnabled;
 
         // A refresh mark older than this was left by a process that stopped: it outlives any token request (which is
         // cut off after TokenTimeoutSeconds), so a refresh still running elsewhere always keeps its mark.
@@ -198,6 +202,7 @@ namespace MeetingWeb.Services
         // ADR-0012: null turns automatic import off; a team is accepted only if the user is a member (ADR-0005).
         public async Task<bool> SetAutoImportAsync(string userId, int? workspaceId)
         {
+            if (workspaceId != null && !IsAutoImportEnabled) return false;
             if (workspaceId != null && !await _db.WorkspaceMembers.AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == userId)) return false;
             return await _db.ZoomConnections.Where(z => z.UserId == userId)
                 .ExecuteUpdateAsync(s => s.SetProperty(z => z.AutoImportWorkspaceId, workspaceId)) > 0;
@@ -217,18 +222,66 @@ namespace MeetingWeb.Services
             // Same check as the upload page (S7): the remembered team is re-checked against current membership.
             var workspaceId = (await _activeWorkspace.GetActiveMembershipAsync(userId))?.WorkspaceId;
             if (workspaceId == null) return new(ZoomImportOutcome.NoTeam);
+            return await ImportIntoAsync(userId, uuid, workspaceId.Value, requiredHostId: null);
+        }
 
-            var existing = await ExistingAsync(workspaceId.Value, uuid);
+        // ADR-0012: runs for every connection of this Zoom user that has automatic import on. Ends quietly when there
+        // is nothing to take; only a temporary Zoom failure is thrown, so Hangfire tries again.
+        public async Task AutoImportAsync(string zoomUserId, string uuid)
+        {
+            if (!IsAutoImportEnabled || string.IsNullOrEmpty(uuid) || uuid.Length > 200) return;
+            var connections = await _db.ZoomConnections.AsNoTracking()
+                .Where(z => z.ZoomUserId == zoomUserId && z.AutoImportWorkspaceId != null)
+                .Select(z => new { z.UserId, z.ZoomUserId, WorkspaceId = z.AutoImportWorkspaceId!.Value }).ToListAsync();
+            foreach (var c in connections)
+            {
+                ZoomImportResult result;
+                if (!await _db.WorkspaceMembers.AnyAsync(m => m.WorkspaceId == c.WorkspaceId && m.UserId == c.UserId))
+                {
+                    result = new(ZoomImportOutcome.LeftTeam);
+                }
+                else
+                {
+                    try
+                    {
+                        result = await ImportIntoAsync(c.UserId, uuid, c.WorkspaceId, requiredHostId: c.ZoomUserId);
+                    }
+                    catch (Exception ex) when (ex is ZoomGrantRejectedException or ZoomNotConnectedException)
+                    {
+                        // The connection is gone (Zoom rejected it, or it was removed meanwhile): nothing to retry.
+                        _logger.LogWarning("Zoom automatic import for user {UserId} stopped: no working connection.", c.UserId);
+                        continue;
+                    }
+                }
+
+                if (result.Outcome == ZoomImportOutcome.LeftTeam)
+                {
+                    // Turned off only if it still points at the team the user left.
+                    await _db.ZoomConnections.Where(z => z.UserId == c.UserId && z.AutoImportWorkspaceId == c.WorkspaceId)
+                        .ExecuteUpdateAsync(s => s.SetProperty(z => z.AutoImportWorkspaceId, (int?)null));
+                }
+                if (result.Outcome is ZoomImportOutcome.NoAudio or ZoomImportOutcome.SeveralParts or ZoomImportOutcome.TooLarge or ZoomImportOutcome.LeftTeam)
+                    _logger.LogWarning("Zoom automatic import for user {UserId} took nothing: {Outcome}.", c.UserId, result.Outcome);
+                else
+                    _logger.LogInformation("Zoom automatic import for user {UserId}: {Outcome}.", c.UserId, result.Outcome);
+            }
+        }
+
+        // requiredHostId: automatic import takes only recordings the connected Zoom user hosted, as Zoom itself says.
+        private async Task<ZoomImportResult> ImportIntoAsync(string userId, string uuid, int workspaceId, string? requiredHostId)
+        {
+            var existing = await ExistingAsync(workspaceId, uuid);
             if (existing != null) return new(ZoomImportOutcome.AlreadyImported, existing);
 
             // Always asked again from Zoom: nothing about the recording is taken from the page.
             var recording = await AsUserAsync(userId, token => _api.GetRecordingAsync(token, uuid));
             if (recording == null || string.IsNullOrEmpty(recording.Uuid) || recording.Uuid.Length > 200) return new(ZoomImportOutcome.NotFound);
+            if (requiredHostId != null && recording.HostId != requiredHostId) return new(ZoomImportOutcome.NotHost);
             // Zoom also accepts the numeric meeting id here; the recording is stored and matched by its UUID.
             var recordingId = recording.Uuid;
             if (recordingId != uuid)
             {
-                existing = await ExistingAsync(workspaceId.Value, recordingId);
+                existing = await ExistingAsync(workspaceId, recordingId);
                 if (existing != null) return new(ZoomImportOutcome.AlreadyImported, existing);
             }
             if (recording.AudioFiles.Count == 0) return new(ZoomImportOutcome.NoAudio);
@@ -273,7 +326,7 @@ namespace MeetingWeb.Services
             var meeting = new Meeting
             {
                 Title = string.IsNullOrWhiteSpace(recording.Topic) ? "Zoom toplantısı" : recording.Topic,
-                WorkspaceId = workspaceId.Value,
+                WorkspaceId = workspaceId,
                 Status = MeetingStatus.Processing,
                 Source = MeetingSource.Zoom,
                 ExternalRecordingId = recordingId,
@@ -290,7 +343,7 @@ namespace MeetingWeb.Services
                 // The same recording was taken into this team a moment ago (unique index): keep that one.
                 _db.ChangeTracker.Clear();
                 _audioStorage.Delete(storedName);
-                existing = await ExistingAsync(workspaceId.Value, recordingId);
+                existing = await ExistingAsync(workspaceId, recordingId);
                 if (existing == null) throw;
                 return new(ZoomImportOutcome.AlreadyImported, existing);
             }

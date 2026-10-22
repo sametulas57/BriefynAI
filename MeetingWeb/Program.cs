@@ -118,6 +118,7 @@ try
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddScoped<ZoomApiClient>();
     builder.Services.AddScoped<IZoomService, ZoomService>();
+    builder.Services.AddScoped<ZoomWebhookHandler>();
     builder.Services.AddTransient<IEmailService, EmailService>();
     builder.Services.AddHttpContextAccessor();
 
@@ -136,6 +137,12 @@ try
         options.OnRejected = (rejected, _) =>
         {
             var http = rejected.HttpContext;
+            // Zoom's notifications get the bare 429.
+            if (http.Request.Path.Equals(ZoomWebhookHandler.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                ZoomWebhookHandler.SkipStatusPage(http);
+                return ValueTask.CompletedTask;
+            }
             var tempData = http.RequestServices.GetRequiredService<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory>().GetTempData(http);
             tempData["ErrorMessage"] = "Bu saat içinde çok fazla rapor gönderdiniz. Lütfen biraz sonra tekrar deneyin.";
             tempData.Save();
@@ -147,6 +154,15 @@ try
         };
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         {
+            // ADR-0012: the public Zoom endpoint, per caller address.
+            if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Equals(ZoomWebhookHandler.Path, StringComparison.OrdinalIgnoreCase))
+                return RateLimitPartition.GetFixedWindowLimiter("zoom-webhook:" + context.Connection.RemoteIpAddress, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Zoom:WebhookLimitPerMinute", 60),
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                });
+
             var isShare = HttpMethods.IsPost(context.Request.Method) &&
                           context.Request.Path.Equals("/Details", StringComparison.OrdinalIgnoreCase) &&
                           string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase);
@@ -294,6 +310,7 @@ try
     }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");
+    app.MapPost(ZoomWebhookHandler.Path, (HttpRequest request, ZoomWebhookHandler handler) => handler.HandleAsync(request));
     app.MapRazorPages();
 
     Log.Information("Web uygulaması dinlemeye başladı...");

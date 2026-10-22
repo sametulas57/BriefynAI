@@ -115,6 +115,8 @@ services:
       - Zoom__ClientSecret=${ZOOM_CLIENT_SECRET:-}
       # Zoom yerel adres kabul etmiyor; tünelle denerken https adresi buradan verilir (ör. trycloudflare).
       - Zoom__RedirectUri=${ZOOM_REDIRECT_URI:-http://127.0.0.1:8080/Zoom/Callback}
+      # ADR-0012: Zoom bildirimlerinin gizli anahtarı (Secret Token); boşsa otomatik alma kapalı.
+      - Zoom__WebhookSecret=${ZOOM_WEBHOOK_SECRET:-}
       
       # 1. SİNYAL: Docker içindeki .NET motorunun dosya değişikliklerini anlık yakalamasını tetikler
       - DOTNET_USE_POLLING_FILE_WATCHER=1

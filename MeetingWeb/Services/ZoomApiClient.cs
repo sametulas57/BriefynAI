@@ -23,7 +23,7 @@ namespace MeetingWeb.Services
     public record ZoomTokens(string AccessToken, string RefreshToken, DateTime ExpiresAtUtc, string Scope);
     public record ZoomUser(string Id, string Email);
     public record ZoomRecordingFile(string FileType, string DownloadUrl, long FileSize);
-    public record ZoomRecording(string Uuid, string Topic, DateTime StartTimeUtc, int DurationMinutes, IReadOnlyList<ZoomRecordingFile> Files)
+    public record ZoomRecording(string Uuid, string Topic, DateTime StartTimeUtc, int DurationMinutes, IReadOnlyList<ZoomRecordingFile> Files, string HostId = "")
     {
         // A recording stopped and started again during the meeting has one audio file per part.
         public IReadOnlyList<ZoomRecordingFile> AudioFiles => Files.Where(f => f.FileType == "M4A" && !string.IsNullOrEmpty(f.DownloadUrl)).ToList();
@@ -244,7 +244,8 @@ namespace MeetingWeb.Services
             m.Topic ?? "",
             m.StartTime?.ToUniversalTime() ?? DateTime.MinValue,
             m.Duration,
-            (m.RecordingFiles ?? new()).Select(f => new ZoomRecordingFile(f.FileType ?? "", f.DownloadUrl ?? "", f.FileSize)).ToList());
+            (m.RecordingFiles ?? new()).Select(f => new ZoomRecordingFile(f.FileType ?? "", f.DownloadUrl ?? "", f.FileSize)).ToList(),
+            m.HostId ?? "");
 
         private sealed class TokenDto
         {
@@ -270,6 +271,7 @@ namespace MeetingWeb.Services
         {
             public string? Uuid { get; set; }
             public string? Topic { get; set; }
+            public string? HostId { get; set; }
             public DateTime? StartTime { get; set; }
             public int Duration { get; set; }
             public List<FileDto>? RecordingFiles { get; set; }

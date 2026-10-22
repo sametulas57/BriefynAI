@@ -9,6 +9,8 @@ namespace MeetingWeb.Tests.Infrastructure
     public class FakeBackgroundJobClient : IBackgroundJobClient
     {
         public ConcurrentBag<Job> Created { get; } = new();
+        // The state each job was created in (enqueued now, or scheduled for later).
+        public ConcurrentDictionary<Job, IState> States { get; } = new();
 
         // The next Create throws, like Hangfire when its storage is unreachable.
         public bool FailNext { get; set; }
@@ -21,6 +23,7 @@ namespace MeetingWeb.Tests.Infrastructure
                 throw new InvalidOperationException("job storage unavailable");
             }
             Created.Add(job);
+            States[job] = state;
             return Guid.NewGuid().ToString();
         }
 
