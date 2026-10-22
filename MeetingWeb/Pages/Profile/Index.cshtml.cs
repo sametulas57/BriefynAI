@@ -39,6 +39,9 @@ namespace MeetingWeb.Pages.Profile
         public string Initials { get; set; } = "";
         public string ProfilePictureUrl { get; set; } = "";
         public bool ZoomEnabled { get; set; }
+        public bool ZoomAutoImportEnabled { get; set; }
+        public int? ZoomAutoImportWorkspaceId { get; set; }
+        public List<MeetingWeb.Models.Workspace> ZoomWorkspaces { get; set; } = new();
         // Email of the linked Zoom account; null when not connected.
         public string? ZoomEmail { get; set; }
 
@@ -248,6 +251,19 @@ namespace MeetingWeb.Pages.Profile
             return RedirectToPage();
         }
 
+        public async Task<IActionResult> OnPostZoomAutoImportAsync(int? workspaceId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+            if (await _zoom.SetAutoImportAsync(user.Id, workspaceId))
+                TempData["StatusMessage"] = "Otomatik alma ayarı kaydedildi.";
+            else
+                TempData["ErrorMessage"] = "Bu ekip seçilemedi.";
+
+            return RedirectToPage("/Profile/Index");
+        }
+
         // --- HELPER METOD ---
         private async Task LoadProfileDataAsync(ApplicationUser user)
         {
@@ -255,7 +271,15 @@ namespace MeetingWeb.Pages.Profile
             ProfilePictureUrl = UserDisplay.AvatarUrl(user.AvatarFileName);
             Initials = UserDisplay.Initials(user.FullName);
             ZoomEnabled = _zoom.IsEnabled;
-            ZoomEmail = (await _zoom.GetConnectionAsync(user.Id))?.ZoomEmail;
+            var connection = await _zoom.GetConnectionAsync(user.Id);
+            ZoomEmail = connection?.ZoomEmail;
+            ZoomAutoImportEnabled = _zoom.IsAutoImportEnabled;
+            ZoomAutoImportWorkspaceId = connection?.AutoImportWorkspaceId;
+            ZoomWorkspaces = await _db.WorkspaceMembers.AsNoTracking()
+                .Where(m => m.UserId == user.Id)
+                .Select(m => m.Workspace!)
+                .OrderBy(w => w.Name)
+                .ToListAsync();
         }
 
         // Saves the profile; on failure (the phone number was just taken by another account, or the account changed
