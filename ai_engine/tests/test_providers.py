@@ -201,11 +201,18 @@ def test_segmented_transcription_drops_prompt_and_known_hallucinations(monkeypat
     assert result == "Bucky Barnes: Gerçek sözler burada."
 
 
-def test_segmented_transcription_keeps_a_spoken_term_and_drops_other_caption_credits(monkeypatch, tmp_path):
+def test_segmented_transcription_keeps_real_speech_that_looks_like_the_hint_or_a_caption(monkeypatch, tmp_path):
     source = fake_audio(monkeypatch, tmp_path)
-    client = FakeTranscriptionClient(segments=[(0, 1, "Docker."), (1, 2, "Altyazı: Ayşe Yılmaz"), (2, 3, "Bug var.")])
-    result = GroqTranscriber(client, "whisper").transcribe(str(source), "WEBVTT\n\n00:00:00.000 --> 00:00:03.000\nBucky Barnes: Merhaba")
-    assert result == "Bucky Barnes: Docker. Bug var."
+    client = FakeTranscriptionClient(segments=[(0, 1, "Docker."), (1, 2, "Docker, Kubernetes, GitHub."),
+                                               (2, 3, "Altyazı desteğini ekleyelim."), (3, 4, "Altyazı M.K.")])
+    result = GroqTranscriber(client, "whisper").transcribe(str(source), "WEBVTT\n\n00:00:00.000 --> 00:00:04.000\nBucky Barnes: Merhaba")
+    assert result == "Bucky Barnes: Docker. Docker, Kubernetes, GitHub. Altyazı desteğini ekleyelim."
+
+
+def test_plain_transcription_drops_a_final_caption_credit_with_initials(monkeypatch, tmp_path):
+    source = fake_audio(monkeypatch, tmp_path)
+    client = FakeTranscriptionClient(plain=["Gerçek konuşma. Altyazı M.K."])
+    assert GroqTranscriber(client, "whisper").transcribe(str(source)) == "Gerçek konuşma."
 
 
 def test_plain_transcription_drops_final_hallucination_only(monkeypatch, tmp_path):

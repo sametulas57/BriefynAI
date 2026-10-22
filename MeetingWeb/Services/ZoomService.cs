@@ -54,7 +54,8 @@ namespace MeetingWeb.Services
 
         public static bool NeedsReconnect(string? grantedScopes)
         {
-            if (grantedScopes == null) return false;
+            // Unknown (linked before scopes were stored): asking once is safer than missing events silently.
+            if (grantedScopes == null) return true;
             var granted = grantedScopes.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             return !RequiredScopes.All(granted.Contains);
         }
