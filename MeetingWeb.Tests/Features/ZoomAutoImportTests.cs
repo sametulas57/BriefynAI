@@ -159,10 +159,10 @@ public class ZoomAutoImportTests
 
     // Signs `signed` the way Zoom does and sends `sent` (the same body unless a test changes it).
     private static async Task<HttpResponseMessage> PostAsync(BriefynFactory app, string signed, string? sent = null,
-        DateTimeOffset? at = null, bool sign = true)
+        DateTimeOffset? at = null, bool sign = true, string path = "/Zoom/Webhook")
     {
         var timestamp = (at ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds().ToString();
-        var request = new HttpRequestMessage(HttpMethod.Post, "/Zoom/Webhook")
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
         {
             Content = new StringContent(sent ?? signed, Encoding.UTF8, "application/json")
         };
@@ -300,6 +300,8 @@ public class ZoomAutoImportTests
         var limited = await PostAsync(app, body);
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
         Assert.Null(limited.Headers.Location);
+        // The same endpoint written with a trailing slash shares the limit.
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await PostAsync(app, body, path: "/Zoom/Webhook/")).StatusCode);
     }
 
     // --- The job (criteria 5–11) ---
