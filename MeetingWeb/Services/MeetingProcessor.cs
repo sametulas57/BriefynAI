@@ -203,6 +203,7 @@ namespace MeetingWeb.Services
             meeting.Points.RemoveAll(p => p.Source == EntrySource.Ai);
             AddPoints(MeetingPointKind.Topic, data.GorusulenKonular);
             AddPoints(MeetingPointKind.Decision, data.AlinanKararlar);
+            AddPoints(MeetingPointKind.Pending, data.BekleyenKonular);
 
             // Earlier AI tasks are replaced too, except those someone has assigned or completed: regenerating the
             // summary must not erase that work.

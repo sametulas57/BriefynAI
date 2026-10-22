@@ -275,6 +275,8 @@ namespace MeetingWeb.Pages
 
         public Task<IActionResult> OnPostAddDecisionAsync(int meetingId, string decision) => AddPointAsync(meetingId, MeetingPointKind.Decision, decision);
 
+        public Task<IActionResult> OnPostAddPendingAsync(int meetingId, string pending) => AddPointAsync(meetingId, MeetingPointKind.Pending, pending);
+
         // A manual line is its own row, so it never races with a summary being regenerated.
         private async Task<IActionResult> AddPointAsync(int meetingId, MeetingPointKind kind, string text)
         {

@@ -28,6 +28,9 @@ namespace MeetingWeb.Models
         [JsonPropertyName("alinan_kararlar")]
         public List<string> AlinanKararlar { get; set; } = new();
 
+        [JsonPropertyName("bekleyen_konular")]
+        public List<string>? BekleyenKonular { get; set; } = new();
+
         [JsonPropertyName("aksiyon_maddeleri")]
         public List<string> AksiyonMaddeleri { get; set; } = new();
     }

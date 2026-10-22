@@ -393,6 +393,49 @@
         </div>
     }
 
+    @if (Model.Meeting.Status == MeetingWeb.Models.MeetingStatus.Completed)
+    {
+        var pendingPoints = Model.Meeting.PointsOf(MeetingWeb.Models.MeetingPointKind.Pending).ToList();
+        <details class="soft-card mt-5 p-4">
+            <summary class="fw-bold text-dark" style="cursor: pointer;"><i class="bi bi-hourglass-split me-2 text-primary"></i>Bekleyen konular (@pendingPoints.Count)</summary>
+            @if (pendingPoints.Count == 0)
+            {
+                <p class="text-muted small mt-3 mb-0">Bu toplantıda karara bağlanmayan ya da ertelenen konu çıkmadı.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0 mt-3">
+                    @foreach (var pending in pendingPoints)
+                    {
+                        <li class="d-flex align-items-start gap-2 mb-3 pb-3 border-bottom border-light">
+                            <i class="bi bi-dot text-primary fs-4 mt-n1 flex-shrink-0"></i>
+                            <span class="text-dark flex-grow-1" style="line-height: 1.5; font-size: 0.95rem;">@pending.Text</span>
+                            @if (pending.Source == MeetingWeb.Models.EntrySource.Manual)
+                            {
+                                var addedBy = pending.CreatedByUserId;
+                                if (addedBy == null)
+                                {
+                                    <span class="small text-muted" title="Ekleyen: Silinmiş üye">Elle eklendi</span>
+                                }
+                                else if (Model.UserProfiles.TryGetValue(addedBy, out var pendingProfile))
+                                {
+                                    <span class="small text-muted" title="Ekleyen: @pendingProfile.FullName">Elle eklendi</span>
+                                }
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            <div class="p-3 bg-soft-light mt-3" style="border-radius: 1.25rem;">
+                <form method="post" asp-page-handler="AddPending" class="d-flex gap-2 align-items-center">
+                    <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                    <input type="text" name="pending" class="form-control border-0 shadow-none bg-white rounded-pill px-3 small" placeholder="Bekleyen konu ekle..." required style="height: 38px;" />
+                    <button type="submit" class="btn btn-white text-primary border shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bi bi-plus-lg"></i></button>
+                </form>
+            </div>
+        </details>
+    }
+
     @if (!string.IsNullOrWhiteSpace(Model.Meeting.Transcript?.Text))
     {
         <details class="soft-card mt-5 p-4">
