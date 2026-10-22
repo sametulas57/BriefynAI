@@ -15,6 +15,63 @@ namespace MeetingWeb.Tests.Features;
 // PRD 2026-10-22-zoom-asama-2 (ADR-0012): Zoom's notifications import new recordings without pressing "Al".
 public class ZoomAutoImportTests
 {
+    [Fact]
+    public async Task Profile_shows_auto_import_only_when_enabled_and_connected()
+    {
+        using (var app = await WebhookAppAsync(secret: false))
+        {
+            Connect(app, app.Seed.AliceId);
+            var html = await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Profile");
+            Assert.DoesNotContain("Yeni Zoom kayıtlarını kendiliğinden al", html);
+        }
+
+        using (var app = await WebhookAppAsync())
+        {
+            Connect(app, app.Seed.AliceId);
+            var aliceHtml = await app.ClientFor(app.Seed.AliceId).GetStringAsync("/Profile");
+            var bobHtml = await app.ClientFor(app.Seed.BobId).GetStringAsync("/Profile");
+            Assert.Contains("Yeni Zoom kayıtlarını kendiliğinden al", aliceHtml);
+            Assert.DoesNotContain("Yeni Zoom kayıtlarını kendiliğinden al", bobHtml);
+        }
+    }
+
+    [Fact]
+    public async Task Profile_auto_import_form_saves_and_closes_selection()
+    {
+        using var app = await WebhookAppAsync();
+        Connect(app, app.Seed.AliceId);
+        var client = app.ClientFor(app.Seed.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+
+        var saved = await FormHelpers.PostFormAsync(client, "/Profile?handler=ZoomAutoImport", token,
+            ("workspaceId", app.Seed.WorkspaceA.ToString()));
+        Assert.Equal("/Profile", saved.Headers.Location!.OriginalString);
+        Assert.Equal(app.Seed.WorkspaceA, AutoImportOf(app, app.Seed.AliceId));
+        Assert.Contains("Otomatik alma ayarı kaydedildi.", WebUtility.HtmlDecode(await client.GetStringAsync("/Profile")));
+
+        token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        var closed = await FormHelpers.PostFormAsync(client, "/Profile?handler=ZoomAutoImport", token, ("workspaceId", ""));
+        Assert.Equal("/Profile", closed.Headers.Location!.OriginalString);
+        Assert.Null(AutoImportOf(app, app.Seed.AliceId));
+    }
+
+    [Fact]
+    public async Task Profile_rejects_another_teams_id_and_does_not_list_its_name()
+    {
+        using var app = await WebhookAppAsync();
+        Connect(app, app.Seed.AliceId);
+        var client = app.ClientFor(app.Seed.AliceId);
+        var html = await client.GetStringAsync("/Profile");
+        Assert.DoesNotContain("B Şirketi", html);
+
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        var response = await FormHelpers.PostFormAsync(client, "/Profile?handler=ZoomAutoImport", token,
+            ("workspaceId", app.Seed.WorkspaceB.ToString()));
+        Assert.Equal("/Profile", response.Headers.Location!.OriginalString);
+        Assert.Null(AutoImportOf(app, app.Seed.AliceId));
+        Assert.Contains("Bu ekip seçilemedi.", WebUtility.HtmlDecode(await client.GetStringAsync("/Profile")));
+    }
+
     private static Task<BriefynFactory> AppAsync() => WebhookAppAsync();
 
     private static void Connect(BriefynFactory app, string userId, int? autoImportWorkspaceId = null) => app.WithDb(db =>

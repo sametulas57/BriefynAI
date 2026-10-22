@@ -128,6 +128,23 @@
                     else
                     {
                         <p class="text-muted">Bağlı Zoom hesabı: <strong class="text-dark">@Model.ZoomEmail</strong></p>
+                        @if (Model.ZoomAutoImportEnabled)
+                        {
+                            <form method="post" asp-page-handler="ZoomAutoImport" class="mb-3">
+                                <label for="workspaceId" class="form-label fw-bold text-muted small">Yeni Zoom kayıtlarını kendiliğinden al</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <select id="workspaceId" name="workspaceId" class="form-select rounded-pill">
+                                        <option value="">Kapalı</option>
+                                        @foreach (var workspace in Model.ZoomWorkspaces)
+                                        {
+                                            <option value="@workspace.Id" selected="@(Model.ZoomAutoImportWorkspaceId == workspace.Id)">@workspace.Name</option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-outline-primary fw-bold rounded-pill px-4">Kaydet</button>
+                                </div>
+                                <small class="d-block text-muted mt-2">Açıksa Zoom'da buluta kaydettiğiniz ve ev sahibi olduğunuz toplantılar, kayıt bitince seçtiğiniz ekibe kendiliğinden gelir.</small>
+                            </form>
+                        }
                         <div class="d-flex justify-content-end flex-wrap gap-2">
                             <a asp-page="/Zoom/Recordings" class="btn btn-outline-primary fw-bold rounded-pill px-4">Zoom kayıtlarım</a>
                             <form method="post" asp-page="/Zoom/Connect" asp-page-handler="Disconnect" class="m-0" data-confirm-title="Zoom bağlantısını kes" data-confirm-button="Evet, kes" data-confirm="Briefyn artık Zoom kayıtlarını göremez. Daha önce alınan toplantılar yerinde kalır.">
