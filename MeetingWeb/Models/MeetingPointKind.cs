@@ -4,6 +4,8 @@ namespace MeetingWeb.Models
     public enum MeetingPointKind
     {
         Topic = 1,
-        Decision = 2
+        Decision = 2,
+        // Discussed but not settled: postponed, or waiting for an answer or information.
+        Pending = 3
     }
 }
