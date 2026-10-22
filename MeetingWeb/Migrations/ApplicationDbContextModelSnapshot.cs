@@ -513,6 +513,9 @@ namespace MeetingWeb.Migrations
                     b.Property<DateTime>("AccessTokenExpiresAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("AutoImportWorkspaceId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("ConnectedAtUtc")
                         .HasColumnType("datetime2");
 
@@ -545,8 +548,12 @@ namespace MeetingWeb.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AutoImportWorkspaceId");
+
                     b.HasIndex("UserId")
                         .IsUnique();
+
+                    b.HasIndex("ZoomUserId");
 
                     b.ToTable("ZoomConnections");
                 });
@@ -877,11 +884,18 @@ namespace MeetingWeb.Migrations
 
             modelBuilder.Entity("MeetingWeb.Models.ZoomConnection", b =>
                 {
+                    b.HasOne("MeetingWeb.Models.Workspace", "AutoImportWorkspace")
+                        .WithMany()
+                        .HasForeignKey("AutoImportWorkspaceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("AutoImportWorkspace");
 
                     b.Navigation("User");
                 });

@@ -27,6 +27,10 @@ namespace MeetingWeb.Models
 
         public DateTime ConnectedAtUtc { get; set; } = DateTime.UtcNow;
 
+        // Team that new recordings go to without pressing "Al" (ADR-0012); null = off. Cleared when the team is deleted.
+        public int? AutoImportWorkspaceId { get; set; }
+        public Workspace? AutoImportWorkspace { get; set; }
+
         // Set while one server process refreshes the tokens, so another process does not use the same refresh token
         // at the same time (Zoom would reject the second one). Ignored after a minute.
         public DateTime? RefreshStartedAtUtc { get; set; }
