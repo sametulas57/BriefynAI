@@ -66,6 +66,8 @@ try
 
     // --- 3. Application Settings ---
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+    builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection("Reminders"));
+    builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
     // --- 4. Python API Communication ---
     builder.Services.AddHttpClient(MeetingProcessor.PythonApiClient, (sp, client) =>
@@ -115,6 +117,7 @@ try
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
     builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+    builder.Services.AddScoped<IOverdueReminderService, OverdueReminderService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddScoped<IMeetingSeriesService, MeetingSeriesService>();
     builder.Services.AddScoped<ISeriesAgendaService, SeriesAgendaService>();
@@ -311,6 +314,9 @@ try
             .AddOrUpdate<ILogCleanupService>("log-cleanup", s => s.RunAsync(), Cron.Daily());
         app.Services.GetRequiredService<IRecurringJobManager>()
             .AddOrUpdate<IAccountDeletionService>("account-deletion", s => s.RunAsync(), Cron.Daily());
+        var reminderHour = builder.Configuration.GetValue<int>("Reminders:Hour", 9);
+        app.Services.GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<IOverdueReminderService>("overdue-reminders", s => s.RunAsync(), Cron.Daily(reminderHour), new RecurringJobOptions { TimeZone = DisplayTime.Zone });
     }
 
     app.MapHub<MeetingWeb.Hubs.MeetingHub>("/meetingHub");
