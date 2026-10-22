@@ -18,6 +18,11 @@ namespace MeetingWeb.Models
         [MaxLength(256)]
         public string ZoomEmail { get; set; } = string.Empty;
 
+        // Permissions Zoom granted to this link (space-separated); null = not known yet (older link, filled on the next
+        // token refresh). Not secret, so stored as plain text.
+        [MaxLength(1000)]
+        public string? GrantedScopes { get; set; }
+
         public string AccessToken { get; set; } = string.Empty;
 
         // Zoom hands out a new one on every refresh; only the latest works.

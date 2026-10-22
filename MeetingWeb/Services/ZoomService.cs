@@ -43,12 +43,21 @@ namespace MeetingWeb.Services
     public class ZoomService : IZoomService
     {
         // Read-only permissions the app needs (ADR-0011); user:read:user is for showing which Zoom account is linked.
+        // cloud_recording:read:recording is needed for the recording.completed event.
         public static readonly string[] RequiredScopes =
         {
             "cloud_recording:read:list_user_recordings",
             "cloud_recording:read:list_recording_files",
-            "user:read:user"
+            "user:read:user",
+            "cloud_recording:read:recording"
         };
+
+        public static bool NeedsReconnect(string? grantedScopes)
+        {
+            if (grantedScopes == null) return false;
+            var granted = grantedScopes.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            return !RequiredScopes.All(granted.Contains);
+        }
 
         private static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);
         // One refresh (or revoke) at a time per user inside this process; RowVersion covers other processes.
@@ -498,6 +507,7 @@ namespace MeetingWeb.Services
             connection.AccessToken = tokens.AccessToken;
             connection.RefreshToken = tokens.RefreshToken;
             connection.AccessTokenExpiresAtUtc = tokens.ExpiresAtUtc;
+            if (!string.IsNullOrWhiteSpace(tokens.Scope)) connection.GrantedScopes = tokens.Scope;
         }
     }
 }

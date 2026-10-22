@@ -519,6 +519,10 @@ namespace MeetingWeb.Migrations
                     b.Property<DateTime>("ConnectedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("GrantedScopes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<DateTime?>("RefreshStartedAtUtc")
                         .HasColumnType("datetime2");
 

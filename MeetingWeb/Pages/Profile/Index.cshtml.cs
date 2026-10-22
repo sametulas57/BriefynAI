@@ -44,6 +44,7 @@ namespace MeetingWeb.Pages.Profile
         public List<MeetingWeb.Models.Workspace> ZoomWorkspaces { get; set; } = new();
         // Email of the linked Zoom account; null when not connected.
         public string? ZoomEmail { get; set; }
+        public bool ZoomNeedsReconnect { get; set; }
 
         [BindProperty]
         public ProfileInputModel ProfileInput { get; set; } = new();
@@ -205,6 +206,10 @@ namespace MeetingWeb.Pages.Profile
                 var base64Data = base64Image.Split(',')[1];
                 var bytes = Convert.FromBase64String(base64Data);
 
+                // S10: the file is served publicly as .jpg, so only JPEG content (FF D8 FF) is accepted.
+                if (bytes.Length < 3 || bytes[0] != 0xFF || bytes[1] != 0xD8 || bytes[2] != 0xFF)
+                    return new JsonResult(new { success = false, message = "Lütfen bir fotoğraf seçin." });
+
                 // Ensure the physical directory structure exists.
                 var uploadsFolder = AvatarFolder;
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
@@ -273,6 +278,7 @@ namespace MeetingWeb.Pages.Profile
             ZoomEnabled = _zoom.IsEnabled;
             var connection = await _zoom.GetConnectionAsync(user.Id);
             ZoomEmail = connection?.ZoomEmail;
+            ZoomNeedsReconnect = connection != null && ZoomService.NeedsReconnect(connection.GrantedScopes);
             ZoomAutoImportEnabled = _zoom.IsAutoImportEnabled;
             ZoomAutoImportWorkspaceId = connection?.AutoImportWorkspaceId;
             ZoomWorkspaces = await _db.WorkspaceMembers.AsNoTracking()

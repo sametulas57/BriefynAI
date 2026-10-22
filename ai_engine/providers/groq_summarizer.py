@@ -15,7 +15,9 @@ SYSTEM = (
     "bariz olanları düzelt, emin olmadığını olduğu gibi bırak. Sonradan değiştirilen kararlarda son hâli yaz; "
     "önerilip kabul edilmeyen ya da ertelenen konuları karar diye yazma. Aksiyonun sahibi ya da süresi "
     "söylenmemişse null bırak. Türkçe yaz. Dökümde satırlar Ad: söz biçiminde olabilir; "
-    "aksiyonun sahibini bu adlardan yalnız dökümde açıkça söylendiyse yaz."
+    "aksiyonun sahibini bu adlardan yalnız dökümde açıkça söylendiyse yaz. Toplantının işiyle ilgisi olmayan yan sohbet "
+    "(maç, hava durumu, selamlaşma/vedalaşma, şaka, özel hayat) görüşülen konulara, kararlara ve aksiyonlara yazılmaz; "
+    "yan sohbetin içinde iş ile ilgili bir karar ya da görev geçerse o iş kısmı yazılır."
 )
 
 SCHEMA = {
@@ -33,7 +35,9 @@ SCHEMA = {
 
 MERGE_INSTRUCTION = (
     "Aşağıda aynı toplantının ardışık bölümlerinden çıkarılmış kısmi özetler var. Bunları tek bir özette birleştir: "
-    "tekrarları ayıkla, sonraki bölümde değişen kararlarda son hâli yaz, kısmi özetlerde olmayan hiçbir şey ekleme."
+    "tekrarları ayıkla, sonraki bölümde değişen kararlarda son hâli yaz, kısmi özetlerde olmayan hiçbir şey ekleme. "
+    "Toplantının işiyle ilgisi olmayan yan sohbet (maç, hava durumu, selamlaşma/vedalaşma, şaka, özel hayat) görüşülen "
+    "konulara, kararlara ve aksiyonlara yazma; yan sohbetin içindeki iş ile ilgili karar ya da görevi koru."
 )
 
 

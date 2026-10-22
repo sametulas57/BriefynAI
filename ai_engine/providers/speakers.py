@@ -1,6 +1,58 @@
 """Read Zoom VTT cues and attach their speaker names to timed Groq segments."""
 from dataclasses import dataclass
 import re
+import unicodedata
+
+
+OLD_TECH_INSTRUCTION = "İngilizce teknik terimleri orijinal yazımıyla koru"
+HALLUCINATED_PHRASES = (
+    "Altyazı M.K.",
+    "İzlediğiniz için teşekkür ederim",
+    "İzlediğiniz için teşekkürler",
+    "Abone olmayı unutmayın",
+)
+
+
+def _normalise_text(text: str) -> str:
+    # Turkish dotted/dotless I must not collapse to the wrong letter during case folding.
+    text = text.translate(str.maketrans({"I": "ı", "İ": "i"})).casefold()
+    text = "".join(char for char in unicodedata.normalize("NFKD", text) if not unicodedata.combining(char))
+    return " ".join("".join(char if char.isalnum() else " " for char in text).split())
+
+
+def is_prompt_echo(text: str, prompt: str) -> bool:
+    candidate, hint = _normalise_text(text), _normalise_text(prompt)
+    # A few words of the hint, matched as whole words; a single spoken term such as "Docker" is real speech.
+    echo = len(candidate.split()) >= 3 and f" {candidate} " in f" {hint} "
+    return bool(candidate and (candidate == _normalise_text(OLD_TECH_INSTRUCTION) or candidate == hint or echo))
+
+
+def is_hallucinated_caption(text: str) -> bool:
+    candidate = _normalise_text(text)
+    if not candidate:
+        return False
+    if any(candidate == _normalise_text(phrase) for phrase in HALLUCINATED_PHRASES):
+        return True
+    # Standalone short caption credit, optionally followed by initials/name.
+    return candidate.split()[0] == _normalise_text("Altyazı") and len(candidate.split()) <= 4
+
+
+def clean_segment_text(text: str, prompt: str) -> str:
+    text = text.strip()
+    if is_prompt_echo(text, prompt) or is_hallucinated_caption(text):
+        return ""
+    return text
+
+
+def clean_plain_chunk(text: str, prompt: str) -> str:
+    text = text.strip()
+    if not text or is_prompt_echo(text, prompt):
+        return ""
+    # Only remove a matching final sentence; occurrences inside a sentence are spoken content.
+    spans = list(re.finditer(r"[^.!?…]+[.!?…]*", text))
+    if spans and is_hallucinated_caption(spans[-1].group().strip()):
+        text = text[:spans[-1].start()].rstrip()
+    return text
 
 
 @dataclass(frozen=True)
