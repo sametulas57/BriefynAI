@@ -126,11 +126,14 @@ namespace MeetingWeb.Pages
             return Page();
         }
 
+        public const int NewSeriesChoice = -1;
+
         public async Task<IActionResult> OnPostSetSeriesAsync(int meetingId, int? seriesId, string? newSeriesName)
         {
             if (!await CanAccessAsync(meetingId)) return MeetingUnavailable();
             var userId = _userManager.GetUserId(User);
-            if (!string.IsNullOrWhiteSpace(newSeriesName))
+            // "Yeni seri…" is its own choice, so a blank name is refused instead of reading as "Seri yok".
+            if (seriesId == NewSeriesChoice)
             {
                 var workspaceId = await _context.Meetings.Where(m => m.Id == meetingId).Select(m => m.WorkspaceId).SingleAsync();
                 var created = await _series.CreateAsync(userId, workspaceId, newSeriesName);
@@ -140,11 +143,6 @@ namespace MeetingWeb.Pages
                     return RedirectToPage(new { id = meetingId });
                 }
                 seriesId = created.Id;
-            }
-            else if (newSeriesName != null)
-            {
-                TempData["ErrorMessage"] = "Seri adı boş olamaz ve en çok 100 karakter olabilir.";
-                return RedirectToPage(new { id = meetingId });
             }
 
             var result = await _series.SetMeetingSeriesAsync(userId, meetingId, seriesId);
@@ -351,14 +349,17 @@ namespace MeetingWeb.Pages
         }
 
         // AJAX Handler: Updates the completion status of a task without page reload.
-        public async Task<IActionResult> OnPostToggleTaskAsync(int taskId)
+        // done: the state the user asked for (the agenda only ever closes tasks); without it the task flips.
+        public async Task<IActionResult> OnPostToggleTaskAsync(int taskId, bool? done)
         {
             if (!await _access.CanAccessActionItemAsync(_userManager.GetUserId(User), taskId)) return NotFound();
             var userId = _userManager.GetUserId(User);
             var task = await _context.ActionItems.FindAsync(taskId);
             if (task != null)
             {
-                task.SetDone(!task.IsDone, userId);
+                var target = done ?? !task.IsDone;
+                if (target == task.IsDone) return new JsonResult(new { success = true, isDone = task.IsDone, completedBy = (string?)null });
+                task.SetDone(target, userId);
                 try
                 {
                     await _context.SaveChangesAsync();
