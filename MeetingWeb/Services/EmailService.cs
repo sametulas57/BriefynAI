@@ -131,6 +131,33 @@ namespace MeetingWeb.Services
                 (agenda.IsEmpty ? "<p>Açık iş yok, gündem temiz.</p>" : "") + "</div></div>";
         }
 
+        public async Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks)
+        {
+            using var smtpClient = new SmtpClient(_emailSettings.SmtpServer) { Port = _emailSettings.Port, Credentials = new NetworkCredential(_emailSettings.SenderEmail, _emailSettings.Password), EnableSsl = true };
+            using var mail = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                Subject = "Briefyn AI: Geciken görevlerin var", SubjectEncoding = Encoding.UTF8, HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8, IsBodyHtml = false, Body = BuildOverdueReminderText(fullName, tasks)
+            };
+            mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildOverdueReminderHtml(fullName, tasks), Encoding.UTF8, "text/html"));
+            mail.To.Add(toEmail);
+            await smtpClient.SendMailAsync(mail);
+        }
+
+        public static string BuildOverdueReminderText(string fullName, IReadOnlyList<OverdueTask> tasks)
+        {
+            var text = new StringBuilder().AppendLine($"Merhaba {fullName}, son tarihi geçen görevlerin var:").AppendLine();
+            foreach (var task in tasks)
+                text.AppendLine($"- {task.Text} — {task.MeetingTitle} ({DisplayTime.Format(task.MeetingCreatedAtUtc, "dd MMMM yyyy")}) — {task.DaysOverdue} gün gecikti");
+            text.AppendLine().AppendLine("Briefyn'de Bana Atananlar sayfasından bitti olarak işaretleyebilirsin.")
+                .AppendLine("Bu hatırlatmaları Profil sayfasından kapatabilirsin.");
+            return text.ToString();
+        }
+
+        public static string BuildOverdueReminderHtml(string fullName, IReadOnlyList<OverdueTask> tasks) => $@"
+<div style=""background-color:#f4f7f6;padding:40px 20px;font-family:'Segoe UI',Tahoma,sans-serif""><div style=""max-width:600px;margin:auto;background:#fff;border-radius:12px;overflow:hidden""><div style=""background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:30px;text-align:center;color:white""><h1>Briefyn AI</h1></div><div style=""padding:30px""><h2>Merhaba {Html.Encode(fullName)}, son tarihi geçen görevlerin var:</h2><ul>{string.Join("", tasks.Select(t => $"<li style='margin-bottom:12px'>{Html.Encode(t.Text)}<br><strong>{Html.Encode(t.MeetingTitle)}</strong> ({DisplayTime.Format(t.MeetingCreatedAtUtc, "dd MMMM yyyy")})<br>{t.DaysOverdue} gün gecikti</li>"))}</ul><p>Briefyn'de Bana Atananlar sayfasından bitti olarak işaretleyebilirsin.</p><p>Bu hatırlatmaları Profil sayfasından kapatabilirsin.</p></div></div></div>";
+
         // S8: line breaks in a subject could be used to smuggle extra mail headers; collapse them to spaces.
         public static string BuildSubject(Meeting meeting) =>
             $"Briefyn AI Raporu: {string.Join(' ', (meeting.Title ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))}";

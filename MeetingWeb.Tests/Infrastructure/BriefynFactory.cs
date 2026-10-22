@@ -30,6 +30,8 @@ namespace MeetingWeb.Tests.Infrastructure
         public Dictionary<string, string> ExtraSettings { get; } = new();
         public DbCommandInterceptor? CommandInterceptor { get; init; }
         public IAudioStorage? AudioStorageOverride { get; init; }
+        public IEmailService? EmailServiceOverride { get; init; }
+        public TimeProvider? TimeProviderOverride { get; init; }
         public bool UseCookieAuthentication { get; init; }
 
         // Per-factory folders, so parallel test classes never share files.
@@ -85,6 +87,16 @@ namespace MeetingWeb.Tests.Infrastructure
                 {
                     services.RemoveAll<IAudioStorage>();
                     services.AddSingleton(AudioStorageOverride);
+                }
+                if (EmailServiceOverride != null)
+                {
+                    services.RemoveAll<IEmailService>();
+                    services.AddSingleton(EmailServiceOverride);
+                }
+                if (TimeProviderOverride != null)
+                {
+                    services.RemoveAll<TimeProvider>();
+                    services.AddSingleton(TimeProviderOverride);
                 }
 
                 services.AddSingleton<IBackgroundJobClient>(Jobs);
