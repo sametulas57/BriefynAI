@@ -138,7 +138,7 @@ try
         {
             var http = rejected.HttpContext;
             // Zoom's notifications get the bare 429.
-            if (http.Request.Path.Equals(ZoomWebhookHandler.Path, StringComparison.OrdinalIgnoreCase))
+            if (http.Request.Path.StartsWithSegments(ZoomWebhookHandler.Path))
             {
                 ZoomWebhookHandler.SkipStatusPage(http);
                 return ValueTask.CompletedTask;
@@ -155,7 +155,7 @@ try
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         {
             // ADR-0012: the public Zoom endpoint, per caller address.
-            if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Equals(ZoomWebhookHandler.Path, StringComparison.OrdinalIgnoreCase))
+            if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.StartsWithSegments(ZoomWebhookHandler.Path))
                 return RateLimitPartition.GetFixedWindowLimiter("zoom-webhook:" + context.Connection.RemoteIpAddress, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Zoom:WebhookLimitPerMinute", 60),
