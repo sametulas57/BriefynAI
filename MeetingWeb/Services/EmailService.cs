@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
@@ -67,6 +67,68 @@ namespace MeetingWeb.Services
             mailMessage.To.Add(toEmail);
 
             await smtpClient.SendMailAsync(mailMessage);
+        }
+
+        // The agenda is built when Hangfire runs, so the message reflects the current tasks.
+        public async Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient)
+        {
+            if (UnprotectRecipient(protectedRecipient) is not { } toEmail) return;
+            var series = await _context.MeetingSeries.AsNoTracking().FirstOrDefaultAsync(s => s.Id == seriesId);
+            if (series == null) return;
+            var agenda = await new SeriesAgendaService(_context).BuildAsync(seriesId, DisplayTime.TodayIn(DateTime.UtcNow));
+            using var smtpClient = new SmtpClient(_emailSettings.SmtpServer)
+            {
+                Port = _emailSettings.Port,
+                Credentials = new NetworkCredential(_emailSettings.SenderEmail, _emailSettings.Password),
+                EnableSsl = true
+            };
+            using var message = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                Subject = "Gündem: " + string.Join(' ', series.Name.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)),
+                SubjectEncoding = Encoding.UTF8, HeadersEncoding = Encoding.UTF8, BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false, Body = BuildSeriesAgendaText(series.Name, agenda)
+            };
+            message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildSeriesAgendaHtml(series.Name, agenda), Encoding.UTF8, "text/html"));
+            message.To.Add(toEmail);
+            await smtpClient.SendMailAsync(message);
+        }
+
+        public static string BuildSeriesAgendaText(string name, SeriesAgenda agenda)
+        {
+            var text = new StringBuilder().AppendLine("Sıradaki toplantının gündemi").AppendLine(name).AppendLine();
+            Section("Açık görevler", agenda.OpenTasks.Select(t => t.Text +
+                (t.AssigneeName == null ? "" : " · " + t.AssigneeName) +
+                (t.DueDate == null ? "" : " · " + t.DueDate.Value.ToString("dd MMM yyyy", DisplayTime.Culture)) +
+                (t.OverdueDays == null ? "" : $" · {t.OverdueDays} gün gecikti") +
+                " · " + t.MeetingTitle + " (" + DisplayTime.Format(t.MeetingCreatedAtUtc, "dd MMM yyyy") + ")"));
+            Section("Bekleyen konular", agenda.Pending.Select(p => p.Text));
+            Section("Son kararlar", agenda.Decisions.Select(p => p.Text));
+            if (agenda.IsEmpty) text.AppendLine("Açık iş yok, gündem temiz.");
+            return text.ToString();
+            void Section(string title, IEnumerable<string> items)
+            {
+                text.AppendLine(title);
+                foreach (var item in items) text.AppendLine("- " + item);
+                text.AppendLine();
+            }
+        }
+
+        public static string BuildSeriesAgendaHtml(string name, SeriesAgenda agenda)
+        {
+            string Section(string title, IEnumerable<string> items) =>
+                $"<section style='margin:24px 0;padding:20px;background:#f0f9ff;border-radius:8px'><h2 style='font-size:18px;color:#1e293b'>{title}</h2><ul style='line-height:1.7;color:#334155'>" +
+                string.Join("", items.Select(i => $"<li>{Item(i)}</li>")) + "</ul></section>";
+            return "<div style='background:#f4f7f6;padding:30px 15px;font-family:Segoe UI,Tahoma,sans-serif'><div style='max-width:600px;margin:auto;background:white;padding:30px;border-radius:12px'>" +
+                "<h1 style='color:#1d4ed8'>Briefyn AI</h1><h2>Sıradaki toplantının gündemi</h2><p>" + Item(name) + "</p>" +
+                Section("Açık görevler", agenda.OpenTasks.Select(t => t.Text +
+                    (t.AssigneeName == null ? "" : " · " + t.AssigneeName) +
+                    (t.DueDate == null ? "" : " · " + t.DueDate.Value.ToString("dd MMM yyyy", DisplayTime.Culture)) +
+                    (t.OverdueDays == null ? "" : $" · {t.OverdueDays} gün gecikti") +
+                    " · " + t.MeetingTitle + " (" + DisplayTime.Format(t.MeetingCreatedAtUtc, "dd MMM yyyy") + ")")) +
+                Section("Bekleyen konular", agenda.Pending.Select(p => p.Text)) +
+                Section("Son kararlar", agenda.Decisions.Select(p => p.Text)) +
+                (agenda.IsEmpty ? "<p>Açık iş yok, gündem temiz.</p>" : "") + "</div></div>";
         }
 
         // S8: line breaks in a subject could be used to smuggle extra mail headers; collapse them to spaces.
