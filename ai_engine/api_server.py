@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 # AI providers (Groq today) live behind small interfaces in providers/; see providers/__init__.py.
 from providers import build_summarizer, build_transcriber
-from providers.speakers import is_only_hallucinated_captions
+from providers.speakers import is_only_hallucinated_captions, parse_vtt
 from pydantic import BaseModel
 
 
@@ -117,7 +117,8 @@ async def process_meeting(file: UploadFile = File(...), speakers: UploadFile | N
                 pass
         transcribed_text = transcribe_audio(str(temp_file_path), speakers_vtt) if speakers_vtt else transcribe_audio(str(temp_file_path))
         
-        if not transcribed_text or is_only_hallucinated_captions(transcribed_text):
+        speaker_names = {cue.speaker for cue in parse_vtt(speakers_vtt) if cue.speaker} if speakers_vtt else set()
+        if not transcribed_text or is_only_hallucinated_captions(transcribed_text, speaker_names):
             raise HTTPException(status_code=422, detail="no_speech")
             
         logging.info("✅ Transcription completed successfully.")

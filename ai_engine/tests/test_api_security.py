@@ -166,3 +166,31 @@ def test_summarize_endpoint_requires_the_key_and_returns_a_summary(client):
     res = client.post("/api/summarize", headers={"X-Api-Key": KEY}, json={"transkript": "metin"})
     assert res.status_code == 200
     assert res.json() == {"success": True, "summary": SUMMARY}
+
+
+@pytest.mark.parametrize("transcript", [
+    "Bucky Barnes: Altyazı M.K. İzlediğiniz için teşekkürler!",
+    "Bucky Barnes: Altyazı M.K.\nAli Veli: İzlediğiniz için teşekkürler!",
+])
+def test_no_speech_with_zoom_speaker_names(client, monkeypatch, transcript):
+    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: transcript)
+    monkeypatch.setattr(api_server, "generate_meeting_summary", lambda text: pytest.fail("silence must not be summarized"))
+
+    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
+        "file": ("audio.m4a", b"audio", "audio/mp4"),
+        "speakers": ("names.vtt", "WEBVTT\n\n00:00.000 --> 00:02.000\nBucky Barnes: merhaba\n\n00:02.000 --> 00:04.000\nAli Veli: evet".encode(), "text/vtt"),
+    })
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "no_speech"}
+
+
+def test_speaker_named_like_a_caption_still_keeps_real_speech(client, monkeypatch):
+    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: "Bucky Barnes: Altyazı M.K. Bütçeyi konuşalım.")
+
+    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
+        "file": ("audio.m4a", b"audio", "audio/mp4"),
+        "speakers": ("names.vtt", "WEBVTT\n\n00:00.000 --> 00:02.000\nBucky Barnes: merhaba".encode(), "text/vtt"),
+    })
+
+    assert response.status_code == 200
