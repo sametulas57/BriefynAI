@@ -17,16 +17,19 @@ SYSTEM = (
     "söylenmemişse null bırak. Türkçe yaz. Dökümde satırlar Ad: söz biçiminde olabilir; "
     "aksiyonun sahibini bu adlardan yalnız dökümde açıkça söylendiyse yaz. Toplantının işiyle ilgisi olmayan yan sohbet "
     "(maç, hava durumu, selamlaşma/vedalaşma, şaka, özel hayat) görüşülen konulara, kararlara ve aksiyonlara yazılmaz; "
-    "yan sohbetin içinde iş ile ilgili bir karar ya da görev geçerse o iş kısmı yazılır."
+    "yan sohbetin içinde iş ile ilgili bir karar ya da görev geçerse o iş kısmı yazılır. "
+    "Bekleyen konular, toplantıda konuşulup karara bağlanmayan, ertelenen (sonra bakarız) ya da cevabı/bilgisi beklenen konulardır. "
+    "Karar veya aksiyon olarak yazılanı tekrarlama; iş dışı yan sohbeti yazma; uydurma. Dökümde yoksa boş liste ver."
 )
 
 SCHEMA = {
     "type": "object", "additionalProperties": False,
-    "required": ["toplanti_konusu", "gorusulen_konular", "alinan_kararlar", "aksiyon_maddeleri"],
+    "required": ["toplanti_konusu", "gorusulen_konular", "alinan_kararlar", "aksiyon_maddeleri", "bekleyen_konular"],
     "properties": {
         "toplanti_konusu": {"type": "string"},
         "gorusulen_konular": {"type": "array", "items": {"type": "string"}},
         "alinan_kararlar": {"type": "array", "items": {"type": "string"}},
+        "bekleyen_konular": {"type": "array", "items": {"type": "string"}},
         "aksiyon_maddeleri": {"type": "array", "items": {
             "type": "object", "additionalProperties": False, "required": ["kim", "ne", "ne_zaman"],
             "properties": {"kim": {"type": ["string", "null"]}, "ne": {"type": "string"}, "ne_zaman": {"type": ["string", "null"]}}}},
@@ -36,6 +39,7 @@ SCHEMA = {
 MERGE_INSTRUCTION = (
     "Aşağıda aynı toplantının ardışık bölümlerinden çıkarılmış kısmi özetler var. Bunları tek bir özette birleştir: "
     "tekrarları ayıkla, sonraki bölümde değişen kararlarda son hâli yaz, kısmi özetlerde olmayan hiçbir şey ekleme. "
+    "Bekleyen konuları da birleştir, tekrarları ayıkla; sonraki bölümde karara bağlanan konuyu bekleyenlerden çıkar. "
     "Toplantının işiyle ilgisi olmayan yan sohbet (maç, hava durumu, selamlaşma/vedalaşma, şaka, özel hayat) görüşülen "
     "konulara, kararlara ve aksiyonlara yazma; yan sohbetin içindeki iş ile ilgili karar ya da görevi koru."
 )
@@ -70,6 +74,7 @@ def to_backend_format(summary: dict) -> dict:
         "toplanti_konusu": summary.get("toplanti_konusu", "").strip(),
         "gorusulen_konular": summary.get("gorusulen_konular", []),
         "alinan_kararlar": summary.get("alinan_kararlar", []),
+        "bekleyen_konular": summary.get("bekleyen_konular", []),
         "aksiyon_maddeleri": [line(a) for a in summary.get("aksiyon_maddeleri", []) if isinstance(a, dict)],
     }
 

@@ -80,6 +80,8 @@ namespace MeetingWeb.Services
             text.AppendLine(meeting.Title).AppendLine();
             Section("Görüşülen Konular", meeting.PointsOf(MeetingPointKind.Topic).Select(p => p.Text));
             Section("Alınan Kararlar", meeting.PointsOf(MeetingPointKind.Decision).Select(p => p.Text));
+            var pending = meeting.PointsOf(MeetingPointKind.Pending).Select(p => p.Text).ToList();
+            if (pending.Count > 0) Section("Bekleyen Konular", pending);
             Section("Aksiyon Maddeleri", meeting.OrderedActionItems.Select(a => a.Text));
             text.AppendLine($"Bu e-posta Briefyn AI tarafından {DisplayTime.Format(meeting.CreatedAtUtc, "dd MMMM yyyy HH:mm")} tarihli toplantı için oluşturulmuştur.");
             return text.ToString();
@@ -133,6 +135,14 @@ namespace MeetingWeb.Services
                                 {string.Join("", meeting.PointsOf(MeetingPointKind.Decision).Select(k => $"<li style='margin-bottom: 8px;'>{Item(k.Text)}</li>"))}
                             </ul>
                         </div>
+
+                        {(meeting.PointsOf(MeetingPointKind.Pending).Any() ? $@"
+                        <div style=""margin-bottom: 30px; background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 6px;"">
+                            <h3 style=""color: #1d4ed8; font-size: 16px; margin-top: 0; margin-bottom: 12px;"">Bekleyen Konular</h3>
+                            <ul style=""color: #1e40af; line-height: 1.7; padding-left: 20px; margin: 0; font-size: 15px;"">
+                                {string.Join("", meeting.PointsOf(MeetingPointKind.Pending).Select(k => $"<li style='margin-bottom: 8px;'>{Item(k.Text)}</li>"))}
+                            </ul>
+                        </div>" : "")}
 
                         <div style=""margin-bottom: 10px; background-color: #fff7ed; border-left: 4px solid #f97316; padding: 20px; border-radius: 6px;"">
                             <h3 style=""color: #9a3412; font-size: 16px; margin-top: 0; margin-bottom: 12px;"">

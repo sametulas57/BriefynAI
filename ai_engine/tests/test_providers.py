@@ -90,6 +90,7 @@ SUMMARY = {
     "toplanti_konusu": "Lansman",
     "gorusulen_konular": ["Tedarik"],
     "alinan_kararlar": ["Release salıya"],
+    "bekleyen_konular": ["Tedarik fiyatı yanıtı bekleniyor"],
     "aksiyon_maddeleri": [{"kim": "Deniz", "ne": "hotfix çıkar", "ne_zaman": "çarşamba"},
                           {"kim": None, "ne": "rollback planı", "ne_zaman": None}],
 }
@@ -99,6 +100,16 @@ def test_actions_become_readable_lines_for_the_backend():
     data = to_backend_format(SUMMARY)
     assert data["aksiyon_maddeleri"] == ["Deniz: hotfix çıkar (çarşamba)", "rollback planı"]
     assert data["alinan_kararlar"] == ["Release salıya"]
+    assert data["bekleyen_konular"] == ["Tedarik fiyatı yanıtı bekleniyor"]
+
+
+def test_pending_topics_default_to_empty_list():
+    assert to_backend_format({})["bekleyen_konular"] == []
+
+
+def test_pending_topics_are_required_by_schema():
+    from providers.groq_summarizer import SCHEMA
+    assert "bekleyen_konular" in SCHEMA["required"]
 
 
 def test_long_transcripts_are_split_on_sentence_boundaries():
@@ -122,6 +133,7 @@ def test_long_transcript_is_summarised_in_parts_then_merged():
 
     assert len(asked) > 2                       # several partial summaries + one merge
     assert "Kısmi özetler" in asked[-1]         # the last call merges the partials
+    assert "bekleyen_konular" in asked[-1]
     assert result["toplanti_konusu"] == "Lansman"
 
 

@@ -46,6 +46,20 @@ namespace MeetingWeb.Tests.Security
         }
 
         [Fact]
+        public void Summary_email_includes_pending_topics_only_when_present()
+        {
+            var meeting = Hostile();
+            meeting.Points.Add(new MeetingPoint { Kind = MeetingPointKind.Pending, Text = "Tedarik yanıtı bekleniyor" });
+
+            Assert.Contains("Bekleyen Konular", EmailService.BuildSummaryText(meeting));
+            Assert.Contains("Tedarik yanıtı bekleniyor", EmailService.BuildSummaryText(meeting));
+            Assert.Contains("Bekleyen Konular", EmailService.BuildSummaryHtml(meeting));
+            Assert.Contains("Tedarik yanıtı bekleniyor", EmailService.BuildSummaryHtml(meeting));
+            Assert.DoesNotContain("Bekleyen Konular", EmailService.BuildSummaryText(Hostile()));
+            Assert.DoesNotContain("Bekleyen Konular", EmailService.BuildSummaryHtml(Hostile()));
+        }
+
+        [Fact]
         public void Subject_cannot_carry_extra_header_lines()
         {
             var subject = EmailService.BuildSubject(new Meeting { Title = "Konu\r\nBcc: victim@evil.test" });
