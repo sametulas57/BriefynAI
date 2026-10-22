@@ -52,6 +52,8 @@ namespace MeetingWeb.Services
                 return Results.BadRequest();
             }
             var payload = Child(root, "payload");
+            // Only the event name: the body carries a download token and personal data.
+            _logger.LogInformation("Zoom notification received: {Event}.", Text(root, "event"));
 
             switch (Text(root, "event"))
             {
