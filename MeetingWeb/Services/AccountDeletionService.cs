@@ -86,6 +86,8 @@ public class AccountDeletionService : IAccountDeletionService
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.CompletedByUserId, (string?)null));
         await _db.Meetings.Where(m => m.CreatedByUserId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(m => m.CreatedByUserId, (string?)null));
+        await _db.MeetingSeries.Where(s => s.CreatedByUserId == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.CreatedByUserId, (string?)null));
         await _db.Workspaces.Where(w => w.CreatedByUserId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(w => w.CreatedByUserId, (string?)null));
         await _db.WorkspaceInvitations.Where(i => i.CreatedByUserId == userId)

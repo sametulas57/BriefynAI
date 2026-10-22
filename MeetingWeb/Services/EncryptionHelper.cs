@@ -57,6 +57,16 @@ namespace MeetingWeb.Services
             return $"{Prefix}{CurrentKeyId}:{Convert.ToBase64String(payload)}";
         }
 
+        // ADR-0013: for values that are only compared for equality and must not be readable (Zoom meeting numbers). HMAC
+        // with a key derived per purpose from key 1, so a guessed value cannot be checked without the server key. Stays on
+        // key 1 after a key change, otherwise stored hashes would stop matching.
+        public static string KeyedHash(string value, string purpose)
+        {
+            if (!Keys.TryGetValue(1, out var key)) throw new InvalidOperationException("EncryptionHelper is not initialized.");
+            var hashKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, key, 32, info: Encoding.UTF8.GetBytes("Briefyn." + purpose));
+            return Convert.ToHexString(HMACSHA256.HashData(hashKey, Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+        }
+
         // Unreadable values (wrong key, wrong column, tampering) are logged and replaced by a visible marker instead of
         // leaking ciphertext into the UI or failing the whole page.
         public static string Decrypt(string cipherText, string purpose)

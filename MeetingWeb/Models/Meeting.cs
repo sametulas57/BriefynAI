@@ -27,6 +27,10 @@ namespace MeetingWeb.Models
         [MaxLength(200)]
         public string? ExternalRecordingId { get; set; }
 
+        // Recurring meeting this one belongs to, if any; always a series of the same workspace (ADR-0013).
+        public int? SeriesId { get; set; }
+        public MeetingSeries? Series { get; set; }
+
         [MaxLength(450)]
         public string? CreatedByUserId { get; set; }
         public ApplicationUser? CreatedBy { get; set; }

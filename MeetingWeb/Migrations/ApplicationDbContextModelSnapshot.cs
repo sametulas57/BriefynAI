@@ -268,6 +268,9 @@ namespace MeetingWeb.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<int?>("SeriesId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Source")
                         .HasColumnType("int");
 
@@ -284,6 +287,8 @@ namespace MeetingWeb.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("SeriesId");
 
                     b.HasIndex("WorkspaceId", "CreatedAtUtc");
 
@@ -338,10 +343,47 @@ namespace MeetingWeb.Migrations
 
                     b.ToTable("MeetingPoints", t =>
                         {
-                            t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2)");
+                            t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2, 3)");
 
                             t.HasCheckConstraint("CK_MeetingPoints_Source", "[Source] IN (1, 2)");
                         });
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.MeetingSeries", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WorkspaceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ZoomMeetingKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("WorkspaceId", "ZoomMeetingKey")
+                        .IsUnique()
+                        .HasFilter("[ZoomMeetingKey] IS NOT NULL");
+
+                    b.ToTable("MeetingSeries");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.MeetingTranscript", b =>
@@ -779,6 +821,10 @@ namespace MeetingWeb.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId");
 
+                    b.HasOne("MeetingWeb.Models.MeetingSeries", "Series")
+                        .WithMany("Meetings")
+                        .HasForeignKey("SeriesId");
+
                     b.HasOne("MeetingWeb.Models.Workspace", "Workspace")
                         .WithMany("Meetings")
                         .HasForeignKey("WorkspaceId")
@@ -786,6 +832,8 @@ namespace MeetingWeb.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("Series");
 
                     b.Navigation("Workspace");
                 });
@@ -805,6 +853,23 @@ namespace MeetingWeb.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Meeting");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.MeetingSeries", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.HasOne("MeetingWeb.Models.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Workspace");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.MeetingTranscript", b =>
@@ -971,6 +1036,11 @@ namespace MeetingWeb.Migrations
                     b.Navigation("Points");
 
                     b.Navigation("Transcript");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.MeetingSeries", b =>
+                {
+                    b.Navigation("Meetings");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.Workspace", b =>

@@ -116,6 +116,7 @@ try
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
     builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
+    builder.Services.AddScoped<IMeetingSeriesService, MeetingSeriesService>();
     builder.Services.AddScoped<ZoomApiClient>();
     builder.Services.AddScoped<IZoomService, ZoomService>();
     builder.Services.AddScoped<ZoomWebhookHandler>();

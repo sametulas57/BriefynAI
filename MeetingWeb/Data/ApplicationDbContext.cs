@@ -18,6 +18,7 @@ namespace MeetingWeb.Data
         public DbSet<WorkspaceInvitation> WorkspaceInvitations { get; set; }
         public DbSet<WorkspaceTitle> WorkspaceTitles { get; set; }
         public DbSet<Meeting> Meetings { get; set; }
+        public DbSet<MeetingSeries> MeetingSeries { get; set; }
         public DbSet<MeetingTranscript> MeetingTranscripts { get; set; }
         public DbSet<MeetingPoint> MeetingPoints { get; set; }
         public DbSet<ActionItem> ActionItems { get; set; }
@@ -73,6 +74,9 @@ namespace MeetingWeb.Data
                 m.Property(x => x.Title).HasConversion(new EncryptedConverter("Meetings.Title"));
                 m.HasOne(x => x.Workspace).WithMany(w => w.Meetings).HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
                 m.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                // Not a database cascade: SQL Server refuses a second cascade path from Workspaces to Meetings. Deleting a
+                // series clears the link in code (MeetingSeriesService); deleting a team removes both in the same cascade.
+                m.HasOne(x => x.Series).WithMany(s => s.Meetings).HasForeignKey(x => x.SeriesId).OnDelete(DeleteBehavior.ClientSetNull);
                 // History lists a workspace's meetings newest first.
                 m.HasIndex(x => new { x.WorkspaceId, x.CreatedAtUtc });
                 m.HasIndex(x => new { x.WorkspaceId, x.ExternalRecordingId }).IsUnique().HasFilter("[ExternalRecordingId] IS NOT NULL");
@@ -83,6 +87,15 @@ namespace MeetingWeb.Data
                     t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
                     t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1, 2)");
                 });
+            });
+
+            builder.Entity<MeetingSeries>(s =>
+            {
+                s.Property(x => x.Name).HasConversion(new EncryptedConverter("MeetingSeries.Name"));
+                s.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
+                s.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+                // Two sessions of one Zoom meeting imported at once must still land in a single series.
+                s.HasIndex(x => new { x.WorkspaceId, x.ZoomMeetingKey }).IsUnique().HasFilter("[ZoomMeetingKey] IS NOT NULL");
             });
 
             builder.Entity<MeetingTranscript>(t =>
@@ -99,7 +112,7 @@ namespace MeetingWeb.Data
                 p.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
                 p.ToTable(t =>
                 {
-                    t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2)");
+                    t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2, 3)");
                     t.HasCheckConstraint("CK_MeetingPoints_Source", "[Source] IN (1, 2)");
                 });
             });
