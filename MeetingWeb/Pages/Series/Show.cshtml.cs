@@ -41,7 +41,7 @@ public class ShowModel : PageModel
         if (series == null) return NotFound();
         Series = series;
         Agenda = await _agenda.BuildAsync(id, DisplayTime.TodayIn(DateTime.UtcNow));
-        WorkspaceMembers = await _db.WorkspaceMembers.AsNoTracking().Include(m => m.User).Include(m => m.Title)
+        WorkspaceMembers = await _db.WorkspaceMembers.AsNoTrackingWithIdentityResolution().Include(m => m.User).Include(m => m.Title)
             .Where(m => m.WorkspaceId == series.WorkspaceId).ToListAsync();
         CanManage = await _series.CanManageAsync(userId, series);
         Meetings = await _db.Meetings.AsNoTracking().Where(m => m.SeriesId == id && m.WorkspaceId == series.WorkspaceId)
