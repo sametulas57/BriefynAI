@@ -108,6 +108,19 @@
                 </div>
             </div>
 
+            <!-- Overdue task reminders -->
+            <div class="card shadow-sm border-0 rounded-4 mb-4 overflow-hidden">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold text-primary">Görev hatırlatmaları</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" asp-page-handler="OverdueReminders">
+                        <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="overdueReminders" name="enabled" value="true" checked="@(Model.OverdueRemindersEnabled)" /><label class="form-check-label" for="overdueReminders">Geciken görevlerim için e-posta hatırlatması al</label></div>
+                        <button type="submit" class="btn btn-outline-primary fw-bold rounded-pill px-4">Kaydet</button>
+                    </form>
+                </div>
+            </div>
+
             <!-- Zoom connection (ADR-0011) -->
             <div class="card shadow-sm border-0 rounded-4 mb-4 overflow-hidden">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">

@@ -20,5 +20,7 @@ namespace MeetingWeb.Models
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
         public DateTime? DeletionRequestedAtUtc { get; set; }
+
+        public bool OverdueRemindersEnabled { get; set; } = true;
     }
 }
