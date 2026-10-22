@@ -60,6 +60,7 @@
             }
             <div id="agenda-sections" class="@(Model.Agenda.IsEmpty ? "d-none" : "")">
                 <h5 class="fw-bold mt-3">Açık görevler</h5>
+                @if (!Model.Agenda.OpenTasks.Any()) { <p class="small text-muted mb-0">Açık görev yok.</p> }
                 <ul id="agenda-tasks" class="list-group list-group-flush">
                     @foreach (var task in Model.Agenda.OpenTasks)
                     {
@@ -80,6 +81,7 @@
                     }
                 </ul>
                 <h5 class="fw-bold mt-4">Bekleyen konular</h5>
+                @if (!Model.Agenda.Pending.Any()) { <p class="small text-muted mb-0">Son toplantıda bekleyen konu yok.</p> }
                 <ul id="agenda-pending" class="list-group list-group-flush">
                     @foreach (var point in Model.Agenda.Pending) { <li class="list-group-item px-0">@point.Text</li> }
                 </ul>
@@ -88,6 +90,7 @@
                 {
                     <a class="small" asp-page="/Details" asp-route-id="@Model.Agenda.LastMeetingId">@MeetingWeb.Services.DisplayTime.Format(Model.Agenda.LastMeetingCreatedAtUtc!.Value, "dd MMMM") toplantısından</a>
                 }
+                @if (!Model.Agenda.Decisions.Any()) { <p class="small text-muted mb-0">Son toplantıda karar yok.</p> }
                 <ul id="agenda-decisions" class="list-group list-group-flush">
                     @foreach (var point in Model.Agenda.Decisions) { <li class="list-group-item px-0">@point.Text</li> }
                 </ul>
