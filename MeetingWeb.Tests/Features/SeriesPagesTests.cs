@@ -92,6 +92,9 @@ public class SeriesPagesTests : IAsyncLifetime
         Assert.Contains("Sıradaki gündem", await Html(await alice.GetAsync($"/Details?id={S.MeetingA}")));
         await PostFormAsync(alice, url, token, ("seriesId", other.ToString()));
         Assert.Equal(own, SeriesOf(S.MeetingA));
+        // "Yeni seri…" with a blank name is refused and keeps the current series (review round 1).
+        await PostFormAsync(alice, url, token, ("seriesId", MeetingWeb.Pages.DetailsModel.NewSeriesChoice.ToString()), ("newSeriesName", "   "));
+        Assert.Equal(own, SeriesOf(S.MeetingA));
         await PostFormAsync(alice, url, token, ("seriesId", ""));
         Assert.Null(SeriesOf(S.MeetingA));
     }

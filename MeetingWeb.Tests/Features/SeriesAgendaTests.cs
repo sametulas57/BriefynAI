@@ -77,8 +77,11 @@ public class SeriesAgendaTests : IAsyncLifetime
         var token = await GetAntiforgeryTokenAsync(alice, "/Profile");
         var before = WebUtility.HtmlDecode(await alice.GetStringAsync($"/Series/{id}"));
         Assert.Contains("Görev", before);
-        var result = await PostFormForJsonAsync(alice, $"/Details?handler=ToggleTask&taskId={S.TaskA}", token);
+        var result = await PostFormForJsonAsync(alice, $"/Details?handler=ToggleTask&taskId={S.TaskA}&done=true", token);
         Assert.True(result.GetProperty("isDone").GetBoolean());
+        // Someone else closed it already while the agenda was open: closing again must not reopen it (review round 1).
+        var again = await PostFormForJsonAsync(alice, $"/Details?handler=ToggleTask&taskId={S.TaskA}&done=true", token);
+        Assert.True(again.GetProperty("isDone").GetBoolean());
         Assert.DoesNotContain("Görev", WebUtility.HtmlDecode(await alice.GetStringAsync($"/Series/{id}")));
         Assert.True(_app.WithDb(db => db.ActionItems.Single(a => a.Id == S.TaskA).IsDone));
     }

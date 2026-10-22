@@ -198,7 +198,7 @@
                                 {
                                     <option value="@series.Id" selected="@(Model.Meeting.SeriesId == series.Id)">@series.Name</option>
                                 }
-                                <option value="" data-new-series="true">Yeni seri…</option>
+                                <option value="@MeetingWeb.Pages.DetailsModel.NewSeriesChoice" data-new-series="true">Yeni seri…</option>
                             </select>
                         </div>
                         <input id="new-series-name" name="newSeriesName" class="form-control form-control-sm d-none" maxlength="100" placeholder="Seri adı" aria-label="Yeni seri adı" />
