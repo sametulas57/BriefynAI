@@ -98,7 +98,10 @@ namespace MeetingWeb.Services
             var zoomUserId = Text(payload, "user_id");
             var clientId = Text(payload, "client_id");
             if (string.IsNullOrEmpty(zoomUserId) || (!string.IsNullOrEmpty(clientId) && clientId != _options.ClientId)) return;
-            var removed = await _db.ZoomConnections.Where(z => z.ZoomUserId == zoomUserId).ExecuteDeleteAsync();
+            // A late notice must not remove a connection made again after the removal.
+            var removedAt = DateTime.TryParse(Text(payload, "deauthorization_time"), CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var at) ? at : DateTime.UtcNow;
+            var removed = await _db.ZoomConnections.Where(z => z.ZoomUserId == zoomUserId && z.ConnectedAtUtc <= removedAt).ExecuteDeleteAsync();
             if (removed > 0) _logger.LogWarning("Zoom connection removed: the app was removed in Zoom ({Count}).", removed);
         }
 
