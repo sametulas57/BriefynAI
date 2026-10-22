@@ -31,7 +31,64 @@
             }
         </div>
     </div>
-    <div id="agenda"></div>
+    <div id="agenda" class="card soft-card mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h3 class="fw-bold mb-0">Sıradaki toplantının gündemi</h3>
+                <button type="button" class="btn btn-outline-primary btn-soft" data-bs-toggle="modal" data-bs-target="#shareModal">Gündemi e-postayla gönder</button>
+            </div>
+            @if (TempData["StatusMessage"] != null)
+            {
+                <div class="alert alert-success" role="status">@TempData["StatusMessage"]</div>
+            }
+            @if (!Model.Agenda.HasCompletedMeeting)
+            {
+                <p class="text-muted">Seriye ilk toplantı eklenip özeti çıkınca gündem burada hazırlanır.</p>
+            }
+            @if (Model.Agenda.IsEmpty)
+            {
+                <p id="agenda-empty" class="text-muted">Açık iş yok, gündem temiz.</p>
+            }
+            else
+            {
+                <p id="agenda-empty" class="text-muted d-none">Açık iş yok, gündem temiz.</p>
+            }
+            <div id="agenda-sections" class="@(Model.Agenda.IsEmpty ? "d-none" : "")">
+                <h5 class="fw-bold mt-3">Açık görevler</h5>
+                <ul id="agenda-tasks" class="list-group list-group-flush">
+                    @foreach (var task in Model.Agenda.OpenTasks)
+                    {
+                        <li class="list-group-item px-0" data-agenda-task="@task.Id">
+                            <div class="d-flex align-items-start gap-3">
+                                <input type="checkbox" class="form-check-input mt-1 agenda-done" data-task-id="@task.Id" aria-label="@task.Text bitti" />
+                                <div>
+                                    <div class="fw-medium text-dark">@task.Text</div>
+                                    <div class="small text-muted">
+                                        @if (task.AssigneeName != null) { <span>@task.AssigneeName · </span> }
+                                        @if (task.DueDate != null) { <span>Son tarih: @task.DueDate.Value.ToString("dd MMM yyyy", MeetingWeb.Services.DisplayTime.Culture) · </span> }
+                                        @if (task.OverdueDays != null) { <span class="text-danger fw-bold">@task.OverdueDays gün gecikti · </span> }
+                                        <a asp-page="/Details" asp-route-id="@task.MeetingId">@task.MeetingTitle · @MeetingWeb.Services.DisplayTime.Format(task.MeetingCreatedAtUtc, "dd MMM yyyy")</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+                <h5 class="fw-bold mt-4">Bekleyen konular</h5>
+                <ul id="agenda-pending" class="list-group list-group-flush">
+                    @foreach (var point in Model.Agenda.Pending) { <li class="list-group-item px-0">@point.Text</li> }
+                </ul>
+                <h5 class="fw-bold mt-4">Son kararlar</h5>
+                @if (Model.Agenda.HasCompletedMeeting)
+                {
+                    <a class="small" asp-page="/Details" asp-route-id="@Model.Agenda.LastMeetingId">@MeetingWeb.Services.DisplayTime.Format(Model.Agenda.LastMeetingCreatedAtUtc!.Value, "dd MMMM") toplantısından</a>
+                }
+                <ul id="agenda-decisions" class="list-group list-group-flush">
+                    @foreach (var point in Model.Agenda.Decisions) { <li class="list-group-item px-0">@point.Text</li> }
+                </ul>
+            </div>
+        </div>
+    </div>
     <h4 class="fw-bold mb-3">Toplantılar</h4>
     @if (Model.Meetings.Count == 0)
     {
@@ -52,3 +109,125 @@
         </div>
     }
 </div>
+
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom-0 pt-4 pb-2 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="icon-container bg-soft-primary">
+                        <i class="bi bi-send-fill text-primary"></i>
+                    </div>
+                    <h5 class="modal-title fw-bold text-dark">Gündemi e-postayla gönder</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" asp-page-handler="SendAgenda">
+
+                <div class="modal-body px-4 pb-4">
+                    <p class="text-muted mb-4 small">Gündemi e-postayla göndermek istediğiniz ekip arkadaşlarınızı seçin.</p>
+                    @{
+                        // People are grouped under their titles, untitled ones last; nobody is selected by default so a
+                        // report never goes to the whole team by accident (PRD roller-ve-unvanlar).
+                        var shareGroups = Model.WorkspaceMembers
+                            .GroupBy(m => m.Title)
+                            .OrderBy(g => g.Key == null).ThenBy(g => g.Key?.Name)
+                            .ToList();
+                        var showGroupHeaders = shareGroups.Any(g => g.Key != null);
+                        var groupIndex = 0;
+                    }
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-light btn-sm rounded-pill px-3 fw-bold" id="shareSelectAll">Tümünü seç</button>
+                        <button type="button" class="btn btn-light btn-sm rounded-pill px-3 fw-bold text-muted" id="shareSelectNone">Hiçbirini seçme</button>
+                    </div>
+                    @foreach (var group in shareGroups)
+                    {
+                        var groupKey = "share-group-" + groupIndex++;
+                        @if (showGroupHeaders)
+                        {
+                            <label class="d-flex align-items-center gap-2 mt-3 mb-2 fw-bold text-dark small cursor-pointer">
+                                <input class="form-check-input mt-0 border-secondary share-group-toggle" type="checkbox" data-group="@groupKey" aria-label="Bu gruptaki herkesi seç">
+                                @if (group.Key?.Icon != null) { <i class="bi bi-@group.Key.Icon text-secondary"></i> }
+                                <span>@(group.Key?.Name ?? "Unvansız")</span>
+                            </label>
+                        }
+                    <div class="list-group rounded-4 border-0 gap-2">
+                            @foreach (var member in group)
+                            {
+                                <label class="list-group-item d-flex gap-3 align-items-center cursor-pointer border rounded-4 py-3 bg-soft-light transition-all hover-bg-white shadow-sm-hover">
+                                    <input class="form-check-input flex-shrink-0 fs-5 mt-0 border-secondary share-recipient" type="checkbox" name="selectedEmails" value="@member.User.Email" data-group="@groupKey">
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-bold text-dark" style="font-size: 0.95rem;">@member.User.Email</span>
+                                        @if (member.Role == MeetingWeb.Models.WorkspaceRole.Owner)
+                                        {
+                                            <span class="badge bg-soft-primary border border-primary border-opacity-25 mt-1 fw-medium" style="width: fit-content;"><i class="bi bi-star-fill me-1 small"></i> Kurucu</span>
+                                        }
+                                        else if (member.Role == MeetingWeb.Models.WorkspaceRole.Admin)
+                                        {
+                                            <span class="badge bg-dark bg-opacity-10 text-dark border border-dark border-opacity-25 mt-1 fw-medium" style="width: fit-content;"><i class="bi bi-shield-check me-1 small"></i> Yönetici</span>
+                                        }
+                                    </div>
+                                </label>
+                            }
+                    </div>
+                    }
+
+                    <div class="mt-4">
+                        <label for="extraEmails" class="form-label small fw-bold text-dark">Ekip dışından birine de göndermek ister misiniz?</label>
+                        <input type="text" id="extraEmails" name="extraEmails" class="form-control rounded-4" placeholder="ornek@firma.com" autocomplete="off" />
+                        <div class="form-text">Birden fazla adresi virgülle ayırabilirsiniz (en fazla 3 adres).</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light btn-soft text-muted" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary btn-soft shadow-sm px-4">Gönder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        (function () {
+            const recipients = () => [...document.querySelectorAll('.share-recipient')];
+            const refreshGroups = () => document.querySelectorAll('.share-group-toggle').forEach(toggle => {
+                const members = recipients().filter(r => r.dataset.group === toggle.dataset.group);
+                const selected = members.filter(r => r.checked).length;
+                toggle.checked = members.length > 0 && selected === members.length;
+                toggle.indeterminate = selected > 0 && selected < members.length;
+            });
+            document.querySelectorAll('.share-group-toggle').forEach(toggle => toggle.addEventListener('change', () => {
+                recipients().filter(r => r.dataset.group === toggle.dataset.group).forEach(r => r.checked = toggle.checked);
+                refreshGroups();
+            }));
+            recipients().forEach(r => r.addEventListener('change', refreshGroups));
+            const setAll = value => { recipients().forEach(r => r.checked = value); refreshGroups(); };
+            document.getElementById('shareSelectAll')?.addEventListener('click', () => setAll(true));
+            document.getElementById('shareSelectNone')?.addEventListener('click', () => setAll(false));
+        })();
+        document.querySelectorAll('.agenda-done').forEach(box => box.addEventListener('change', async () => {
+            box.disabled = true;
+            try {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const response = await fetch(`/Details?handler=ToggleTask&taskId=${box.dataset.taskId}`, {
+                    method: 'POST', headers: { 'RequestVerificationToken': token }
+                });
+                if (!response.ok) throw new Error('İşlem başarısız');
+                const result = await response.json();
+                if (result.reload) { location.reload(); return; }
+                if (!result.success || !result.isDone) throw new Error('İşlem başarısız');
+                box.closest('[data-agenda-task]').remove();
+                if (!document.querySelector('[data-agenda-task]') &&
+                    !document.querySelector('#agenda-pending li') && !document.querySelector('#agenda-decisions li')) {
+                    document.getElementById('agenda-sections').classList.add('d-none');
+                    document.getElementById('agenda-empty').classList.remove('d-none');
+                }
+            } catch {
+                box.checked = false;
+                box.disabled = false;
+            }
+        }));
+    </script>
+}

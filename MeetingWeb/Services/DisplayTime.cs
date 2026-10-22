@@ -7,7 +7,9 @@ namespace MeetingWeb.Services
     public static class DisplayTime
     {
         public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("tr-TR");
-        private static readonly TimeZoneInfo Zone = FindTurkeyZone();
+        public static readonly TimeZoneInfo Zone = FindTurkeyZone();
+
+        public static DateOnly TodayIn(DateTime utc) => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone));
 
         public static string Format(DateTime utc, string format) =>
             TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone).ToString(format, Culture);

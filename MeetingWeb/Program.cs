@@ -117,6 +117,7 @@ try
     builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddScoped<IMeetingSeriesService, MeetingSeriesService>();
+    builder.Services.AddScoped<ISeriesAgendaService, SeriesAgendaService>();
     builder.Services.AddScoped<ZoomApiClient>();
     builder.Services.AddScoped<IZoomService, ZoomService>();
     builder.Services.AddScoped<ZoomWebhookHandler>();
@@ -165,8 +166,10 @@ try
                 });
 
             var isShare = HttpMethods.IsPost(context.Request.Method) &&
-                          context.Request.Path.Equals("/Details", StringComparison.OrdinalIgnoreCase) &&
-                          string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase);
+                          ((context.Request.Path.Equals("/Details", StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase)) ||
+                           (context.Request.Path.StartsWithSegments("/Series") &&
+                            string.Equals(context.Request.Query["handler"], "SendAgenda", StringComparison.OrdinalIgnoreCase)));
             if (!isShare) return RateLimitPartition.GetNoLimiter("unlimited");
 
             var userKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
