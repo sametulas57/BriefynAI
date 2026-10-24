@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using MeetingWeb.Services.ArchiveSearch;
 using MeetingWeb.Tests.Infrastructure;
@@ -8,6 +9,44 @@ namespace MeetingWeb.Tests.Features;
 
 public class AskServiceTests : IAsyncLifetime
 {
+    [Fact]
+    public async Task Python_stub_forwards_path_body_and_replaced_api_key()
+    {
+        string? forwardedPath = null, forwardedQuery = null, forwardedKey = null;
+        Task<string>? forwardedBody = null;
+        var forwardHandler = new CaptureHandler(request =>
+        {
+            forwardedPath = request.RequestUri!.AbsolutePath;
+            forwardedQuery = request.RequestUri.Query;
+            forwardedKey = request.Headers.GetValues("X-Api-Key").Single();
+            forwardedBody = request.Content!.ReadAsStringAsync();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"ok\":true}", Encoding.UTF8, "application/json") };
+        });
+        var stub = new StubPythonApiHandler { ForwardTo = new Uri("http://forwarded/"), ForwardApiKey = "replacement-key", ForwardHandler = forwardHandler };
+        using var client = new HttpClient(stub);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "http://stub/api/answer?x=1")
+        {
+            Content = new StringContent("{\"soru\":\"uydurma\"}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-Api-Key", "original-key");
+        using var response = await client.SendAsync(request);
+        Assert.Equal("/api/answer", forwardedPath);
+        Assert.Equal("x=1", forwardedQuery!.TrimStart('?'));
+        Assert.Equal("replacement-key", forwardedKey);
+        Assert.Equal("{\"soru\":\"uydurma\"}", await forwardedBody!);
+        var responseBody = "{\"ok\":true}";
+        Assert.Equal(responseBody, await response.Content.ReadAsStringAsync());
+        Assert.Equal(responseBody, stub.LastResponseBody);
+        Assert.Equal("api/answer", stub.LastPath);
+        Assert.Equal("original-key", stub.LastApiKey);
+        Assert.Equal("{\"soru\":\"uydurma\"}", stub.LastBody);
+    }
+
+    private sealed class CaptureHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(respond(request));
+    }
+
     private readonly TestClock _clock = new();
     private readonly CapturingLoggerProvider _logs = new();
     private readonly BriefynFactory _app;

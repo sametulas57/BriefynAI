@@ -398,3 +398,6 @@ MeetingWeb/wwwroot/uploads/
 # Private meeting recordings (S2): stored outside wwwroot, never committed
 MeetingWeb/App_Data/
 
+# Model ölçümü sonuçları (uydurma altın set)
+olcum-sonuc/
+
