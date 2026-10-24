@@ -73,8 +73,10 @@ namespace MeetingWeb.Services.ArchiveSearch
                 if (entry.Index == null || entry.Generation != ArchiveIndexGeneration.Current || now - entry.LastUsed > IdleLifetime)
                 {
                     // The generation is read before loading: a write that lands meanwhile makes the next search rebuild.
-                    entry.Generation = ArchiveIndexGeneration.Current;
+                    // It is stored only with the new index, so a failed rebuild never marks the old index current.
+                    var generation = ArchiveIndexGeneration.Current;
                     entry.Index = await BuildAsync(db, workspaceId, cancellationToken);
+                    entry.Generation = generation;
                 }
                 entry.LastUsed = now;
                 return Rank(entry.Index!, query);
@@ -136,7 +138,9 @@ namespace MeetingWeb.Services.ArchiveSearch
         private static IEnumerable<string> TranscriptChunks(string? transcript)
         {
             if (string.IsNullOrWhiteSpace(transcript)) yield break;
-            var lines = transcript.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            // Uploaded recordings come back as one long line, so a line longer than a chunk is cut into word runs.
+            var lines = transcript.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .SelectMany(line => line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Chunk(300).Select(run => string.Join(" ", run)));
             var chunk = new List<string>();
             var words = 0;
             foreach (var line in lines)

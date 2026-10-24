@@ -69,6 +69,10 @@
         </div>
     </div>
 
+    @if (Model.ScopeMessage != null)
+    {
+        <div class="alert alert-danger" role="alert">@Model.ScopeMessage</div>
+    }
     @if (Model.Result is { } result)
     {
         @if (result.Status is AskStatus.Answered or AskStatus.NotFound)
@@ -117,6 +121,8 @@
         function showScope() {
             series.hidden = scope.value !== 'Series';
             meeting.hidden = scope.value !== 'Meeting';
+            series.querySelector('select').required = scope.value === 'Series';
+            meeting.querySelector('select').required = scope.value === 'Meeting';
         }
         scope.addEventListener('change', showScope);
         showScope();

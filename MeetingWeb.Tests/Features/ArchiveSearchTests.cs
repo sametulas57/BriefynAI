@@ -1,9 +1,11 @@
+using System.Data.Common;
 using System.Text.RegularExpressions;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
 using MeetingWeb.Services.ArchiveSearch;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit.Abstractions;
 
@@ -210,6 +212,62 @@ public class ArchiveSearchTests : IAsyncLifetime
     }
 
     // ---- acceptance 8: the index follows every change ----
+
+    [Fact]
+    public async Task Long_single_line_transcript_is_split_into_bounded_passages()
+    {
+        // Uploaded recordings are transcribed as one line; the answer must not hide past the first 4000 characters.
+        var filler = string.Join(" ", Enumerable.Range(0, 1500).Select(i => $"kelime{i}"));
+        _app.WithDb(db =>
+        {
+            db.Meetings.Add(new Meeting { WorkspaceId = G.Workspaces["A"], Title = "Uzun kayıt", Status = MeetingStatus.Completed,
+                CreatedAtUtc = new DateTime(2026, 10, 16, 7, 0, 0, DateTimeKind.Utc),
+                Transcript = new MeetingTranscript { Text = filler + " Mert Demir: Zebercet sunucusu cumartesi taşınacak." } });
+            return db.SaveChanges();
+        });
+
+        var result = await Ask("A", "zebercet sunucusu ne zaman taşınacak");
+        var hit = Assert.Single(result.Passages, p => p.Text.Contains("Zebercet sunucusu cumartesi taşınacak"));
+        Assert.True(hit.Text.Length <= 4000, $"parça {hit.Text.Length} karakter");
+    }
+
+    [Fact]
+    public async Task Failed_rebuild_does_not_leave_the_old_index_marked_current()
+    {
+        var failer = new TranscriptQueryFailer();
+        using var app = new BriefynFactory { CommandInterceptor = failer };
+        await app.InitializeAsync();
+        var gold = app.WithDb(GoldSet.Load);
+        async Task<ArchiveSearchResult> Find()
+        {
+            using var scope = app.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<IArchiveSearchService>()
+                .SearchAsync(gold.Askers["A"], gold.Workspaces["A"], new ArchiveQuery("zebercet"));
+        }
+        Assert.Empty((await Find()).Passages); // builds and caches the index
+
+        app.WithDb(db =>
+        {
+            db.Meetings.Add(new Meeting { WorkspaceId = gold.Workspaces["A"], Title = "Zebercet planı", Status = MeetingStatus.Completed,
+                CreatedAtUtc = new DateTime(2026, 10, 15, 7, 0, 0, DateTimeKind.Utc),
+                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet modülü kasımda başlayacak" } } });
+            return db.SaveChanges();
+        });
+        failer.Fail = true;
+        await Assert.ThrowsAnyAsync<Exception>(Find);
+        failer.Fail = false;
+
+        Assert.Contains((await Find()).Passages, p => p.Text.Contains("Zebercet modülü kasımda başlayacak"));
+    }
+
+    private sealed class TranscriptQueryFailer : DbCommandInterceptor
+    {
+        public bool Fail { get; set; }
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData,
+            InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default) =>
+            Fail && command.CommandText.Contains("MeetingTranscripts", StringComparison.OrdinalIgnoreCase)
+                ? throw new InvalidOperationException("test failure") : new(result);
+    }
 
     [Fact]
     public async Task New_completed_meeting_is_found_after_the_index_was_built()
