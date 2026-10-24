@@ -11,7 +11,7 @@ from .groq_client import GroqClient
 # task -> (provider variable, model variable, default model)
 TASKS = {
     "summary": ("SUMMARIZER", "AI_SUMMARY_MODEL", "qwen/qwen3.8-27b"),
-    "answer": ("ANSWERER", "AI_ANSWER_MODEL", "openai/gpt-oss-120b"),
+    "answer": ("ANSWERER", "AI_ANSWER_MODEL", "openai/gpt-oss-20b"),  # 2026-10-24 ölçümü, ADR-0014
 }
 
 
@@ -32,8 +32,8 @@ def build_llm(task: str) -> LlmClient:
     if task not in TASKS:
         raise RuntimeError(f"Unknown LLM task: {task}")
     kind_var, model_var, default_model = TASKS[task]
-    kind = os.getenv(kind_var, "groq")
+    kind = os.getenv(kind_var) or "groq"  # compose passes unset variables as empty strings
     if kind == "groq":
         from . import _groq_client
-        return GroqLlm(_groq_client(), os.getenv(model_var, default_model))
+        return GroqLlm(_groq_client(), os.getenv(model_var) or default_model)
     raise RuntimeError(f"Unknown {kind_var}: {kind}")

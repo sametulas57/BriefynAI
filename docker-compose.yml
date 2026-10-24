@@ -83,6 +83,9 @@ services:
       - GROQ_API_KEY=${GROQ_KEY}
       # Paylaşılan anahtar .env'den gelir; yoksa servis her isteği reddeder (503).
       - AI_ENGINE_API_KEY=${AI_ENGINE_API_KEY}
+      # Arşive soru sor (ADR-0014): boşsa koddaki varsayılan (providers/llm.py). Model değişimi yalnız .env'den.
+      - ANSWERER=${ANSWERER:-}
+      - AI_ANSWER_MODEL=${AI_ANSWER_MODEL:-}
     volumes:
       - ./ai_engine:/app
     restart: unless-stopped

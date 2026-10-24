@@ -60,11 +60,18 @@ def test_each_task_reads_its_own_provider_and_model(monkeypatch):
     assert build_llm("answer").model == "cevap-modeli"
 
 
-def test_answer_model_defaults_to_gpt_oss_120b(monkeypatch):
+def test_answer_model_defaults_to_gpt_oss_20b(monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "k")
     monkeypatch.delenv("AI_ANSWER_MODEL", raising=False)
     monkeypatch.delenv("ANSWERER", raising=False)
-    assert build_llm("answer").model == "openai/gpt-oss-120b"
+    assert build_llm("answer").model == "openai/gpt-oss-20b"
+
+
+def test_empty_settings_from_compose_fall_back_to_defaults(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test")
+    monkeypatch.setenv("ANSWERER", "")
+    monkeypatch.setenv("AI_ANSWER_MODEL", "")
+    assert build_llm("answer").model == "openai/gpt-oss-20b"
 
 
 def test_unknown_provider_or_task_fails_clearly(monkeypatch):

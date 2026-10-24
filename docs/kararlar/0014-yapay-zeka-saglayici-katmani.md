@@ -18,5 +18,8 @@ Arşive soru sor, özetten ağır bir iş: doğru alıntıyı seçmek, bilmediğ
 - Sağlayıcıların ortak paydası kullanılır: akarak gelen cevap ilk sürümde yok (Groq'ta katı JSON ile birlikte çalışmıyor). Cevap tek parça gelir, ekranda bekleme göstergesi olur.
 - Ölçüm Groq'un ücretsiz günlük sınırını (200K token) aşabilir: ya iki güne yayılır ya Developer planına geçilir (kullandıkça ödeme, bu hacimde sentler).
 
+## Not: ilk model seçimi (2026-10-24)
+Soru-cevap için `openai/gpt-oss-20b` seçildi (varsayılan `providers/llm.py`). Altın sette karşılaştırılan modeller gpt-oss-120b, gpt-oss-20b ve qwen3.8-27b. Yalnız 20b ve qwen iki ölçütü de geçti: cevapsızlarda %94,7 "bulamadım", gizli talimatlarda 6/6. Bunlardan 20b daha çok soruyu doğru cevapladı (38/39'a 36/39) ve önizleme değil. Ayrıntı ve çekinceler: iç proje notu. Özet hâlâ `AI_SUMMARY_MODEL` ile ayrı seçiliyor.
+
 ## Kaynak
 iç proje notu · iç proje notu
