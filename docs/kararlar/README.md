@@ -14,3 +14,4 @@ Her dosya tek bir mimari karar: bağlam, karar, sonuçlar, kaynak. Karar değiş
 - [ADR-0010: Şifreleme v3: kolona bağlı, anahtar numaralı](0010-sifreleme-v3-kolona-bagli.md)
 - [ADR-0011: Zoom bağlantısı (bulut kaydını alma)](0011-zoom-baglantisi.md)
 - [ADR-0012: Zoom bildirim ucu (otomatik alma)](0012-zoom-bildirim-ucu.md)
+- [ADR-0014: Yapay zekâ sağlayıcı katmanı: göreve göre model, seçim ölçümle](0014-yapay-zeka-saglayici-katmani.md)
