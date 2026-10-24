@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MeetingWeb.Models;
+using MeetingWeb.Services.ArchiveSearch;
 
 namespace MeetingWeb.Data
 {
@@ -25,6 +26,11 @@ namespace MeetingWeb.Data
         public DbSet<Comment> Comments { get; set; }
         public DbSet<CommentReaction> CommentReactions { get; set; }
         public DbSet<ZoomConnection> ZoomConnections { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.AddInterceptors(ArchiveIndexGeneration.CommandInterceptor, ArchiveIndexGeneration.TransactionInterceptor);
+        }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
