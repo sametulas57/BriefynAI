@@ -29,7 +29,7 @@ run_model() {
   log=$(mktemp)
   ANSWERER=groq AI_ANSWER_MODEL="$model" GROQ_API_KEY="$groq_key" AI_ENGINE_API_KEY="$api_key" \
     ai_engine/.venv/bin/python -m uvicorn api_server:app --app-dir ai_engine --host 127.0.0.1 --port "$port" >"$log" 2>&1 &
-  local server=$!
+  server=$!  # local değil: EXIT tuzağı run_model döndükten sonra da okur
   stop_server() { kill "$server" 2>/dev/null || true; wait "$server" 2>/dev/null || true; }
   trap 'stop_server' EXIT
   trap 'stop_server; exit 130' INT TERM
