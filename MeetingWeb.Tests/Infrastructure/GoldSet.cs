@@ -10,7 +10,7 @@ namespace MeetingWeb.Tests.Infrastructure
     public class GoldSet
     {
         public record Question(string Id, string Team, string Text, string ScopeKind, string? ScopeTarget, string Kind,
-            IReadOnlyList<(string Meeting, string Evidence)> Expected, string? Trace);
+            IReadOnlyList<(string Meeting, string Evidence)> Expected, string? AnswerSummary, IReadOnlyList<string> Forbidden, string? Trace);
 
         public static readonly string[] Unanswered = { "cevapsiz", "kapsam", "sizma" };
 
@@ -119,6 +119,8 @@ namespace MeetingWeb.Tests.Infrastructure
                     scope.GetProperty("hedef").ValueKind == JsonValueKind.Null ? null : scope.GetProperty("hedef").GetString(),
                     q.GetProperty("tur").GetString()!,
                     q.GetProperty("beklenen").EnumerateArray().Select(e => (e.GetProperty("toplanti").GetString()!, e.GetProperty("kanit").GetString()!)).ToList(),
+                    q.TryGetProperty("cevap_ozu", out var answerSummary) && answerSummary.ValueKind == JsonValueKind.String ? answerSummary.GetString() : null,
+                    q.TryGetProperty("yasak", out var forbidden) ? forbidden.EnumerateArray().Select(f => f.GetString()!).ToList() : new List<string>(),
                     q.TryGetProperty("iz", out var trace) ? trace.GetString() : null));
             }
             return gold;
