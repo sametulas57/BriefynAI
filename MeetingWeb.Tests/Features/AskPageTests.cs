@@ -132,6 +132,17 @@ public class AskPageTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Chosen_scope_without_target_asks_for_a_choice()
+    {
+        using var client = Client();
+        var html = await Post(client, ("Question", Question), ("Scope", "Meeting"), ("MeetingId", ""));
+        Assert.Contains("Lütfen bir toplantı seçin.", Text(html));
+        html = await Post(client, ("Question", Question), ("Scope", "Series"), ("SeriesId", ""));
+        Assert.Contains("Lütfen bir seri seçin.", Text(html));
+        Assert.Equal(0, _app.PythonApi.CallCount);
+    }
+
+    [Fact]
     public async Task Other_teams_meeting_cannot_be_asked()
     {
         using var client = Client();

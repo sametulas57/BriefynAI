@@ -37,6 +37,7 @@ public class AskModel : PageModel
     public List<MeetingSeries> Series { get; private set; } = new();
     public List<Meeting> Meetings { get; private set; } = new();
     public AskResult? Result { get; private set; }
+    public string? ScopeMessage { get; private set; }
 
     public async Task OnGetAsync(string? kapsam, int? hedef)
     {
@@ -54,6 +55,14 @@ public class AskModel : PageModel
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
         var workspaceId = await LoadChoicesAsync();
+        // A chosen series or meeting with no target is never widened to the whole archive.
+        ScopeMessage = Scope switch
+        {
+            "Series" when !SeriesId.HasValue => "Lütfen bir seri seçin.",
+            "Meeting" when !MeetingId.HasValue => "Lütfen bir toplantı seçin.",
+            _ => null
+        };
+        if (ScopeMessage != null) return Page();
         var scope = Scope switch
         {
             "Series" when SeriesId.HasValue => ArchiveScope.Series,
