@@ -29,3 +29,9 @@ def build_summarizer():
     from .groq_summarizer import Summarizer
     from .llm import build_llm
     return Summarizer(build_llm("summary"))
+
+
+def build_answerer():
+    from .answerer import Answerer
+    from .llm import build_llm
+    return Answerer(build_llm("answer"))

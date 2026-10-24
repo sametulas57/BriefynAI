@@ -3,6 +3,7 @@ using Hangfire.SqlServer;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
+using MeetingWeb.Services.ArchiveSearch;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -111,6 +112,7 @@ try
     }
 
     // --- 6. Custom Services ---
+    builder.Services.AddSingleton<IArchiveSearchService, ArchiveSearchService>();
     builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
     builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();

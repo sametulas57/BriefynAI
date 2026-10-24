@@ -8,9 +8,9 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 # AI providers (Groq today) live behind small interfaces in providers/; see providers/__init__.py.
-from providers import build_summarizer, build_transcriber
+from providers import build_answerer, build_summarizer, build_transcriber
 from providers.speakers import is_only_hallucinated_captions, parse_vtt
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def transcribe_audio(path: str, speakers_vtt: str | None = None) -> str:
@@ -175,6 +175,49 @@ def summarize(request: SummarizeRequest):
     if not summary:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return {"success": True, "summary": summary}
+
+
+# Arşive soru sor (PRD 2026-10-24 §3): the backend sends the question and the parts its search picked, as data.
+ANSWER_MAX_PARTS = 40
+ANSWER_MAX_CONTEXT_CHARS = 24000  # ~5K tokens of Turkish text; the backend aims for 3-5K
+
+
+class AnswerPart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(pattern=r"^T\d{1,9}-[KRBAD]\d{1,4}$")
+    toplanti: str = Field(max_length=300)
+    tarih: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    tur: str = Field(max_length=20)
+    metin: str = Field(min_length=1, max_length=4000)
+
+
+class AnswerRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    soru: str = Field(max_length=500)
+    parcalar: list[AnswerPart] = Field(max_length=ANSWER_MAX_PARTS)
+
+    @field_validator("soru")
+    @classmethod
+    def question_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("empty question")
+        return value.strip()
+
+    @model_validator(mode="after")
+    def context_fits(self):
+        if sum(len(p.metin) for p in self.parcalar) > ANSWER_MAX_CONTEXT_CHARS:
+            raise ValueError("context too long")
+        return self
+
+
+@app.post("/api/answer")
+def answer(request: AnswerRequest):
+    # Question, parts and answer never reach the log (PRD §6): on failure only the error type is written.
+    try:
+        return build_answerer().answer(request.soru, [p.model_dump() for p in request.parcalar])
+    except Exception as e:
+        logging.error(f"❌ Answer failed: {type(e).__name__}")
+        raise HTTPException(status_code=503, detail="busy")
 
 
 # Entry point for the Uvicorn ASGI server
