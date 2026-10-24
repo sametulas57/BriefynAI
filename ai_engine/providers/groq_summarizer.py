@@ -1,4 +1,4 @@
-"""Meeting summary with a Groq-hosted LLM and a strict JSON schema.
+"""Meeting summary with an LLM (any LlmClient, ADR-0014) and a strict JSON schema.
 
 Model choice (2026-10-16 blind test, 5 tricky fake meetings): qwen/qwen3.8-27b made 0 fabrications;
 gpt-oss-120b ~6 and the old local qwen2.5:14b ~7. Long transcripts are summarised in parts and merged,
@@ -8,6 +8,7 @@ import json
 import logging
 
 from .groq_client import GroqClient, GroqError  # noqa: F401  (GroqError re-exported for callers)
+from .llm import GroqLlm, LlmClient
 
 SYSTEM = (
     "Toplantı dökümünden yapılandırılmış özet çıkaran bir asistansın. Yalnız dökümde geçen bilgiyi kullan; "
@@ -79,13 +80,12 @@ def to_backend_format(summary: dict) -> dict:
     }
 
 
-class GroqSummarizer:
-    def __init__(self, client: GroqClient, model: str = "qwen/qwen3.8-27b", max_chars: int = 12000):
-        self._client, self._model, self._max_chars = client, model, max_chars
+class Summarizer:
+    def __init__(self, llm: LlmClient, max_chars: int = 12000):
+        self._llm, self._max_chars = llm, max_chars
 
     def _ask(self, content: str) -> dict:
-        return self._client.chat_json(self._model, [{"role": "system", "content": SYSTEM},
-                                                    {"role": "user", "content": content}], SCHEMA)
+        return self._llm.complete_json(SYSTEM, [{"role": "user", "content": content}], SCHEMA)
 
     def summarize(self, transcript: str) -> dict:
         if len(transcript) <= self._max_chars:
@@ -96,3 +96,9 @@ class GroqSummarizer:
         partials = [self._ask(f"Toplantı dökümünün {i + 1}/{len(parts)}. bölümü:\n\n{p}") for i, p in enumerate(parts)]
         merged = self._ask(f"{MERGE_INSTRUCTION}\n\nKısmi özetler:\n{json.dumps(partials, ensure_ascii=False)}")
         return to_backend_format(merged)
+
+
+class GroqSummarizer(Summarizer):
+    """Groq shortcut kept for existing callers and tests."""
+    def __init__(self, client: GroqClient, model: str = "qwen/qwen3.8-27b", max_chars: int = 12000):
+        super().__init__(GroqLlm(client, model), max_chars)
