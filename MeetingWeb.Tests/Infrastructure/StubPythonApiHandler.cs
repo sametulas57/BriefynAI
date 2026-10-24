@@ -10,6 +10,7 @@ namespace MeetingWeb.Tests.Infrastructure
         public string? LastApiKey { get; private set; }
         public string? LastPath { get; private set; }
         public string? LastBody { get; private set; }
+        public int CallCount { get; private set; }
 
         // Runs while the "AI" is working, e.g. to simulate a user editing the meeting at the same time.
         public Action? BeforeRespond { get; set; }
@@ -21,6 +22,7 @@ namespace MeetingWeb.Tests.Infrastructure
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            CallCount++;
             LastApiKey = request.Headers.TryGetValues("X-Api-Key", out var values) ? values.Single() : null;
             LastPath = request.RequestUri!.AbsolutePath.TrimStart('/');
             LastBody = request.Content == null ? null : await request.Content.ReadAsStringAsync(cancellationToken);

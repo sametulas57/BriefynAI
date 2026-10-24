@@ -68,6 +68,7 @@ try
     // --- 3. Application Settings ---
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection("Reminders"));
+    builder.Services.Configure<AskOptions>(builder.Configuration.GetSection("Ask"));
     builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
     // --- 4. Python API Communication ---
@@ -113,6 +114,8 @@ try
 
     // --- 6. Custom Services ---
     builder.Services.AddSingleton<IArchiveSearchService, ArchiveSearchService>();
+    builder.Services.AddSingleton<AskRateLimiter>();
+    builder.Services.AddScoped<IAskService, AskService>();
     builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
     builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
