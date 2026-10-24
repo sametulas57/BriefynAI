@@ -89,6 +89,7 @@
                             <li class="nav-item"><a class="nav-link @(currentPage == "/History" ? "active" : "")" aria-current="@(currentPage == "/History" ? "page" : null)" asp-page="/History">Geçmiş Özetler</a></li>
                             <li class="nav-item"><a class="nav-link @(currentPage == "/MyActions" ? "active" : "")" aria-current="@(currentPage == "/MyActions" ? "page" : null)" asp-page="/MyActions">Bana Atananlar</a></li>
                             <li class="nav-item"><a class="nav-link @(currentPage?.StartsWith("/Series/") == true ? "active" : "")" aria-current="@(currentPage?.StartsWith("/Series/") == true ? "page" : null)" asp-page="/Series/Index">Seriler</a></li>
+                            <li class="nav-item"><a class="nav-link @(currentPage == "/Ask" ? "active" : "")" aria-current="@(currentPage == "/Ask" ? "page" : null)" asp-page="/Ask">Arşive Sor</a></li>
                         }
                     </ul>
                     @if (User.Identity!.IsAuthenticated)
