@@ -1,0 +1,132 @@
+@page
+@model MeetingWeb.Pages.AskModel
+@using MeetingWeb.Services.ArchiveSearch
+@{
+    ViewData["Title"] = "Arşive sor";
+}
+<style>
+    .ask-card { border: 1px solid rgba(0,0,0,.04); border-radius: 1.25rem; box-shadow: 0 4px 24px rgba(0,0,0,.02); }
+    .ask-answer { white-space: pre-line; }
+    .btn-soft { font-weight: 600; padding: .6rem 1.2rem; border-radius: 2rem; }
+</style>
+
+<div class="container mt-5 mb-5" style="max-width: 1100px;">
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="bi bi-chat-square-text fs-4"></i></span>
+        <div>
+            <h2 class="mb-0 text-dark fw-bold">Arşive sor</h2>
+            <p class="text-muted mb-0 small">Toplantılarınızda konuşulanları sorun.</p>
+        </div>
+    </div>
+
+    <div class="card ask-card mb-4">
+        <div class="card-body p-4">
+            <form method="post" id="ask-form">
+                <label asp-for="Question" class="form-label fw-medium">Sorunuz</label>
+                <textarea asp-for="Question" class="form-control text-break" rows="3" maxlength="500" aria-describedby="question-count"></textarea>
+                <div id="question-count" class="form-text text-end"><span id="remaining">@(500 - (Model.Question?.Length ?? 0))</span> karakter kaldı</div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <label asp-for="Scope" class="form-label">Kapsam</label>
+                        <select asp-for="Scope" class="form-select" id="ask-scope">
+                            <option value="Archive">Tüm arşiv</option>
+                            <option value="Series">Bir seri</option>
+                            <option value="Meeting">Bir toplantı</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8" id="ask-series">
+                        <label asp-for="SeriesId" class="form-label">Seri</label>
+                        <select asp-for="SeriesId" class="form-select">
+                            <option value="">Seri seçin</option>
+                            @foreach (var series in Model.Series)
+                            {
+                                <option value="@series.Id">@series.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-8" id="ask-meeting">
+                        <label asp-for="MeetingId" class="form-label">Toplantı</label>
+                        <select asp-for="MeetingId" class="form-select">
+                            <option value="">Toplantı seçin</option>
+                            @foreach (var meeting in Model.Meetings)
+                            {
+                                <option value="@meeting.Id">@meeting.Title · @MeetingWeb.Services.DisplayTime.Format(meeting.CreatedAtUtc, "dd.MM.yyyy")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="From" class="form-label">Başlangıç</label>
+                        <input asp-for="From" type="date" class="form-control" />
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="To" class="form-label">Bitiş</label>
+                        <input asp-for="To" type="date" class="form-control" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-soft mt-4" id="ask-submit"><span id="ask-submit-label">Sor</span></button>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.Result is { } result)
+    {
+        @if (result.Status is AskStatus.Answered or AskStatus.NotFound)
+        {
+            <div class="mb-3"><span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">@result.MeetingsSearched toplantıya bakıldı</span></div>
+        }
+        @if (result.Status == AskStatus.Answered)
+        {
+            <div class="card ask-card mb-4"><div class="card-body p-4">
+                <div class="ask-answer text-break">@result.Answer</div>
+                @if (!string.IsNullOrWhiteSpace(result.Uncertain))
+                {
+                    <p class="small text-muted mt-3 mb-0 text-break">Not: @result.Uncertain</p>
+                }
+            </div></div>
+            <h3 class="h5 fw-bold mb-3">Kaynaklar</h3>
+            <div class="row g-3">
+                @foreach (var source in result.Sources)
+                {
+                    <div class="col-12"><div class="card ask-card"><div class="card-body p-4">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <strong class="text-break">@source.MeetingTitle</strong>
+                            <span class="small text-muted">@source.MeetingDate.ToString("dd.MM.yyyy")</span>
+                            <span class="badge bg-light text-secondary border">@(source.Kind switch { ArchivePassageKind.Topic => "Konu", ArchivePassageKind.Decision => "Karar", ArchivePassageKind.Pending => "Bekleyen konu", ArchivePassageKind.Task => "Görev", _ => "Toplantı dökümü" })</span>
+                        </div>
+                        <blockquote class="border-start border-primary border-3 ps-3 text-muted text-break">“@source.Quote”</blockquote>
+                        <a asp-page="/Details" asp-route-id="@source.MeetingId" class="small">Toplantıyı aç</a>
+                    </div></div></div>
+                }
+            </div>
+        }
+        else
+        {
+            var alertClass = result.Status is AskStatus.NotFound or AskStatus.EmptyArchive ? "alert-info" :
+                result.Status is AskStatus.RateLimited or AskStatus.Busy ? "alert-warning" : "alert-danger";
+            <div class="alert @alertClass" role="alert">@result.Message</div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        const scope = document.getElementById('ask-scope');
+        const series = document.getElementById('ask-series');
+        const meeting = document.getElementById('ask-meeting');
+        function showScope() {
+            series.hidden = scope.value !== 'Series';
+            meeting.hidden = scope.value !== 'Meeting';
+        }
+        scope.addEventListener('change', showScope);
+        showScope();
+        const question = document.getElementById('Question');
+        const remaining = document.getElementById('remaining');
+        question.addEventListener('input', () => remaining.textContent = Math.max(0, 500 - question.value.length));
+        document.getElementById('ask-form').addEventListener('submit', () => {
+            const button = document.getElementById('ask-submit');
+            button.disabled = true;
+            document.getElementById('ask-submit-label').innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Cevap hazırlanıyor…';
+        });
+    </script>
+}

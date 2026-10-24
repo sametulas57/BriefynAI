@@ -40,7 +40,10 @@
         <div class="card-body p-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                 <h3 class="fw-bold mb-0">Sıradaki toplantının gündemi</h3>
-                <button type="button" class="btn btn-outline-primary btn-soft" data-bs-toggle="modal" data-bs-target="#shareModal">Gündemi e-postayla gönder</button>
+                <div class="d-flex flex-wrap gap-2">
+                    <a asp-page="/Ask" asp-route-kapsam="seri" asp-route-hedef="@Model.Series.Id" class="btn btn-outline-primary btn-soft"><i class="bi bi-chat-square-text me-1"></i>Bu seriye sor</a>
+                    <button type="button" class="btn btn-outline-primary btn-soft" data-bs-toggle="modal" data-bs-target="#shareModal">Gündemi e-postayla gönder</button>
+                </div>
             </div>
             @if (TempData["StatusMessage"] != null)
             {
