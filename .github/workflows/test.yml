@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    name: .NET tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test MeetingWeb.Tests --nologo
+
+  python:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ai_engine/requirements*.txt
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt
+      - run: python -m pytest ai_engine/tests -q
