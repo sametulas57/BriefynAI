@@ -401,3 +401,5 @@ MeetingWeb/App_Data/
 # Model ölçümü sonuçları (uydurma altın set)
 olcum-sonuc/
 
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
