@@ -1,7 +1,6 @@
 # Briefyn AI: agent talimatları
 
-Toplantı ses kaydı → yazıya dökme → özet (konu, kararlar, aksiyonlar) → şifreli arşiv, ekip içi paylaşım ve canlı bildirim.
-Servisler (Docker Compose): `web` (ASP.NET Core Razor Pages, Identity, EF Core, Hangfire, SignalR), `ai_engine` (FastAPI; Groq üzerinden yazıya dökme ve özet), `db` (SQL Server 2022), `db-init` (uygulama kullanıcısı).
+Toplantı ses kaydı → yazıya dökme → özet (konu, kararlar, aksiyonlar) → şifreli arşiv, ekip içi paylaşım. Docker Compose: `web` (ASP.NET Core Razor Pages, EF Core, Hangfire, SignalR), `ai_engine` (FastAPI, Groq), `db` (SQL Server 2022), `db-init`.
 
 <!-- proje-cekirdegi: başla (kaynak: Beyin notes/proje-mimarisi.md; burada değiştirme, beyinde değiştir ve kopyala) -->
 ## Roller ve çalışma düzeni
@@ -13,40 +12,41 @@ Servisler (Docker Compose): `web` (ASP.NET Core Razor Pages, Identity, EF Core, 
 <!-- proje-cekirdegi: bitir -->
 
 ## Önce oku
-- `SPEC.md`, `tasks/plan.md`, `tasks/todo.md`: o anki iş (Addy `/spec`, `/plan`). Yeni özellik koddan önce `/spec` ile başlar; kabul ölçütleri teste dönüşür.
-- `docs/yol-haritasi.md`: backlog (açık işler, planlanan özellikler). Sıradaki iş buradan seçilir; iş bitince maddesi çıkarılır.
-- `docs/sabitler.md`: port, ad, yol gibi değişmeyen değerler; emin olamadığında önce buraya bak.
-- `docs/kararlar/`: mimari kararlar (ADR). Bir kararı değiştirecek iş yapmadan önce ilgili ADR'yi oku; yeni mimari karar = yeni ADR.
-- `docs/raporlar/`: araştırmalar ve denemeler. İşe başlamadan konuyla ilgili raporu oku; yeni araştırmayı buraya rapor olarak yaz.
+- `SPEC.md`, `tasks/plan.md`, `tasks/todo.md`: o anki iş. Yeni özellik koddan önce `/spec` ile başlar.
+- `docs/yol-haritasi.md`: backlog; sıradaki iş buradan seçilir, bitince maddesi çıkarılır.
+- `docs/sabitler.md`: port, ad, yol gibi sabit değerler; emin olamadığında önce buraya bak.
+- `docs/kararlar/`: ADR'ler. Kararı değiştirecek işten önce ilgili ADR okunur; yeni mimari karar = yeni ADR.
+- `docs/raporlar/`: araştırmalar. İşe başlamadan ilgili rapor okunur; yeni araştırma buraya rapor olur.
 
 ## Aletler
-- Veritabanına salt okunur bakış: `scripts/db-sorgu.sh --sema` (tablolar/kolonlar) ya da `scripts/db-sorgu.sh "SELECT ..."`. Yazamaz; hassas içerik zaten şifreli, parola özetleri kapalı. Yığın açık olmalı.
-- Güncel doküman: dış kütüphane/API işinde önce resmi güncel dokümanı web'den oku; kalıcı önemi varsa `docs/raporlar/` altına kısa rapor yaz.
+- Veritabanına salt okunur bakış: `scripts/db-sorgu.sh --sema` ya da `scripts/db-sorgu.sh "SELECT ..."` (yığın açık olmalı). Yazamaz; hassas içerik şifreli, parola özetleri kapalı.
+- Dış kütüphane/API işinde önce resmi güncel dokümanı web'den oku; kalıcı önemi varsa `docs/raporlar/`'a kısa rapor.
 
 ## Çalıştırma ve test
-- Yeni klonda ya da worktree'de bir kez: `python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt`.
-- Başlat: `docker compose up -d --build` · durdur: `docker compose stop` (iş bitince kendi açtığını durdur; `down -v` veriyi siler, asla kullanma). Açmadan önce `docker compose ps`: açıksa olanı kullan; başka oturumun kullandığı yığını kapatma.
-- .NET testleri: `dotnet test MeetingWeb.Tests` · Python testleri: `ai_engine` içinde `pytest`.
-- Önce test (kırmızı), sonra kod (yeşil). Testler yeşil olmadan "bitti" denmez.
+- Yeni klonda ya da worktree'de bir kez: `python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt` ve `git config core.hooksPath .githooks`.
+- Başlat `docker compose up -d --build`, durdur `docker compose stop`. Önce `docker compose ps`: açıksa olanı kullan, başka oturumun yığınını kapatma; iş bitince kendi açtığını durdur. `down -v` veriyi siler, asla kullanma.
+- .NET testleri `dotnet test MeetingWeb.Tests` · Python testleri `ai_engine` içinde `pytest`.
 
-## Doğrulama (testlere ek, 2026-10-18)
-- **Tek komut (2026-10-19):** `scripts/dogrula.sh` (build + .NET testleri + pytest, sonuç tek satır GEÇTİ/KALDI). "Bitti" = bu komut geçti; rapora GEÇTİ satırını yaz. Her commit'ten önce `.githooks/pre-commit` aynı komutu çalıştırır (Claude da Codex de geçer; yalnız doküman değişikliği atlanır), kalırsa commit durur. Claude'da ayrıca Stop hook'u: kod değişip komut geçmediyse "bitti" dedirtmez. `--no-verify` kullanma. Yeni klonda bir kez: `git config core.hooksPath .githooks`.
-- **Kontrol geçtiyse sorma:** testler geçtiyse ve arayüz işinde agent ekranda gördüyse Ulaş'a "kontrol eder misin" diye sorulmaz, "yapıldı" denir; Ulaş sonra bakar, istemediğini commit'ten geri aldırır (`git revert`). Tercih kararları yine sorulur.
-- **Aynı hata iki kez:** bir hata ikinci kez çıkarsa teste dönüştürülür.
-- **Ekranda kontrol:** arayüze dokunan işte "bitti" demeden önce agent uygulamayı tarayıcıda açar (http://127.0.0.1:8080 ya da önizleme portu), değişen sayfaları test hesabıyla kullanır ve gördüğünü raporlar. Değişiklik başına 1–3 küçük ekran görüntüsü; taşma, konum gibi ölçülebilenleri sayfaya komutla sor (2026-10-21, token).
-- **Test hesabı (Ulaş, 2026-10-20):** her yerel portta (8080, önizlemeler) giriş **her zaman** `.env`'deki `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` ile, agent'ın kendisi yapar; Ulaş'tan giriş istenmez. Hesap o veritabanında yoksa agent Kayıt Ol sayfasından açar (ad: "Test Kullanıcı"). Yalnız 127.0.0.1'de; şifre sohbete, loga, koda yazılmaz; Ulaş'ın gerçek hesabı kullanılmaz. **Zoom denemeleri (Ulaş, 2026-10-22):** yayına kadar test hesabı + ayrı bir deneme Zoom hesabı; Ulaş'ın kendi Briefyn/Zoom hesabı karıştırılmaz.
-- **İnceleme:** üreten ile denetleyen ayrıdır; yazan oturum kendi işini onaylamaz. `main`'e almadan önce Addy `/review` (Claude Code'da `/agent-skills:review`) taze bir alt ajanla kod farkını inceler; arayüz işinde ayrıca ekranda kontrol yapılır. Gerçek para veya çok kritik riskte birden fazla bağımsız inceleme. Tur sınırı yok; bulgular düzeltilip inceleme temiz çıkana kadar sürer. "Düşük" bulgular yol haritasına "sonra" diye yazılır.
+## Doğrulama
+- **Bitti = `scripts/dogrula.sh` GEÇTİ** (build + .NET testleri + pytest); rapora GEÇTİ satırını yaz. Pre-commit hook aynı komutu çalıştırır (yalnız doküman değişikliği atlanır); Claude'da Stop hook'u da geçmeden "bitti" dedirtmez. `--no-verify` yok.
+- Kontrol geçtiyse Ulaş'a "kontrol eder misin" diye sorulmaz, "yapıldı" denir; Ulaş istemediğini `git revert` ile aldırır. Tercih kararları yine sorulur.
+- Aynı hata ikinci kez çıkarsa teste dönüşür.
+- **Ekranda kontrol:** arayüze dokunan işte agent uygulamayı tarayıcıda açar (http://127.0.0.1:8080 ya da önizleme portu), değişen sayfaları kullanır, gördüğünü raporlar. Değişiklik başına 1–3 küçük ekran görüntüsü; taşma, konum gibi ölçülebilenleri sayfaya komutla sor.
+- **Test hesabı:** yerel portlarda giriş her zaman `.env`'deki `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` ile, agent'ın kendisi yapar; Ulaş'tan giriş istenmez. Hesap yoksa Kayıt Ol sayfasından açılır (ad: "Test Kullanıcı"). Yalnız 127.0.0.1; şifre sohbete, loga, koda yazılmaz. Zoom denemeleri yayına kadar test hesabı + ayrı deneme Zoom hesabıyla; Ulaş'ın kendi hesapları kullanılmaz.
+- **İnceleme:** yazan oturum kendi işini onaylamaz. `main`'e almadan önce `/review` (Claude Code'da `/agent-skills:review`) taze bir alt ajanla; arayüz işinde ayrıca ekranda kontrol. Gerçek para ya da çok kritik riskte birden fazla bağımsız inceleme. Bulgular düzelene kadar tur sürer; "düşük" bulgular yol haritasına "sonra" diye yazılır.
 
-## Kod yerleşimi (2026-10-21)
-- Sayfalar özellik klasöründe: `Pages/Auth` (giriş/kayıt), `Pages/Profile`, `Pages/Workspace`; toplantı sayfaları `Pages/` kökünde. Sayfa mantığı servise (`Services/`), varlıklar `Models/`, EF `Data/`.
-- Dosya adı = sınıf adı, namespace = klasör. Saklanan sabit değerler tek yerde: rol `WorkspaceRole`, madde türü/kaynağı `MeetingPointKind`/`EntrySource`, kaydın kaynağı `MeetingSource`, çerezdeki profil alanı `UserClaimTypes`, oturum anahtarı `ActiveWorkspaceService.SessionKey`. Şema ADR-0009; şema değişikliği yeni migration, `migrate` servisi uygular. Ayar varsayılanları `appsettings.json`'da görünür.
+## Kod yerleşimi
+- Sayfa mantığı PageModel'e değil servise (`Services/`) yazılır; varlıklar `Models/`, EF `Data/`.
+- Saklanan sabitler tek yerde: rol `WorkspaceRole`, madde türü/kaynağı `MeetingPointKind`/`EntrySource`, kaydın kaynağı `MeetingSource`, çerezdeki profil alanı `UserClaimTypes`, oturum anahtarı `ActiveWorkspaceService.SessionKey`.
+- Şema ADR-0009; şema değişikliği yeni migration, `migrate` servisi uygular. Ayar varsayılanları `appsettings.json`'da.
 
 ## Kurallar
-- `docs/raporlar/`, `docs/gunluk/`, `docs/arsiv/` açık repoya girmez; ayarlıysa post-commit hook her commit'te ayrı özel yedeğe alır.
-- Sırlar yalnız `.env`'de (git'e girmez); koda, compose'a, loglara sır yazma.
-- Her iş ayrı dalda (aynı klasörde; ek maliyeti yok), push et. Ayrı klasör (worktree) yalnız aynı anda birden çok agent çalışırken: orada `.env`, `ai_engine/.venv` ve ilk derleme ek iş, 8080 yığını ana klasörün kodunu çalıştırır (Ulaş, 2026-10-21). **main'e alma (Ulaş, 2026-10-20):** `scripts/dogrula.sh` GEÇTİ, `/review` temiz (bulgular düzeltildi) ve arayüz işinde ekranda kontrol yapıldıysa agent işin sonunda sormadan main'e alır, push eder ve Ulaş'a söyler; Ulaş beğenmezse `git revert` ile geri alınır. **2026-10-21 (Ulaş):** migration, güvenlik ve şifreleme işleri de sormadan main'e alınır. **Yalnız şu sorulur:** var olan veriyi geri gelmeyecek şekilde silen ya da bozan bir adım (ör. veritabanını silmek); öncesinde yedek alınır.
+- `docs/raporlar/`, `docs/gunluk/`, `docs/arsiv/` açık repoya girmez; post-commit hook ayarlıysa özel yedeğe alır.
+- Sırlar yalnız `.env`'de; koda, compose'a, loglara sır yazılmaz.
+- Her iş ayrı dalda, push edilir. Worktree yalnız aynı anda birden çok agent çalışırken (`.env`, `.venv`, ilk derleme ek iş; 8080 yığını ana klasörün kodunu çalıştırır).
+- **main'e alma:** `dogrula.sh` GEÇTİ, `/review` temiz ve arayüz işinde ekranda kontrol yapıldıysa agent sormadan main'e alır, push eder, Ulaş'a söyler (migration, güvenlik, şifreleme dahil). Yalnız var olan veriyi geri gelmeyecek şekilde silen ya da bozan adım sorulur; öncesinde yedek.
 - Yetki: kullanıcı yalnız üyesi olduğu workspace'in verisini görür/değiştirir (ADR-0005).
-- Mevcut sayfaların görünümünü değiştirme; yeni öğeler mevcut stil ve bileşenlerle.
+- Mevcut sayfaların görünümü değişmez; yeni öğeler mevcut stil ve bileşenlerle.
 - Kullanıcıya görünen metinde teknik terim yok; sade Türkçe.
 - Ücretli servis/paket ekleme ve AI sağlayıcısı değiştirme Ulaş'ın onayı olmadan yok (ADR-0001).
-- **Kısıtlar (Ulaş; `/spec` bunları `SPEC.md` sınırlarına taşır):** bütçe çok az, ucuz ve sunucuyu yormayan çözümler; yerel model (Whisper/LLM) sunucuya kurulmaz. Toplantı verisi şirket verisidir: hiçbir sağlayıcıyla eğitim için paylaşılmaz, saklanmaz (ZDR); yeni sağlayıcı bu şartla seçilir (ADR-0001). Ses başarılı analizden sonra silinir, döküm şifreli saklanır (ADR-0002).
+- **Kısıtlar (`/spec` bunları `SPEC.md` sınırlarına taşır):** bütçe çok az, ucuz ve sunucuyu yormayan çözüm; yerel model (Whisper/LLM) sunucuya kurulmaz. Toplantı verisi şirket verisidir: hiçbir sağlayıcıyla eğitim için paylaşılmaz, saklanmaz (ZDR); yeni sağlayıcı bu şartla seçilir (ADR-0001). Ses başarılı analizden sonra silinir, döküm şifreli saklanır (ADR-0002).
