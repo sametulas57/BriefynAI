@@ -1,0 +1,46 @@
+#!/bin/sh
+# Yerel özel klasörleri ayrı bir Git deposuna yedekler; ayarlamak için git config yedek.gitdir <yol>.
+# Klasörleri repo köküne göre ekleyin: git config --add yedek.yol docs/raporlar.
+# Yedekleme hataları ana commit'i etkilemez.
+
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+# Linked worktree'lerde özel klasörler bulunmayabilir; eksik klasörleri yedekten
+# kaldırılmış saymamak için yedekleme yalnız ana worktree'de çalışır.
+GIT_DIR_ABS=$(git rev-parse --absolute-git-dir 2>/dev/null) || exit 0
+GIT_COMMON_ABS=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || exit 0
+GIT_DIR_REAL=$(cd "$GIT_DIR_ABS" 2>/dev/null && pwd -P) || exit 0
+GIT_COMMON_REAL=$(cd "$GIT_COMMON_ABS" 2>/dev/null && pwd -P) || exit 0
+[ "$GIT_DIR_REAL" = "$GIT_COMMON_REAL" ] || exit 0
+
+YEDEK=$(git config --get yedek.gitdir 2>/dev/null) || exit 0
+[ -n "$YEDEK" ] && [ -d "$YEDEK" ] || exit 0
+YEDEK_REAL=$(cd "$YEDEK" 2>/dev/null && pwd -P) || exit 0
+[ "$YEDEK_REAL" != "$GIT_DIR_REAL" ] && [ "$YEDEK_REAL" != "$GIT_COMMON_REAL" ] || exit 0
+KOK=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+YOLLAR=$(git config --get-all yedek.yol 2>/dev/null) || exit 0
+[ -n "$YOLLAR" ] || exit 0
+
+set --
+OLD_IFS=$IFS
+NL='
+'
+IFS=$NL
+for YOL in $YOLLAR; do
+  if [ -n "$YOL" ] && { [ -e "$KOK/$YOL" ] || [ -L "$KOK/$YOL" ]; }; then
+    set -- "$@" "$YOL"
+  fi
+done
+IFS=$OLD_IFS
+[ "$#" -gt 0 ] || exit 0
+
+git --git-dir="$YEDEK" --work-tree="$KOK" add -A -f -- "$@" >/dev/null 2>&1 || exit 0
+git --git-dir="$YEDEK" --work-tree="$KOK" diff --cached --quiet --exit-code >/dev/null 2>&1 && exit 0
+git -c core.hooksPath=/dev/null --git-dir="$YEDEK" --work-tree="$KOK" commit -q -m "Yedek: $(date '+%Y-%m-%d %H:%M')" >/dev/null 2>&1 || exit 0
+
+if git --git-dir="$YEDEK" remote 2>/dev/null | grep -q .; then
+  (
+    unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+    git --git-dir="$YEDEK" --work-tree="$KOK" push >/dev/null 2>&1
+  ) </dev/null >/dev/null 2>&1 &
+fi
+exit 0

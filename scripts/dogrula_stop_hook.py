@@ -54,7 +54,10 @@ def main():
         # dogrula.sh testten önce aldığı hash'i verir; testler sırasında kod değiştiyse damgalamaz.
         bas = sys.argv[sys.argv.index("--damgala") + 1] if len(sys.argv) > sys.argv.index("--damgala") + 1 else ""
         simdi = agac_hash()
-        if bas and bas != simdi:
+        if not bas or not simdi:
+            print("Doğrulama: KALDI (parmak izi boş)")
+            sys.exit(1)
+        if bas != simdi:
             print("Doğrulama: KALDI (testler sürerken kod değişti; yeniden çalıştır)")
             sys.exit(1)
         with open(damga_yolu(), "w") as f:

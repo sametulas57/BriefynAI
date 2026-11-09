@@ -24,6 +24,7 @@ Servisler (Docker Compose): `web` (ASP.NET Core Razor Pages, Identity, EF Core, 
 - Güncel doküman: dış kütüphane/API işinde önce resmi güncel dokümanı web'den oku; kalıcı önemi varsa `docs/raporlar/` altına kısa rapor yaz.
 
 ## Çalıştırma ve test
+- Yeni klonda ya da worktree'de bir kez: `python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt`.
 - Başlat: `docker compose up -d --build` · durdur: `docker compose stop` (iş bitince kendi açtığını durdur; `down -v` veriyi siler, asla kullanma). Açmadan önce `docker compose ps`: açıksa olanı kullan; başka oturumun kullandığı yığını kapatma.
 - .NET testleri: `dotnet test MeetingWeb.Tests` · Python testleri: `ai_engine` içinde `pytest`.
 - Önce test (kırmızı), sonra kod (yeşil). Testler yeşil olmadan "bitti" denmez.
@@ -41,6 +42,7 @@ Servisler (Docker Compose): `web` (ASP.NET Core Razor Pages, Identity, EF Core, 
 - Dosya adı = sınıf adı, namespace = klasör. Saklanan sabit değerler tek yerde: rol `WorkspaceRole`, madde türü/kaynağı `MeetingPointKind`/`EntrySource`, kaydın kaynağı `MeetingSource`, çerezdeki profil alanı `UserClaimTypes`, oturum anahtarı `ActiveWorkspaceService.SessionKey`. Şema ADR-0009; şema değişikliği yeni migration, `migrate` servisi uygular. Ayar varsayılanları `appsettings.json`'da görünür.
 
 ## Kurallar
+- `docs/raporlar/`, `docs/gunluk/`, `docs/arsiv/` açık repoya girmez; ayarlıysa post-commit hook her commit'te ayrı özel yedeğe alır.
 - Sırlar yalnız `.env`'de (git'e girmez); koda, compose'a, loglara sır yazma.
 - Her iş ayrı dalda (aynı klasörde; ek maliyeti yok), push et. Ayrı klasör (worktree) yalnız aynı anda birden çok agent çalışırken: orada `.env`, `ai_engine/.venv` ve ilk derleme ek iş, 8080 yığını ana klasörün kodunu çalıştırır (Ulaş, 2026-10-21). **main'e alma (Ulaş, 2026-10-20):** `scripts/dogrula.sh` GEÇTİ, `/review` temiz (bulgular düzeltildi) ve arayüz işinde ekranda kontrol yapıldıysa agent işin sonunda sormadan main'e alır, push eder ve Ulaş'a söyler; Ulaş beğenmezse `git revert` ile geri alınır. **2026-10-21 (Ulaş):** migration, güvenlik ve şifreleme işleri de sormadan main'e alınır. **Yalnız şu sorulur:** var olan veriyi geri gelmeyecek şekilde silen ya da bozan bir adım (ör. veritabanını silmek); öncesinde yedek alınır.
 - Yetki: kullanıcı yalnız üyesi olduğu workspace'in verisini görür/değiştirir (ADR-0005).
