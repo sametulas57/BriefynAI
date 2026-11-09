@@ -8,6 +8,8 @@ Servisler (Docker Compose): `web` (ASP.NET Core Razor Pages, Identity, EF Core, 
 - `CLAUDE.md` yalnız `@AGENTS.md` satırıdır; tek kaynak bu dosya.
 - Yöntem Addy Osmani Agent Skills (`agent-skills` eklentisi): `/spec` → `SPEC.md`, `/plan` → `tasks/plan.md` + `tasks/todo.md`, uygulama, `/review` (Claude Code'da `/agent-skills:review`), `/ship`. Küçük iş tek oturumda; büyük işte her aşama yeni oturumda, devir sohbetten değil onaylı dosyalardan.
 - Kodu Codex yazar: Claude `/build` çalıştırmaz; `tasks/todo.md`'deki sıradaki görev Codex'e verilir, Codex `incremental-implementation` + `test-driven-development` skill'leriyle yapar. Kullanıcı "Claude yapsın" derse Claude `/build` ile yazar.
+- Güvenlik: kod yazılırken Addy `security-and-hardening`; denetim Claude Security eklentisi (`/claude-security`, kullanıcı çalıştırır): ajan main'e almadan önce dal için değişiklik taramasını (özellik boyutunda `high`), yayından önce tüm depo taramasını önerir; main'e alma koşulu değildir. `/ship`'teki güvenlik personası bu taramanın yerini tutmaz. Raporlar `CLAUDE-SECURITY-*/` klasöründe kalır, commitlenmez.
+- Yalnız kullanıcının çalıştırabildiği komutların (`/spec`, `/plan`, `/test`, `/ship`, `/constraints`, `/claude-security`) sırası gelince ajan komutu tek satırda önerir; kendisi çalıştırmaz. `/review` yerine ajan aynı incelemeyi taze bir alt ajanla kendisi yaptırabilir.
 <!-- proje-cekirdegi: bitir -->
 
 ## Önce oku
