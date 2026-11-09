@@ -7,7 +7,7 @@ KOD=$(git diff --cached --name-only | grep -vE '^docs/|\.md$' || true)
 EKSIK=$( { git diff --name-only; git ls-files --others --exclude-standard; } | grep -vE '^docs/|\.md$' || true)
 if [ -n "$EKSIK" ]; then
   echo "Doğrulama: KALDI (commit'e hazırlanmamış kod değişikliği var: $(echo "$EKSIK" | head -3 | tr '\n' ' '))"
-  echo "  Hepsini ekle (git add) ya da ayır (git stash --keep-index), sonra tekrar commit et."
+  echo "  Hepsini ekle (git add) ya da ayır (git stash -u --keep-index), sonra tekrar commit et."
   exit 1
 fi
 exec "$(git rev-parse --show-toplevel)/scripts/dogrula.sh"
