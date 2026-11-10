@@ -18,19 +18,23 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File("logs/bootstrap-log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
+var isTesting = false;
 try
 {
     Log.Information("Uygulama başlatılıyor, servisler yükleniyor...");
     var builder = WebApplication.CreateBuilder(args);
 
     // Entegrasyon testleri "Testing" ortamında çalışır: SQL Server'a bağlı parçalar (Hangfire, migration, SQL log) atlanır.
-    var isTesting = builder.Environment.IsEnvironment("Testing");
+    isTesting = builder.Environment.IsEnvironment("Testing");
 
     // Appsettings.json'dan connection string'i al
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-    EncryptionHelper.Initialize(builder.Configuration);
+    if (isTesting)
+        Program.InitializeTestEncryption(builder.Configuration);
+    else
+        EncryptionHelper.Initialize(builder.Configuration);
 
     // Serilog'u sisteme dahil et (Şu an geçici bootstrap logger'ı kullanıyor)
     builder.Host.UseSerilog();
@@ -336,6 +340,8 @@ catch (Exception ex)
     Log.Fatal(ex, "Uygulama beklenmedik şekilde çöktü!");
     // A failed "migrate" must not look successful to Docker Compose, which would then start the web service.
     Environment.ExitCode = 1;
+    // WebApplicationFactory must see the original startup failure, not just a missing IHost.
+    if (isTesting) throw;
 }
 finally
 {
@@ -343,4 +349,18 @@ finally
 }
 
 // WebApplicationFactory'nin (entegrasyon testleri) Program sınıfına erişebilmesi için.
-public partial class Program { }
+public partial class Program
+{
+    private static readonly object TestEncryptionLock = new();
+    private static bool _testEncryptionInitialized;
+
+    internal static void InitializeTestEncryption(IConfiguration configuration)
+    {
+        lock (TestEncryptionLock)
+        {
+            if (_testEncryptionInitialized) return;
+            EncryptionHelper.Initialize(configuration);
+            _testEncryptionInitialized = true;
+        }
+    }
+}
