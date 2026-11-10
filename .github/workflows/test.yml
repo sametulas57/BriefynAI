@@ -27,6 +27,5 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: ai_engine/requirements*.txt
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt
       - run: python -m pytest ai_engine/tests -q
