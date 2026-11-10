@@ -41,7 +41,7 @@ Toplantı ses kaydı → yazıya dökme → özet (konu, kararlar, aksiyonlar) �
 - `docs/raporlar/`, `docs/gunluk/`, `docs/arsiv/` açık repoya girmez; post-commit hook ayarlıysa özel yedeğe alır.
 - Sırlar yalnız `.env`'de; koda, compose'a, loglara sır yazılmaz.
 - Her iş ayrı dalda, push edilir. Worktree yalnız aynı anda birden çok agent çalışırken (`.env`, `.venv`, ilk derleme ek iş; 8080 yığını ana klasörün kodunu çalıştırır).
-- **main'e alma:** iki kademe. Sıradan iş: dal push edilir, PR açılır, CI yeşilse otomatik birleşir (`gh pr merge --auto --squash`), Ulaş'a söylenir. Riskli iş (yetki, veri silen migration, ödeme, şifreleme ve sır, silme, deploy, `git revert` ile geri alınamayan): PR açılır, Ulaş `/review` çalıştırıp onaylar; veri silen adımdan önce yedek.
+- **main'e alma:** Addy `ci-cd-and-automation` "PR Checks" düzeniyle (dal korumalı, CI zorunlu, `gh pr merge --auto --squash`). Tek fark: zorunlu onay yalnız riskli işte (Addy `/build auto` durma listesi); orada PR açılır, Ulaş `/review` çalıştırıp onaylar, veri silen adımdan önce yedek.
 - Yetki: kullanıcı yalnız üyesi olduğu workspace'in verisini görür/değiştirir (ADR-0005).
 - Mevcut sayfaların görünümü değişmez; yeni öğeler mevcut stil ve bileşenlerle.
 - Kullanıcıya görünen metinde teknik terim yok; sade Türkçe.
