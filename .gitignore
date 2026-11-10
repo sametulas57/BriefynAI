@@ -403,3 +403,6 @@ olcum-sonuc/
 
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Local test browser session (contains authentication cookies)
+.auth/
