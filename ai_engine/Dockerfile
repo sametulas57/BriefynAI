@@ -1,5 +1,5 @@
 # 1. Taban İmaj (Hafif ve güncel bir Python sürümü seçiyoruz)
-FROM python:3.12.13-slim
+FROM python:3.15.0-slim
 
 # 2. Konteyner içindeki çalışma klasörümüzü belirliyoruz
 WORKDIR /app
