@@ -4,7 +4,7 @@
 - `Backlog.md`: sıradaki iş buradan seçilir, biten madde çıkarılır.
 
 ## Çalıştırma ve test
-- Yeni klonda ya da worktree'de bir kez: `python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt` ve `git config core.hooksPath .githooks`.
+- Yeni klonda bir kez `git config core.hooksPath .githooks`; yoksa commit öncesi kontrol çalışmaz.
 - Başlat `docker compose up -d --build`, durdur `docker compose stop`; önce `docker compose ps`, açıksa olanı kullan. `down -v` veriyi siler, asla kullanma.
 - Bitti = `scripts/dogrula.sh` GEÇTİ (build + .NET testleri + pytest). Pre-commit hook ve CI aynısını koşar.
 - Veritabanına salt okunur bakış: `scripts/db-sorgu.sh --sema` ya da `scripts/db-sorgu.sh "SELECT ..."` (yığın açık olmalı).

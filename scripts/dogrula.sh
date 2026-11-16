@@ -5,7 +5,8 @@
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 1
 if [ ! -x ai_engine/.venv/bin/python ]; then
-  echo "Doğrulama: KALDI (ai_engine/.venv yok; kurulum AGENTS.md 'Çalıştırma ve test')"
+  echo "Doğrulama: KALDI (ai_engine/.venv yok)"
+  echo "  Bir kez kur: python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt"
   exit 1
 fi
 LOG=$(mktemp)
