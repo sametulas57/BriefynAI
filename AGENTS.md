@@ -6,9 +6,6 @@
 ## Çalıştırma ve test
 - Yeni klonda bir kez `git config core.hooksPath .githooks`; yoksa commit öncesi kontrol çalışmaz.
 
-## Dokunulmayacak yerler
-- Kullanıcı yalnız üyesi olduğu workspace'in verisini görür ve değiştirir (ADR-0005).
-
 ## Proje kararları
 - Her iş ayrı dalda, push edilir. Worktree yalnız aynı anda birden çok ajan çalışırken (8080 yığını ana klasörün kodunu çalıştırır).
 - main'e alma Addy `ci-cd-and-automation` "PR Checks" düzeniyle (`gh pr merge --auto --squash`). Riskli işte (Addy `/build auto` durma listesi) PR açılır, Ulaş `/agent-skills:review` çalıştırıp onaylar; veri silen adımdan önce yedek.
