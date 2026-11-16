@@ -1,6 +1,6 @@
 # Yol haritası (backlog)
 
-Açık işler ve planlanan özellikler. Sıradaki iş buradan seçilir; o anki iş `SPEC.md` ve `tasks/`'ta yürür, bitince maddesi buradan çıkarılır. Bitenler git geçmişinde, kalıcı kararlar `docs/kararlar/`'da, kısıtlar `AGENTS.md` "Kurallar"da.
+Açık işler ve planlanan özellikler. Sıradaki iş buradan seçilir; o anki iş `SPEC.md` ve `tasks/`'ta yürür, bitince maddesi buradan çıkarılır. Bitenler git geçmişinde, kalıcı kararlar `docs/decisions/`'da, kısıtlar `AGENTS.md`'de.
 
 ## Açık işler (sırayla)
 1. **Yayına kalanlar:** yayın öncesi gizli anahtarların yenilenmesi, mail alan adı, prod compose, KVKK metinleri ve standart sözleşme, Microsoft for Startups Founders Hub başvurusu (yayından hemen önce; kredi 90 gün), **Zoom Aşama 3** (Marketplace beta onayı, başka hesapların bağlanabilmesi; kalıcı herkese açık adres ve gizlilik metni gerektirdiği için yayınla birlikte, Ulaş 2026-10-22).
