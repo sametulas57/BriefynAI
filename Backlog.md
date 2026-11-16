@@ -1,4 +1,4 @@
-# Yol haritası (backlog)
+# Backlog
 
 Açık işler ve planlanan özellikler. Sıradaki iş buradan seçilir; o anki iş `SPEC.md` ve `tasks/`'ta yürür, bitince maddesi buradan çıkarılır. Bitenler git geçmişinde, kalıcı kararlar `docs/decisions/`'da, kısıtlar `AGENTS.md`'de.
 
