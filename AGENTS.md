@@ -3,8 +3,6 @@
 ## Önce oku
 - `docs/yol-haritasi.md`: backlog; sıradaki iş buradan seçilir, biten madde çıkarılır.
 - `docs/sabitler.md`: port, ad, yol gibi sabit değerler.
-- `docs/kararlar/`: ADR'ler; kararı değiştirecek işten önce ilgili ADR okunur.
-- `docs/raporlar/`: araştırma raporları; yeni araştırma buraya rapor olur.
 
 ## Çalıştırma ve test
 - Yeni klonda ya da worktree'de bir kez: `python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt` ve `git config core.hooksPath .githooks`.
