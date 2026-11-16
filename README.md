@@ -31,7 +31,7 @@ flowchart LR
 - `MeetingWeb/`: ASP.NET Core Razor Pages app with Identity, EF Core, Hangfire, and SignalR.
 - `ai_engine/`: Python FastAPI service for transcription, summaries, and answers.
 - `MeetingWeb.Tests/`, `ai_engine/tests/`: xUnit and pytest suites.
-- `docs/kararlar/`: architecture decision records (in Turkish).
+- `docs/decisions/`: architecture decision records (in Turkish).
 
 ## Getting started
 
