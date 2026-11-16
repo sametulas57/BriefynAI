@@ -7,10 +7,7 @@
 - Yeni klonda bir kez `git config core.hooksPath .githooks`; yoksa commit öncesi kontrol çalışmaz.
 
 ## Dokunulmayacak yerler
-- `docs/raporlar/`, `docs/gunluk/`, `docs/arsiv/` açık repoya girmez.
-- Sırlar yalnız `.env`'de; koda, compose'a, loglara sır yazılmaz.
 - Kullanıcı yalnız üyesi olduğu workspace'in verisini görür ve değiştirir (ADR-0005).
-- Mevcut sayfaların görünümü değişmez; yeni öğeler mevcut stil ve bileşenlerle.
 
 ## Proje kararları
 - Her iş ayrı dalda, push edilir. Worktree yalnız aynı anda birden çok ajan çalışırken (8080 yığını ana klasörün kodunu çalıştırır).
