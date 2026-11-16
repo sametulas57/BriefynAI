@@ -5,9 +5,6 @@
 
 ## Çalıştırma ve test
 - Yeni klonda bir kez `git config core.hooksPath .githooks`; yoksa commit öncesi kontrol çalışmaz.
-- Bitti = `scripts/dogrula.sh` GEÇTİ (build + .NET testleri + pytest). Pre-commit hook ve CI aynısını koşar.
-- Veritabanına salt okunur bakış: `scripts/db-sorgu.sh --sema` ya da `scripts/db-sorgu.sh "SELECT ..."` (yığın açık olmalı).
-- Arayüzde giriş `scripts/test-giris.sh` ile (oturum `.auth/test-oturumu.json`'a kaydolur). Zoom denemeleri yalnız test hesaplarıyla, Ulaş'ın kendi hesaplarıyla değil.
 
 ## Kod yerleşimi
 - Sayfa mantığı PageModel'de değil `Services/`'te; varlıklar `Models/`, EF `Data/`.
