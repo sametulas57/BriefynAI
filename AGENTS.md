@@ -5,7 +5,6 @@
 
 ## Çalıştırma ve test
 - Yeni klonda bir kez `git config core.hooksPath .githooks`; yoksa commit öncesi kontrol çalışmaz.
-- Başlat `docker compose up -d --build`, durdur `docker compose stop`; önce `docker compose ps`, açıksa olanı kullan. `down -v` veriyi siler, asla kullanma.
 - Bitti = `scripts/dogrula.sh` GEÇTİ (build + .NET testleri + pytest). Pre-commit hook ve CI aynısını koşar.
 - Veritabanına salt okunur bakış: `scripts/db-sorgu.sh --sema` ya da `scripts/db-sorgu.sh "SELECT ..."` (yığın açık olmalı).
 - Yerelde giriş `scripts/test-giris.sh` ile: şifreyi `.env`'den okur, oturumu `.auth/test-oturumu.json`'a yazar, Playwright CLI `state-load` eder; süresi dolunca yeniden çalıştırılır. Yalnız 127.0.0.1; şifre sohbete, loga, koda yazılmaz. Zoom denemeleri test hesabı ve ayrı deneme Zoom hesabıyla, Ulaş'ın kendi hesaplarıyla değil.
