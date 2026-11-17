@@ -11,6 +11,4 @@
 - Aşama: yayında değil.
 - Yeni sayfa mantığı `Services/`'e; sayfalardaki doğrudan veritabanı sorguları örnek alınmaz.
 - Kullanıcıya görünen metinde teknik terim yok; sade Türkçe.
-- Repo herkese açık: commit ve PR metninde yapay zekâ izi (`Co-Authored-By` satırı, ajan adı) ve kişisel not yok.
-- Ücretli servis ya da paket eklemek ve AI sağlayıcısını değiştirmek Ulaş'ın onayıyla.
-- Bütçe çok az: ucuz, sunucuyu yormayan çözüm; yerel model sunucuya kurulmaz. Toplantı verisi hiçbir sağlayıcıyla eğitim için paylaşılmaz, saklanmaz.
+- AI sağlayıcısını değiştirmek Ulaş'ın onayıyla; yerel model sunucuya kurulmaz. Toplantı verisi hiçbir sağlayıcıyla eğitim için paylaşılmaz, saklanmaz.
