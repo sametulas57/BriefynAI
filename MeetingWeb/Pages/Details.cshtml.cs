@@ -320,7 +320,12 @@ namespace MeetingWeb.Pages
                 .Select(p => (int?)p.SortOrder).MaxAsync() + 1 ?? 0;
             _context.MeetingPoints.Add(new MeetingPoint
             {
-                MeetingId = meetingId, Kind = kind, Text = text, Source = EntrySource.Manual, CreatedByUserId = userId, SortOrder = nextOrder
+                MeetingId = meetingId,
+                Kind = kind,
+                Text = text,
+                Source = EntrySource.Manual,
+                CreatedByUserId = userId,
+                SortOrder = nextOrder
             });
             await _context.SaveChangesAsync();
             return RedirectToPage(new { id = meetingId });
@@ -337,7 +342,11 @@ namespace MeetingWeb.Pages
                 .Select(a => (int?)a.SortOrder).MaxAsync() + 1 ?? 0;
             _context.ActionItems.Add(new ActionItem
             {
-                MeetingId = meetingId, Text = actionText, Source = EntrySource.Manual, CreatedByUserId = userId, SortOrder = nextOrder
+                MeetingId = meetingId,
+                Text = actionText,
+                Source = EntrySource.Manual,
+                CreatedByUserId = userId,
+                SortOrder = nextOrder
             });
             await _context.SaveChangesAsync();
             return RedirectToPage(new { id = meetingId });

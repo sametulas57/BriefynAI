@@ -1,10 +1,11 @@
-import os
 import hmac
 import logging
+import os
 import tempfile
-import uvicorn
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+
+import uvicorn
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 # AI providers (Groq today) live behind small interfaces in providers/; see providers/__init__.py.
@@ -20,13 +21,14 @@ def transcribe_audio(path: str, speakers_vtt: str | None = None) -> str:
 def generate_meeting_summary(text: str) -> dict:
     return build_summarizer().summarize(text)
 
+
 # Configure logging for production-level observability
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 app = FastAPI(
     title="Briefyn AI - Intelligence Core API",
     description="Thin service in front of the AI providers: speech-to-text (Groq Whisper) and summarization (Groq LLM).",
-    version="2.0"
+    version="2.0",
 )
 
 # --- SECURITY (S5) ---
@@ -50,8 +52,12 @@ async def require_api_key(request: Request, call_next):
     if request.url.path.startswith("/api/"):
         expected = os.getenv("AI_ENGINE_API_KEY", "")
         if not expected:
-            logging.error("AI_ENGINE_API_KEY is not set; refusing request (fail closed).")
-            return JSONResponse(status_code=503, content={"detail": "Service is not configured."})
+            logging.error(  # noqa: LOG015 - Keep the configured root logger.
+                "AI_ENGINE_API_KEY is not set; refusing request (fail closed)."
+            )
+            return JSONResponse(
+                status_code=503, content={"detail": "Service is not configured."}
+            )
 
         provided = request.headers.get("x-api-key", "")
         if not hmac.compare_digest(provided.encode(), expected.encode()):
@@ -59,7 +65,9 @@ async def require_api_key(request: Request, call_next):
 
         declared = request.headers.get("content-length")
         if declared and declared.isdigit() and int(declared) > max_upload_bytes():
-            return JSONResponse(status_code=413, content={"detail": "Upload is too large."})
+            return JSONResponse(
+                status_code=413, content={"detail": "Upload is too large."}
+            )
 
     return await call_next(request)
 
@@ -87,7 +95,10 @@ def save_with_limit(upload: UploadFile, destination: Path) -> int:
 
 
 @app.post("/api/process-meeting")
-async def process_meeting(file: UploadFile = File(...), speakers: UploadFile | None = File(None)):
+async def process_meeting(
+    file: UploadFile = File(...),  # noqa: B008 - FastAPI declares uploads this way.
+    speakers: UploadFile | None = File(None),  # noqa: B008 - FastAPI declares uploads this way.
+):
     """
     Primary orchestration endpoint:
     1) Receives audio binary via multipart/form-data.
@@ -95,17 +106,17 @@ async def process_meeting(file: UploadFile = File(...), speakers: UploadFile | N
     3) Summarizes the transcript with the configured LLM provider.
     4) Returns structured JSON to the .NET Backend.
     """
-    
+
     # Unique, OS-managed temporary path; the client's file name is not used (path traversal).
     temp_file_path = safe_temp_path(file.filename)
 
     try:
         # STEP 1: PERSISTENCE - Stream uploaded file to local storage for processing
         size = save_with_limit(file, temp_file_path)
-        logging.info(f"📥 Received audio upload ({size} bytes).")
-        
+        logging.info(f"📥 Received audio upload ({size} bytes).")  # noqa: LOG015 - Keep the configured root logger.
+
         # STEP 2: TRANSCRIPTION - Convert speech to text
-        logging.info("🎧 Initializing Speech-to-Text engine...")
+        logging.info("🎧 Initializing Speech-to-Text engine...")  # noqa: LOG015 - Keep the configured root logger.
         speakers_vtt = None
         if speakers is not None:
             data = await speakers.read(2 * 1024 * 1024 + 1)
@@ -115,50 +126,73 @@ async def process_meeting(file: UploadFile = File(...), speakers: UploadFile | N
                 speakers_vtt = data.decode("utf-8")
             except UnicodeDecodeError:
                 pass
-        transcribed_text = transcribe_audio(str(temp_file_path), speakers_vtt) if speakers_vtt else transcribe_audio(str(temp_file_path))
-        
-        speaker_names = {cue.speaker for cue in parse_vtt(speakers_vtt) if cue.speaker} if speakers_vtt else set()
-        if not transcribed_text or is_only_hallucinated_captions(transcribed_text, speaker_names):
+        transcribed_text = (
+            transcribe_audio(str(temp_file_path), speakers_vtt)
+            if speakers_vtt
+            else transcribe_audio(str(temp_file_path))
+        )
+
+        speaker_names = (
+            {cue.speaker for cue in parse_vtt(speakers_vtt) if cue.speaker}
+            if speakers_vtt
+            else set()
+        )
+        if not transcribed_text or is_only_hallucinated_captions(
+            transcribed_text, speaker_names
+        ):
             raise HTTPException(status_code=422, detail="no_speech")
-            
-        logging.info("✅ Transcription completed successfully.")
+
+        logging.info("✅ Transcription completed successfully.")  # noqa: LOG015 - Keep the configured root logger.
 
         # STEP 3: SUMMARIZATION - Extract context and actions via the LLM provider.
         # If only this step fails, the transcript is still returned so the backend can keep it and retry the summary alone.
-        logging.info("🧠 Executing LLM summarization pipeline...")
+        logging.info("🧠 Executing LLM summarization pipeline...")  # noqa: LOG015 - Keep the configured root logger.
         try:
             summary_result = generate_meeting_summary(transcribed_text)
         except Exception:
-            logging.exception("❌ Summarization failed; returning the transcript without a summary.")
+            logging.exception(  # noqa: LOG015 - Keep the configured root logger.
+                "❌ Summarization failed; returning the transcript without a summary."
+            )
             summary_result = None
 
         if not summary_result:
-            return JSONResponse(content={"success": False, "transkript": transcribed_text, "summary": None})
+            return JSONResponse(
+                content={
+                    "success": False,
+                    "transkript": transcribed_text,
+                    "summary": None,
+                }
+            )
 
-        logging.info("✅ Processing pipeline complete. Dispatching results to .NET backend.")
+        logging.info(  # noqa: LOG015 - Keep the configured root logger.
+            "✅ Processing pipeline complete. Dispatching results to .NET backend."
+        )
 
         # STEP 4: DISPATCH - Return finalized intelligence payload
-        return JSONResponse(content={
-            "success": True,
-            "transkript": transcribed_text,
-            "summary": summary_result
-        })
-        
+        return JSONResponse(
+            content={
+                "success": True,
+                "transkript": transcribed_text,
+                "summary": summary_result,
+            }
+        )
+
     except HTTPException as he:
         # Re-raise known application errors
-        raise he
+        raise he  # noqa: TRY201 - Preserve the existing traceback.
     except UploadTooLarge:
         raise HTTPException(status_code=413, detail="Upload is too large.")
     except Exception:
         # Full details stay in the server log; the caller only learns that something failed.
-        logging.exception("❌ CRITICAL SERVER ERROR")
+        logging.exception("❌ CRITICAL SERVER ERROR")  # noqa: LOG015 - Keep the configured root logger.
         raise HTTPException(status_code=500, detail="Internal Server Error")
-        
+
     finally:
         # STEP 5: RESOURCE CLEANUP - Crucial for maintaining stateless server health
         if temp_file_path.exists():
             os.remove(temp_file_path)
-            logging.info("🗑️ Temporary audio artifacts purged.")
+            logging.info("🗑️ Temporary audio artifacts purged.")  # noqa: LOG015 - Keep the configured root logger.
+
 
 class SummarizeRequest(BaseModel):
     transkript: str
@@ -170,7 +204,7 @@ def summarize(request: SummarizeRequest):
     try:
         summary = generate_meeting_summary(request.transkript)
     except Exception:
-        logging.exception("❌ Summarization failed")
+        logging.exception("❌ Summarization failed")  # noqa: LOG015 - Keep the configured root logger.
         raise HTTPException(status_code=500, detail="Internal Server Error")
     if not summary:
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -179,7 +213,9 @@ def summarize(request: SummarizeRequest):
 
 # Arşive soru sor (PRD 2026-10-24 §3): the backend sends the question and the parts its search picked, as data.
 ANSWER_MAX_PARTS = 40
-ANSWER_MAX_CONTEXT_CHARS = 24000  # ~5K tokens of Turkish text; the backend aims for 3-5K
+ANSWER_MAX_CONTEXT_CHARS = (
+    24000  # ~5K tokens of Turkish text; the backend aims for 3-5K
+)
 
 
 class AnswerPart(BaseModel):
@@ -214,16 +250,18 @@ class AnswerRequest(BaseModel):
 def answer(request: AnswerRequest):
     # Question, parts and answer never reach the log (PRD §6): on failure only the error type is written.
     try:
-        return build_answerer().answer(request.soru, [p.model_dump() for p in request.parcalar])
-    except Exception as e:
-        logging.error(f"❌ Answer failed: {type(e).__name__}")
+        return build_answerer().answer(
+            request.soru, [p.model_dump() for p in request.parcalar]
+        )
+    except Exception as e:  # noqa: BLE001 - Return busy without logging meeting data.
+        logging.error(f"❌ Answer failed: {type(e).__name__}")  # noqa: LOG015 - Keep the configured root logger.
         raise HTTPException(status_code=503, detail="busy")
 
 
 # Entry point for the Uvicorn ASGI server
 if __name__ == "__main__":
     # Dışarıdan PORT değişkenini oku, eğer bulamazsan varsayılan olarak 8000 kullan
-    port = int(os.getenv("PORT", 8000))
-    
+    port = int(os.getenv("PORT", "8000"))
+
     # Docker'da ve mikroservislerde çalışabilmesi için host "0.0.0.0" olmalıdır
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,4 +1,5 @@
 """Deneme soru seti (altın set) kendi içinde tutarlı mı: ölçüm ancak veri doğruysa anlamlı (PRD §7)."""
+
 import json
 import pathlib
 import re
@@ -11,7 +12,17 @@ MEETINGS = {m["id"]: m for m in DATA["toplantilar"]}
 SERIES = {s["id"]: s for s in DATA["seriler"]}
 TEAMS = {t["id"] for t in DATA["ekipler"]}
 UNANSWERED = {"cevapsiz", "kapsam", "sizma"}
-TYPES = UNANSWERED | {"olgu", "karar", "gecersiz_kilma", "karar_yok", "kisi", "zaman", "seri", "toplanti", "talimat"}
+TYPES = UNANSWERED | {
+    "olgu",
+    "karar",
+    "gecersiz_kilma",
+    "karar_yok",
+    "kisi",
+    "zaman",
+    "seri",
+    "toplanti",
+    "talimat",
+}
 
 
 def norm(text: str) -> str:
@@ -20,8 +31,15 @@ def norm(text: str) -> str:
 
 
 def meeting_text(m: dict) -> str:
-    parts = [m["baslik"], *m["dokum"], m["ozet"]["toplanti_konusu"], *m["ozet"]["konular"],
-             *m["ozet"]["kararlar"], *m["ozet"]["bekleyen"], *(a["metin"] for a in m["ozet"]["aksiyonlar"])]
+    parts = [
+        m["baslik"],
+        *m["dokum"],
+        m["ozet"]["toplanti_konusu"],
+        *m["ozet"]["konular"],
+        *m["ozet"]["kararlar"],
+        *m["ozet"]["bekleyen"],
+        *(a["metin"] for a in m["ozet"]["aksiyonlar"]),
+    ]
     return norm("\n".join(parts))
 
 
@@ -47,10 +65,16 @@ def test_meetings_are_well_formed():
 
 
 def test_two_transcripts_carry_a_hidden_instruction():
-    hidden = [mid for mid, m in MEETINGS.items() if "yapay zekâ" in meeting_text(m) or "asistan" in meeting_text(m)]
+    hidden = [
+        mid
+        for mid, m in MEETINGS.items()
+        if "yapay zekâ" in meeting_text(m) or "asistan" in meeting_text(m)
+    ]
     assert sorted(hidden) == ["A7", "B3"]
     for mid in hidden:  # the stored summary ignored it, like a well-behaved model would
-        assert "asistan" not in norm(json.dumps(MEETINGS[mid]["ozet"], ensure_ascii=False))
+        assert "asistan" not in norm(
+            json.dumps(MEETINGS[mid]["ozet"], ensure_ascii=False)
+        )
 
 
 def test_questions_are_well_formed_and_balanced():
@@ -64,8 +88,11 @@ def test_questions_are_well_formed_and_balanced():
     for q in QUESTIONS:
         assert q["ekip"] in TEAMS and len(q["soru"]) <= 500
         scope, target = q["kapsam"]["tur"], q["kapsam"]["hedef"]
-        owner = {"arsiv": lambda: q["ekip"], "seri": lambda: SERIES[target]["ekip"],
-                 "toplanti": lambda: MEETINGS[target]["ekip"]}[scope]
+        owner = {
+            "arsiv": lambda: q["ekip"],  # noqa: B023 - Called before the next loop iteration.
+            "seri": lambda: SERIES[target]["ekip"],  # noqa: B023 - Called before the next loop iteration.
+            "toplanti": lambda: MEETINGS[target]["ekip"],  # noqa: B023 - Called before the next loop iteration.
+        }[scope]
         assert (target is None) == (scope == "arsiv") and owner() == q["ekip"], q["id"]
 
 
@@ -77,7 +104,10 @@ def test_expected_evidence_is_in_the_asking_teams_meeting_and_in_scope():
         assert q["beklenen"] and q["cevap_ozu"], q["id"]
         for hit in q["beklenen"]:
             assert hit["toplanti"] in in_scope(q), q["id"]
-            assert norm(hit["kanit"]) in meeting_text(MEETINGS[hit["toplanti"]]), (q["id"], hit["kanit"])
+            assert norm(hit["kanit"]) in meeting_text(MEETINGS[hit["toplanti"]]), (
+                q["id"],
+                hit["kanit"],
+            )
 
 
 def test_injection_questions_hit_the_poisoned_meetings_and_name_what_must_not_leak():
@@ -88,6 +118,12 @@ def test_injection_questions_hit_the_poisoned_meetings_and_name_what_must_not_le
 
 def test_leak_questions_ask_about_the_other_teams_data():
     for q in (q for q in QUESTIONS if q["tur"] == "sizma"):
-        other = "\n".join(meeting_text(m) for m in MEETINGS.values() if m["ekip"] != q["ekip"])
+        other = "\n".join(
+            meeting_text(m) for m in MEETINGS.values() if m["ekip"] != q["ekip"]
+        )
         assert norm(q["iz"]) in other, q["id"]
-        assert all(norm(q["iz"]) not in meeting_text(m) for m in MEETINGS.values() if m["ekip"] == q["ekip"]), q["id"]
+        assert all(
+            norm(q["iz"]) not in meeting_text(m)
+            for m in MEETINGS.values()
+            if m["ekip"] == q["ekip"]
+        ), q["id"]

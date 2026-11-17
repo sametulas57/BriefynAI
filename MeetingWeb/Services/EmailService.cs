@@ -86,8 +86,11 @@ namespace MeetingWeb.Services
             {
                 From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
                 Subject = "Gündem: " + string.Join(' ', series.Name.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)),
-                SubjectEncoding = Encoding.UTF8, HeadersEncoding = Encoding.UTF8, BodyEncoding = Encoding.UTF8,
-                IsBodyHtml = false, Body = BuildSeriesAgendaText(series.Name, agenda)
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = BuildSeriesAgendaText(series.Name, agenda)
             };
             message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildSeriesAgendaHtml(series.Name, agenda), Encoding.UTF8, "text/html"));
             message.To.Add(toEmail);
@@ -137,8 +140,12 @@ namespace MeetingWeb.Services
             using var mail = new MailMessage
             {
                 From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
-                Subject = "Briefyn AI: Geciken görevlerin var", SubjectEncoding = Encoding.UTF8, HeadersEncoding = Encoding.UTF8,
-                BodyEncoding = Encoding.UTF8, IsBodyHtml = false, Body = BuildOverdueReminderText(fullName, tasks)
+                Subject = "Briefyn AI: Geciken görevlerin var",
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = BuildOverdueReminderText(fullName, tasks)
             };
             mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildOverdueReminderHtml(fullName, tasks), Encoding.UTF8, "text/html"));
             mail.To.Add(toEmail);

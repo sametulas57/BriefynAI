@@ -65,7 +65,7 @@ namespace MeetingWeb.Tests.Security
         public async Task Registration_creates_a_personal_space_marked_as_personal()
         {
             var visitor = _app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
-                { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+            { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
             var token = await GetAntiforgeryTokenAsync(visitor, "/Auth/Register");
 
             await PostFormAsync(visitor, "/Auth/Register", token,

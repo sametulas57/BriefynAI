@@ -127,7 +127,7 @@ namespace MeetingWeb.Pages.Auth
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
             }
-            
+
             // ModelState içinde hata varsa (Örn: KVKK işaretlenmediyse) sayfayı hatalarla geri döndür.
             return Page();
         }

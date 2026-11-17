@@ -16,8 +16,12 @@ public class OverdueReminderTests
     private static readonly DateTime Now = new(2026, 10, 23, 6, 0, 0, DateTimeKind.Utc);
 
     [Theory]
-    [InlineData(1, true)] [InlineData(3, true)] [InlineData(7, true)]
-    [InlineData(2, false)] [InlineData(4, false)] [InlineData(8, false)]
+    [InlineData(1, true)]
+    [InlineData(3, true)]
+    [InlineData(7, true)]
+    [InlineData(2, false)]
+    [InlineData(4, false)]
+    [InlineData(8, false)]
     public async Task Sends_only_on_configured_overdue_days(int days, bool expected)
     {
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
