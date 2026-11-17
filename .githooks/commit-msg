@@ -1,0 +1,10 @@
+#!/bin/sh
+# Açık repo: commit mesajında yapay zekâ izi olmasın (ortak yazar satırı, "Generated with", ajan e-postası).
+IZ=$(grep -v '^#' "$1" | grep -inE '^co-authored-by:.*(claude|anthropic|codex|openai|gpt|copilot|cursor|gemini)|generated with|noreply@(anthropic|openai)\.com' || true)
+if [ -n "$IZ" ]; then
+  echo "Commit durdu: mesajda yapay zekâ izi var (repo herkese açık):"
+  echo "$IZ" | sed 's/^/  /'
+  echo "  Bu satırları çıkarıp yeniden commit et."
+  exit 1
+fi
+exit 0
