@@ -78,8 +78,11 @@ namespace MeetingWeb.Tests.Security
             Assert.Null(model.FindEntityType(typeof(ActionItem))!.FindProperty(nameof(ActionItem.Text))!.GetMaxLength());
         }
 
+        // Table and column names are test literals; the id remains a SQL parameter.
+#pragma warning disable EF1002
         private string Raw(string table, string column, int id) => _app.WithDb(db => db.Database
             .SqlQueryRaw<string>($"SELECT \"{column}\" AS \"Value\" FROM \"{table}\" WHERE \"Id\" = {{0}}", id).AsEnumerable().Single());
+#pragma warning restore EF1002
 
         [Fact]
         public void Meeting_content_is_stored_encrypted()

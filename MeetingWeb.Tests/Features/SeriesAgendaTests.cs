@@ -40,14 +40,35 @@ public class SeriesAgendaTests : IAsyncLifetime
             old.ActionItems.Add(new ActionItem { Text = "Yarın", DueDate = today.AddDays(1) });
             old.ActionItems.Add(new ActionItem { Text = "Eski tarihsiz", SortOrder = 2 });
             old.ActionItems.Add(new ActionItem { Text = "Bitmiş", CompletedAtUtc = DateTime.UtcNow });
-            var latest = new Meeting { WorkspaceId = S.WorkspaceA, SeriesId = id, Title = "Son", Status = MeetingStatus.Completed, CreatedAtUtc = new DateTime(2026, 10, 20, 10, 0, 0, DateTimeKind.Utc),
+            var latest = new Meeting
+            {
+                WorkspaceId = S.WorkspaceA,
+                SeriesId = id,
+                Title = "Son",
+                Status = MeetingStatus.Completed,
+                CreatedAtUtc = new DateTime(2026, 10, 20, 10, 0, 0, DateTimeKind.Utc),
                 Points = new() { new() { Kind = MeetingPointKind.Pending, Text = "Son bekleyen" }, new() { Kind = MeetingPointKind.Decision, Text = "Son karar" } },
-                ActionItems = new() { new() { Text = "Az geciken", DueDate = today.AddDays(-1) }, new() { Text = "Bugün", DueDate = today }, new() { Text = "Yeni tarihsiz", SortOrder = 1 } } };
+                ActionItems = new() { new() { Text = "Az geciken", DueDate = today.AddDays(-1) }, new() { Text = "Bugün", DueDate = today }, new() { Text = "Yeni tarihsiz", SortOrder = 1 } }
+            };
             db.Meetings.Add(latest);
-            db.Meetings.Add(new Meeting { WorkspaceId = S.WorkspaceA, SeriesId = id, Title = "İşleniyor", Status = MeetingStatus.Processing, CreatedAtUtc = DateTime.UtcNow,
-                Points = new() { new() { Kind = MeetingPointKind.Pending, Text = "İşlenen bekleyen" } } });
-            db.Meetings.Add(new Meeting { WorkspaceId = S.WorkspaceA, SeriesId = id, Title = "Başarısız", Status = MeetingStatus.Failed, CreatedAtUtc = DateTime.UtcNow,
-                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Başarısız karar" } } });
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = S.WorkspaceA,
+                SeriesId = id,
+                Title = "İşleniyor",
+                Status = MeetingStatus.Processing,
+                CreatedAtUtc = DateTime.UtcNow,
+                Points = new() { new() { Kind = MeetingPointKind.Pending, Text = "İşlenen bekleyen" } }
+            });
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = S.WorkspaceA,
+                SeriesId = id,
+                Title = "Başarısız",
+                Status = MeetingStatus.Failed,
+                CreatedAtUtc = DateTime.UtcNow,
+                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Başarısız karar" } }
+            });
             db.Meetings.Add(new Meeting { WorkspaceId = S.WorkspaceA, SeriesId = other, Title = "Başka seri", ActionItems = new() { new() { Text = "Başka görev" } } });
             db.Meetings.Add(new Meeting { WorkspaceId = S.WorkspaceA, Title = "Serisiz", ActionItems = new() { new() { Text = "Serisiz görev" } } });
             return db.SaveChanges();

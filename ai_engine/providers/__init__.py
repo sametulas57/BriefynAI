@@ -3,6 +3,7 @@
 TRANSCRIBER / SUMMARIZER / ANSWERER environment variables choose the implementation; today only "groq" exists.
 Chat models go through llm.build_llm (ADR-0014).
 """
+
 import os
 
 from .groq_client import GroqClient
@@ -21,17 +22,23 @@ def build_transcriber():
     kind = os.getenv("TRANSCRIBER", "groq")
     if kind == "groq":
         from .groq_transcriber import GroqTranscriber
-        return GroqTranscriber(_groq_client(), model=os.getenv("AI_TRANSCRIBE_MODEL", TRANSCRIBE_MODEL_DEFAULT))
+
+        return GroqTranscriber(
+            _groq_client(),
+            model=os.getenv("AI_TRANSCRIBE_MODEL", TRANSCRIBE_MODEL_DEFAULT),
+        )
     raise RuntimeError(f"Unknown TRANSCRIBER: {kind}")
 
 
 def build_summarizer():
     from .groq_summarizer import Summarizer
     from .llm import build_llm
+
     return Summarizer(build_llm("summary"))
 
 
 def build_answerer():
     from .answerer import Answerer
     from .llm import build_llm
+
     return Answerer(build_llm("answer"))

@@ -38,7 +38,9 @@ namespace MeetingWeb.Tests.Features
         {
             var m = new Meeting
             {
-                WorkspaceId = S.WorkspaceA, Title = "Sprint planlama", Status = MeetingStatus.Completed,
+                WorkspaceId = S.WorkspaceA,
+                Title = "Sprint planlama",
+                Status = MeetingStatus.Completed,
                 ActionItems = new List<ActionItem> { new() { Text = taskText, AssigneeUserId = assignee, DueDate = due } }
             };
             db.Meetings.Add(m);

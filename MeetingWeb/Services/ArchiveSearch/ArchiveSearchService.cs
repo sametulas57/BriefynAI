@@ -128,7 +128,7 @@ namespace MeetingWeb.Services.ArchiveSearch
                 string? assignee, bool open)
             {
                 if (string.IsNullOrWhiteSpace(text)) return;
-                var id = $"T{meeting.Id}-{ "KRBAD"[(int)kind] }{number}";
+                var id = $"T{meeting.Id}-{"KRBAD"[(int)kind]}{number}";
                 var passage = new ArchivePassage(id, meeting.Id, meeting.Title, date, kind, text, 0);
                 var terms = Analyze(prefix + text);
                 passages.Add(new IndexedPassage(passage, terms, terms.Values.Sum(), assignee, open));

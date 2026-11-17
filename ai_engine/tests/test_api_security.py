@@ -1,5 +1,6 @@
 """S5: the AI engine must only serve the .NET backend (shared key), cap upload size,
 never build file paths from the client's file name, and never leak internal errors."""
+
 import pathlib
 import sys
 
@@ -7,11 +8,16 @@ import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-import api_server  # noqa: E402
+import api_server
 
 KEY = "test-ai-engine-key"
 URL = "/api/process-meeting"
-SUMMARY = {"toplanti_konusu": "x", "gorusulen_konular": [], "alinan_kararlar": [], "aksiyon_maddeleri": []}
+SUMMARY = {
+    "toplanti_konusu": "x",
+    "gorusulen_konular": [],
+    "alinan_kararlar": [],
+    "aksiyon_maddeleri": [],
+}
 
 
 @pytest.fixture
@@ -34,7 +40,9 @@ def client(monkeypatch, seen_paths):
 
 
 def upload(client, headers=None, name="kayit.m4a", size=10):
-    return client.post(URL, headers=headers or {}, files={"file": (name, b"\0" * size, "audio/mp4")})
+    return client.post(
+        URL, headers=headers or {}, files={"file": (name, b"\0" * size, "audio/mp4")}
+    )
 
 
 def test_request_without_key_is_rejected(client):
@@ -51,14 +59,26 @@ def test_correct_key_is_accepted(client):
     assert res.json()["success"] is True
 
 
-@pytest.mark.parametrize("transcript", [
-    None, "", " \n ", "Altyazı M.K.", "  altyazı   m k !! ",
-    "İZLEDİĞİNİZ İÇİN TEŞEKKÜRLER!", "İzlediğiniz için teşekkür ederim.",
-    "Altyazı M.K. İzlediğiniz için teşekkürler!",
-])
+@pytest.mark.parametrize(
+    "transcript",
+    [
+        None,
+        "",
+        " \n ",
+        "Altyazı M.K.",
+        "  altyazı   m k !! ",
+        "İZLEDİĞİNİZ İÇİN TEŞEKKÜRLER!",
+        "İzlediğiniz için teşekkür ederim.",
+        "Altyazı M.K. İzlediğiniz için teşekkürler!",
+    ],
+)
 def test_no_speech_returns_distinct_response(client, monkeypatch, transcript):
     monkeypatch.setattr(api_server, "transcribe_audio", lambda path: transcript)
-    monkeypatch.setattr(api_server, "generate_meeting_summary", lambda text: pytest.fail("silence must not be summarized"))
+    monkeypatch.setattr(
+        api_server,
+        "generate_meeting_summary",
+        lambda text: pytest.fail("silence must not be summarized"),
+    )
 
     response = upload(client, {"X-Api-Key": KEY})
 
@@ -67,7 +87,11 @@ def test_no_speech_returns_distinct_response(client, monkeypatch, transcript):
 
 
 def test_caption_with_real_speech_is_processed(client, monkeypatch):
-    monkeypatch.setattr(api_server, "transcribe_audio", lambda path: "Altyazı M.K. Bugün toplantıyı açıyorum.")
+    monkeypatch.setattr(
+        api_server,
+        "transcribe_audio",
+        lambda path: "Altyazı M.K. Bugün toplantıyı açıyorum.",
+    )
 
     response = upload(client, {"X-Api-Key": KEY})
 
@@ -77,33 +101,53 @@ def test_caption_with_real_speech_is_processed(client, monkeypatch):
 
 def test_optional_speakers_are_passed_to_transcriber(client, monkeypatch):
     seen = []
-    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin")
+    monkeypatch.setattr(
+        api_server,
+        "transcribe_audio",
+        lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin",
+    )
     headers = {"X-Api-Key": KEY}
     assert upload(client, headers).status_code == 200
-    response = client.post(URL, headers=headers, files={
-        "file": ("audio.m4a", b"audio", "audio/mp4"),
-        "speakers": ("names.vtt", "WEBVTT\n\nAli: söz".encode(), "text/vtt"),
-    })
+    response = client.post(
+        URL,
+        headers=headers,
+        files={
+            "file": ("audio.m4a", b"audio", "audio/mp4"),
+            "speakers": ("names.vtt", "WEBVTT\n\nAli: söz".encode(), "text/vtt"),
+        },
+    )
     assert response.status_code == 200
     assert seen == [None, "WEBVTT\n\nAli: söz"]
 
 
 def test_speakers_over_two_megabytes_are_rejected(client, monkeypatch):
     monkeypatch.setattr(api_server, "max_upload_bytes", lambda: 10 * 1024 * 1024)
-    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
-        "file": ("audio.m4a", b"audio", "audio/mp4"),
-        "speakers": ("names.vtt", b"a" * (2 * 1024 * 1024 + 1), "text/vtt"),
-    })
+    response = client.post(
+        URL,
+        headers={"X-Api-Key": KEY},
+        files={
+            "file": ("audio.m4a", b"audio", "audio/mp4"),
+            "speakers": ("names.vtt", b"a" * (2 * 1024 * 1024 + 1), "text/vtt"),
+        },
+    )
     assert response.status_code == 413
 
 
 def test_invalid_utf8_speakers_are_ignored(client, monkeypatch):
     seen = []
-    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin")
-    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
-        "file": ("audio.m4a", b"audio", "audio/mp4"),
-        "speakers": ("names.vtt", b"\xff", "text/vtt"),
-    })
+    monkeypatch.setattr(
+        api_server,
+        "transcribe_audio",
+        lambda path, speakers_vtt=None: seen.append(speakers_vtt) or "metin",
+    )
+    response = client.post(
+        URL,
+        headers={"X-Api-Key": KEY},
+        files={
+            "file": ("audio.m4a", b"audio", "audio/mp4"),
+            "speakers": ("names.vtt", b"\xff", "text/vtt"),
+        },
+    )
     assert response.status_code == 200
     assert seen == [None]
 
@@ -122,7 +166,9 @@ def test_client_file_name_never_reaches_the_file_system(client, seen_paths):
     assert res.status_code == 200
     used = pathlib.Path(seen_paths[0])
     assert ".." not in used.parts and "api_server" not in used.name
-    assert used.suffix == ".bin"  # only audio extensions survive; anything else is neutralised
+    assert (
+        used.suffix == ".bin"
+    )  # only audio extensions survive; anything else is neutralised
     assert not used.exists(), "temporary file must be removed after processing"
 
 
@@ -162,35 +208,68 @@ def test_summary_failure_still_returns_the_transcript(client, monkeypatch):
 
 
 def test_summarize_endpoint_requires_the_key_and_returns_a_summary(client):
-    assert client.post("/api/summarize", json={"transkript": "metin"}).status_code == 401
-    res = client.post("/api/summarize", headers={"X-Api-Key": KEY}, json={"transkript": "metin"})
+    assert (
+        client.post("/api/summarize", json={"transkript": "metin"}).status_code == 401
+    )
+    res = client.post(
+        "/api/summarize", headers={"X-Api-Key": KEY}, json={"transkript": "metin"}
+    )
     assert res.status_code == 200
     assert res.json() == {"success": True, "summary": SUMMARY}
 
 
-@pytest.mark.parametrize("transcript", [
-    "Bucky Barnes: Altyazı M.K. İzlediğiniz için teşekkürler!",
-    "Bucky Barnes: Altyazı M.K.\nAli Veli: İzlediğiniz için teşekkürler!",
-])
+@pytest.mark.parametrize(
+    "transcript",
+    [
+        "Bucky Barnes: Altyazı M.K. İzlediğiniz için teşekkürler!",
+        "Bucky Barnes: Altyazı M.K.\nAli Veli: İzlediğiniz için teşekkürler!",
+    ],
+)
 def test_no_speech_with_zoom_speaker_names(client, monkeypatch, transcript):
-    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: transcript)
-    monkeypatch.setattr(api_server, "generate_meeting_summary", lambda text: pytest.fail("silence must not be summarized"))
+    monkeypatch.setattr(
+        api_server, "transcribe_audio", lambda path, speakers_vtt=None: transcript
+    )
+    monkeypatch.setattr(
+        api_server,
+        "generate_meeting_summary",
+        lambda text: pytest.fail("silence must not be summarized"),
+    )
 
-    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
-        "file": ("audio.m4a", b"audio", "audio/mp4"),
-        "speakers": ("names.vtt", "WEBVTT\n\n00:00.000 --> 00:02.000\nBucky Barnes: merhaba\n\n00:02.000 --> 00:04.000\nAli Veli: evet".encode(), "text/vtt"),
-    })
+    response = client.post(
+        URL,
+        headers={"X-Api-Key": KEY},
+        files={
+            "file": ("audio.m4a", b"audio", "audio/mp4"),
+            "speakers": (
+                "names.vtt",
+                b"WEBVTT\n\n00:00.000 --> 00:02.000\nBucky Barnes: merhaba\n\n00:02.000 --> 00:04.000\nAli Veli: evet",
+                "text/vtt",
+            ),
+        },
+    )
 
     assert response.status_code == 422
     assert response.json() == {"detail": "no_speech"}
 
 
 def test_speaker_named_like_a_caption_still_keeps_real_speech(client, monkeypatch):
-    monkeypatch.setattr(api_server, "transcribe_audio", lambda path, speakers_vtt=None: "Bucky Barnes: Altyazı M.K. Bütçeyi konuşalım.")
+    monkeypatch.setattr(
+        api_server,
+        "transcribe_audio",
+        lambda path, speakers_vtt=None: "Bucky Barnes: Altyazı M.K. Bütçeyi konuşalım.",
+    )
 
-    response = client.post(URL, headers={"X-Api-Key": KEY}, files={
-        "file": ("audio.m4a", b"audio", "audio/mp4"),
-        "speakers": ("names.vtt", "WEBVTT\n\n00:00.000 --> 00:02.000\nBucky Barnes: merhaba".encode(), "text/vtt"),
-    })
+    response = client.post(
+        URL,
+        headers={"X-Api-Key": KEY},
+        files={
+            "file": ("audio.m4a", b"audio", "audio/mp4"),
+            "speakers": (
+                "names.vtt",
+                b"WEBVTT\n\n00:00.000 --> 00:02.000\nBucky Barnes: merhaba",
+                "text/vtt",
+            ),
+        },
+    )
 
     assert response.status_code == 200

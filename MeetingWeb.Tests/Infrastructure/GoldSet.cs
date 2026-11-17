@@ -38,8 +38,12 @@ namespace MeetingWeb.Tests.Infrastructure
                 var email = $"{Guid.NewGuid():N}@altin.test";
                 var user = new ApplicationUser
                 {
-                    FullName = name, UserName = email, NormalizedUserName = email.ToUpperInvariant(),
-                    Email = email, NormalizedEmail = email.ToUpperInvariant(), SecurityStamp = Guid.NewGuid().ToString()
+                    FullName = name,
+                    UserName = email,
+                    NormalizedUserName = email.ToUpperInvariant(),
+                    Email = email,
+                    NormalizedEmail = email.ToUpperInvariant(),
+                    SecurityStamp = Guid.NewGuid().ToString()
                 };
                 db.Users.Add(user);
                 db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = gold.Workspaces[team], User = user, Role = role });

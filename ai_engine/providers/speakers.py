@@ -1,8 +1,9 @@
 """Read Zoom VTT cues and attach their speaker names to timed Groq segments."""
-from dataclasses import dataclass
+
 import re
 import unicodedata
-
+from collections.abc import Set as AbstractSet
+from dataclasses import dataclass
 
 OLD_TECH_INSTRUCTION = "İngilizce teknik terimleri orijinal yazımıyla koru"
 HALLUCINATED_PHRASES = (
@@ -15,8 +16,12 @@ HALLUCINATED_PHRASES = (
 
 def _normalise_text(text: str) -> str:
     # Turkish dotted/dotless I must not collapse to the wrong letter during case folding.
-    text = text.translate(str.maketrans({"I": "ı", "İ": "i"})).casefold()
-    text = "".join(char for char in unicodedata.normalize("NFKD", text) if not unicodedata.combining(char))
+    text = text.translate(str.maketrans("Iİ", "ıi")).casefold()
+    text = "".join(
+        char
+        for char in unicodedata.normalize("NFKD", text)
+        if not unicodedata.combining(char)
+    )
     return " ".join("".join(char if char.isalnum() else " " for char in text).split())
 
 
@@ -24,7 +29,14 @@ def is_prompt_echo(text: str, prompt: str) -> bool:
     candidate, hint = _normalise_text(text), _normalise_text(prompt)
     # A long run of the hint, matched as whole words; a few spoken terms such as "Docker, GitHub" are real speech.
     echo = len(candidate.split()) >= 6 and f" {candidate} " in f" {hint} "
-    return bool(candidate and (candidate == _normalise_text(OLD_TECH_INSTRUCTION) or candidate == hint or echo))
+    return bool(
+        candidate
+        and (
+            candidate == _normalise_text(OLD_TECH_INSTRUCTION)
+            or candidate == hint
+            or echo
+        )
+    )
 
 
 def is_hallucinated_caption(text: str) -> bool:
@@ -35,19 +47,25 @@ def is_hallucinated_caption(text: str) -> bool:
     return any(candidate == _normalise_text(phrase) for phrase in HALLUCINATED_PHRASES)
 
 
-def is_only_hallucinated_captions(text: str, speakers: set[str] = frozenset()) -> bool:
+def is_only_hallucinated_captions(
+    text: str, speakers: AbstractSet[str] = frozenset()
+) -> bool:
     # Zoom lines start with "Name: "; the name is not speech.
     lines = []
     for line in text.splitlines():
         name, _, rest = line.partition(": ")
         lines.append(rest if rest and name in speakers else line)
     remaining = _normalise_text(" ".join(lines)).replace(" ", "")
-    phrases = tuple(_normalise_text(phrase).replace(" ", "") for phrase in HALLUCINATED_PHRASES)
+    phrases = tuple(
+        _normalise_text(phrase).replace(" ", "") for phrase in HALLUCINATED_PHRASES
+    )
     while remaining:
-        match = next((phrase for phrase in phrases if remaining.startswith(phrase)), None)
+        match = next(
+            (phrase for phrase in phrases if remaining.startswith(phrase)), None
+        )
         if match is None:
             return False
-        remaining = remaining[len(match):]
+        remaining = remaining[len(match) :]
     return True
 
 
@@ -66,8 +84,8 @@ def clean_plain_chunk(text: str, prompt: str) -> str:
     # The last two pieces are tried too, because initials such as "M.K." split a phrase into two.
     spans = list(re.finditer(r"[^.!?…]+[.!?…]*", text))
     for span in reversed(spans[-2:]):
-        if is_hallucinated_caption(text[span.start():]):
-            return text[:span.start()].rstrip()
+        if is_hallucinated_caption(text[span.start() :]):
+            return text[: span.start()].rstrip()
     return text
 
 
@@ -79,7 +97,9 @@ class Cue:
     text: str
 
 
-_TIMES = re.compile(r"^(\d{2}:)?\d{2}:\d{2}\.\d{3} --> (\d{2}:)?\d{2}:\d{2}\.\d{3}(?:\s+.*)?$")
+_TIMES = re.compile(
+    r"^(\d{2}:)?\d{2}:\d{2}\.\d{3} --> (\d{2}:)?\d{2}:\d{2}\.\d{3}(?:\s+.*)?$"
+)
 
 
 def _seconds(value: str) -> float:
@@ -95,7 +115,9 @@ def parse_vtt(text: str) -> list[Cue]:
     cues = []
     for block in re.split(r"\n\s*\n", text.replace("\r\n", "\n").lstrip("\ufeff")):
         lines = [line.strip() for line in block.splitlines() if line.strip()]
-        timing = next((i for i, line in enumerate(lines[:2]) if _TIMES.fullmatch(line)), None)
+        timing = next(
+            (i for i, line in enumerate(lines[:2]) if _TIMES.fullmatch(line)), None
+        )
         if timing is None or timing + 1 >= len(lines):
             continue
         try:
@@ -105,14 +127,20 @@ def parse_vtt(text: str) -> list[Cue]:
                 continue
         except (ValueError, IndexError):
             continue
-        spoken = lines[timing + 1:]
+        spoken = lines[timing + 1 :]
         first = spoken[0]
         speaker, first_text = first.split(": ", 1) if ": " in first else (None, first)
-        cues.append(Cue(start, end, speaker or None, " ".join([first_text, *spoken[1:]]).strip()))
+        cues.append(
+            Cue(
+                start, end, speaker or None, " ".join([first_text, *spoken[1:]]).strip()
+            )
+        )
     return cues
 
 
-def assign_speakers(segments: list[tuple[float, float, str]], cues: list[Cue]) -> list[tuple[str | None, str]]:
+def assign_speakers(
+    segments: list[tuple[float, float, str]], cues: list[Cue]
+) -> list[tuple[str | None, str]]:
     pairs = []
     for start, end, text in segments:
         overlap: dict[str | None, float] = {}
@@ -120,7 +148,7 @@ def assign_speakers(segments: list[tuple[float, float, str]], cues: list[Cue]) -
             seconds = max(0.0, min(end, cue.end) - max(start, cue.start))
             if seconds > 0:
                 overlap[cue.speaker] = overlap.get(cue.speaker, 0.0) + seconds
-        pairs.append((max(overlap, key=overlap.get) if overlap else None, text))
+        pairs.append((max(overlap, key=overlap.__getitem__) if overlap else None, text))
     return pairs
 
 
@@ -135,4 +163,6 @@ def format_lines(pairs: list[tuple[str | None, str]]) -> str:
             lines[-1] = (previous, words + " " + text)
         else:
             lines.append((speaker, text))
-    return "\n".join(f"{speaker}: {text}" if speaker else text for speaker, text in lines)
+    return "\n".join(
+        f"{speaker}: {text}" if speaker else text for speaker, text in lines
+    )

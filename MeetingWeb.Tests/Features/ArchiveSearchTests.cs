@@ -149,10 +149,20 @@ public class ArchiveSearchTests : IAsyncLifetime
     {
         _app.WithDb(db =>
         {
-            db.Meetings.Add(new Meeting { WorkspaceId = G.Workspaces["A"], Title = "Yarım kalan zebercet toplantısı", Status = MeetingStatus.Processing,
-                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet işleniyor" } } });
-            db.Meetings.Add(new Meeting { WorkspaceId = G.Workspaces["A"], Title = "Başarısız zebercet", Status = MeetingStatus.Failed,
-                Transcript = new MeetingTranscript { Text = "Ayşe Kaya: Zebercet başarısız oldu." } });
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Yarım kalan zebercet toplantısı",
+                Status = MeetingStatus.Processing,
+                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet işleniyor" } }
+            });
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Başarısız zebercet",
+                Status = MeetingStatus.Failed,
+                Transcript = new MeetingTranscript { Text = "Ayşe Kaya: Zebercet başarısız oldu." }
+            });
             return db.SaveChanges();
         });
 
@@ -220,9 +230,14 @@ public class ArchiveSearchTests : IAsyncLifetime
         var filler = string.Join(" ", Enumerable.Range(0, 1500).Select(i => $"kelime{i}"));
         _app.WithDb(db =>
         {
-            db.Meetings.Add(new Meeting { WorkspaceId = G.Workspaces["A"], Title = "Uzun kayıt", Status = MeetingStatus.Completed,
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Uzun kayıt",
+                Status = MeetingStatus.Completed,
                 CreatedAtUtc = new DateTime(2026, 10, 16, 7, 0, 0, DateTimeKind.Utc),
-                Transcript = new MeetingTranscript { Text = filler + " Mert Demir: Zebercet sunucusu cumartesi taşınacak." } });
+                Transcript = new MeetingTranscript { Text = filler + " Mert Demir: Zebercet sunucusu cumartesi taşınacak." }
+            });
             return db.SaveChanges();
         });
 
@@ -248,9 +263,14 @@ public class ArchiveSearchTests : IAsyncLifetime
 
         app.WithDb(db =>
         {
-            db.Meetings.Add(new Meeting { WorkspaceId = gold.Workspaces["A"], Title = "Zebercet planı", Status = MeetingStatus.Completed,
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = gold.Workspaces["A"],
+                Title = "Zebercet planı",
+                Status = MeetingStatus.Completed,
                 CreatedAtUtc = new DateTime(2026, 10, 15, 7, 0, 0, DateTimeKind.Utc),
-                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet modülü kasımda başlayacak" } } });
+                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet modülü kasımda başlayacak" } }
+            });
             return db.SaveChanges();
         });
         failer.Fail = true;
@@ -276,9 +296,14 @@ public class ArchiveSearchTests : IAsyncLifetime
 
         _app.WithDb(db =>
         {
-            db.Meetings.Add(new Meeting { WorkspaceId = G.Workspaces["A"], Title = "Zebercet planı", Status = MeetingStatus.Completed,
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Zebercet planı",
+                Status = MeetingStatus.Completed,
                 CreatedAtUtc = new DateTime(2026, 10, 15, 7, 0, 0, DateTimeKind.Utc),
-                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet modülü kasımda başlayacak" } } });
+                Points = new() { new() { Kind = MeetingPointKind.Decision, Text = "Zebercet modülü kasımda başlayacak" } }
+            });
             return db.SaveChanges();
         });
 
@@ -292,8 +317,13 @@ public class ArchiveSearchTests : IAsyncLifetime
     {
         var id = _app.WithDb(db =>
         {
-            var m = new Meeting { WorkspaceId = G.Workspaces["A"], Title = "Zebercet", Status = MeetingStatus.Processing,
-                Transcript = new MeetingTranscript { Text = "Mert Demir: Zebercet sunucusu hazır." } };
+            var m = new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Zebercet",
+                Status = MeetingStatus.Processing,
+                Transcript = new MeetingTranscript { Text = "Mert Demir: Zebercet sunucusu hazır." }
+            };
             db.Meetings.Add(m);
             db.SaveChanges();
             return m.Id;

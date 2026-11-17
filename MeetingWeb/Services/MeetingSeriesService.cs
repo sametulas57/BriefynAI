@@ -62,7 +62,9 @@ namespace MeetingWeb.Services
                 .Where(s => s.WorkspaceId == workspaceId)
                 .Select(s => new
                 {
-                    s.Id, s.Name, s.CreatedAtUtc,
+                    s.Id,
+                    s.Name,
+                    s.CreatedAtUtc,
                     Count = s.Meetings.Count,
                     Last = s.Meetings.Max(m => (DateTime?)m.CreatedAtUtc)
                 })
