@@ -251,7 +251,8 @@ namespace MeetingWeb.Services
             m.StartTime?.ToUniversalTime() ?? DateTime.MinValue,
             m.Duration,
             (m.RecordingFiles ?? new()).Select(f => new ZoomRecordingFile(f.FileType ?? "", f.DownloadUrl ?? "", f.FileSize)).ToList(),
-            m.HostId ?? "") { MeetingNumber = m.Id, Type = m.Type };
+            m.HostId ?? "")
+        { MeetingNumber = m.Id, Type = m.Type };
 
         private sealed class TokenDto
         {

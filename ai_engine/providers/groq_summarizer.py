@@ -4,6 +4,7 @@ Model choice (2026-10-16 blind test, 5 tricky fake meetings): qwen/qwen3.8-27b m
 gpt-oss-120b ~6 and the old local qwen2.5:14b ~7. Long transcripts are summarised in parts and merged,
 which also keeps every request under the free tier's per-minute token limit.
 """
+
 import json
 import logging
 
@@ -24,16 +25,33 @@ SYSTEM = (
 )
 
 SCHEMA = {
-    "type": "object", "additionalProperties": False,
-    "required": ["toplanti_konusu", "gorusulen_konular", "alinan_kararlar", "aksiyon_maddeleri", "bekleyen_konular"],
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "toplanti_konusu",
+        "gorusulen_konular",
+        "alinan_kararlar",
+        "aksiyon_maddeleri",
+        "bekleyen_konular",
+    ],
     "properties": {
         "toplanti_konusu": {"type": "string"},
         "gorusulen_konular": {"type": "array", "items": {"type": "string"}},
         "alinan_kararlar": {"type": "array", "items": {"type": "string"}},
         "bekleyen_konular": {"type": "array", "items": {"type": "string"}},
-        "aksiyon_maddeleri": {"type": "array", "items": {
-            "type": "object", "additionalProperties": False, "required": ["kim", "ne", "ne_zaman"],
-            "properties": {"kim": {"type": ["string", "null"]}, "ne": {"type": "string"}, "ne_zaman": {"type": ["string", "null"]}}}},
+        "aksiyon_maddeleri": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["kim", "ne", "ne_zaman"],
+                "properties": {
+                    "kim": {"type": ["string", "null"]},
+                    "ne": {"type": "string"},
+                    "ne_zaman": {"type": ["string", "null"]},
+                },
+            },
+        },
     },
 }
 
@@ -48,7 +66,9 @@ MERGE_INSTRUCTION = (
 
 def split_text(text: str, max_chars: int) -> list[str]:
     """Splits on sentence ends so no sentence is cut in half."""
-    sentences = [s.strip() + "." for s in text.replace("\n", " ").split(". ") if s.strip()]
+    sentences = [
+        s.strip() + "." for s in text.replace("\n", " ").split(". ") if s.strip()
+    ]
     parts, current = [], ""
     for sentence in sentences:
         sentence = sentence[:-1] if sentence.endswith("..") else sentence
@@ -63,6 +83,7 @@ def split_text(text: str, max_chars: int) -> list[str]:
 
 def to_backend_format(summary: dict) -> dict:
     """The .NET backend stores action items as text lines: 'Kim: ne (ne zaman)'."""
+
     def line(action: dict) -> str:
         text = action.get("ne", "").strip()
         if action.get("kim"):
@@ -76,7 +97,9 @@ def to_backend_format(summary: dict) -> dict:
         "gorusulen_konular": summary.get("gorusulen_konular", []),
         "alinan_kararlar": summary.get("alinan_kararlar", []),
         "bekleyen_konular": summary.get("bekleyen_konular", []),
-        "aksiyon_maddeleri": [line(a) for a in summary.get("aksiyon_maddeleri", []) if isinstance(a, dict)],
+        "aksiyon_maddeleri": [
+            line(a) for a in summary.get("aksiyon_maddeleri", []) if isinstance(a, dict)
+        ],
     }
 
 
@@ -85,20 +108,33 @@ class Summarizer:
         self._llm, self._max_chars = llm, max_chars
 
     def _ask(self, content: str) -> dict:
-        return self._llm.complete_json(SYSTEM, [{"role": "user", "content": content}], SCHEMA)
+        return self._llm.complete_json(
+            SYSTEM, [{"role": "user", "content": content}], SCHEMA
+        )
 
     def summarize(self, transcript: str) -> dict:
         if len(transcript) <= self._max_chars:
             return to_backend_format(self._ask(f"Toplantı dökümü:\n\n{transcript}"))
 
         parts = split_text(transcript, self._max_chars)
-        logging.info(f"Long transcript: summarising {len(parts)} parts, then merging.")
-        partials = [self._ask(f"Toplantı dökümünün {i + 1}/{len(parts)}. bölümü:\n\n{p}") for i, p in enumerate(parts)]
-        merged = self._ask(f"{MERGE_INSTRUCTION}\n\nKısmi özetler:\n{json.dumps(partials, ensure_ascii=False)}")
+        logging.info(f"Long transcript: summarising {len(parts)} parts, then merging.")  # noqa: LOG015 - Keep the configured root logger.
+        partials = [
+            self._ask(f"Toplantı dökümünün {i + 1}/{len(parts)}. bölümü:\n\n{p}")
+            for i, p in enumerate(parts)
+        ]
+        merged = self._ask(
+            f"{MERGE_INSTRUCTION}\n\nKısmi özetler:\n{json.dumps(partials, ensure_ascii=False)}"
+        )
         return to_backend_format(merged)
 
 
 class GroqSummarizer(Summarizer):
     """Groq shortcut kept for existing callers and tests."""
-    def __init__(self, client: GroqClient, model: str = "qwen/qwen3.8-27b", max_chars: int = 12000):
+
+    def __init__(
+        self,
+        client: GroqClient,
+        model: str = "qwen/qwen3.8-27b",
+        max_chars: int = 12000,
+    ):
         super().__init__(GroqLlm(client, model), max_chars)

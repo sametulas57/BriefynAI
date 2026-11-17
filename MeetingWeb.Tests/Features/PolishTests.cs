@@ -67,7 +67,8 @@ namespace MeetingWeb.Tests.Features
                 db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = team.Id, UserId = S.BobId, Role = WorkspaceRole.Owner });
                 var meeting = new Meeting
                 {
-                    WorkspaceId = team.Id, Title = "ekip toplantısı",
+                    WorkspaceId = team.Id,
+                    Title = "ekip toplantısı",
                     ActionItems = new List<ActionItem> { new() { Text = "görev" } }
                 };
                 db.Meetings.Add(meeting);

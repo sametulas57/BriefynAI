@@ -35,7 +35,10 @@ namespace MeetingWeb.Pages
             var tasks = await MyTasks(userId)
                 .Select(a => new
                 {
-                    a.Id, a.Text, a.DueDate, a.CompletedAtUtc,
+                    a.Id,
+                    a.Text,
+                    a.DueDate,
+                    a.CompletedAtUtc,
                     Team = a.Meeting!.Workspace!.Name,
                     a.MeetingId,
                     Meeting = a.Meeting.Title,

@@ -111,7 +111,9 @@ namespace MeetingWeb.Tests.Security
                 team.Members.Add(new WorkspaceMember { UserId = S.BobId, Role = WorkspaceRole.Owner });
                 var meeting = new Meeting
                 {
-                    Workspace = team, Title = "silinecek", Status = MeetingStatus.Completed,
+                    Workspace = team,
+                    Title = "silinecek",
+                    Status = MeetingStatus.Completed,
                     Transcript = new MeetingTranscript { Text = "döküm" },
                     Points = new List<MeetingPoint> { new() { Kind = MeetingPointKind.Topic, Text = "konu" } },
                     ActionItems = new List<ActionItem> { new() { Text = "görev" } }

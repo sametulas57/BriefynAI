@@ -29,7 +29,10 @@ namespace MeetingWeb.Tests.Features
         {
             var m = new Meeting
             {
-                WorkspaceId = S.WorkspaceA, Title = "döküm testi", Status = status, AudioFileName = audio,
+                WorkspaceId = S.WorkspaceA,
+                Title = "döküm testi",
+                Status = status,
+                AudioFileName = audio,
                 Transcript = transcript == null ? null : new MeetingTranscript { Text = transcript },
                 Points = new List<MeetingPoint>
                 {

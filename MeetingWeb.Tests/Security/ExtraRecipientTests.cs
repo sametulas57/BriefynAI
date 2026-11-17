@@ -34,9 +34,9 @@ namespace MeetingWeb.Tests.Security
         private int SentTo(string email) => _app.Jobs.CountFor("SendMeetingSummaryAsync", a => EmailService.UnprotectRecipient((string)a[1]!) == email);
 
         [Fact]
-        public void Share_dialog_has_an_extra_address_line()
+        public async Task Share_dialog_has_an_extra_address_line()
         {
-            var page = WebUtility.HtmlDecode(_app.ClientFor(S.AliceId).GetStringAsync($"/Details?id={S.MeetingA}").Result);
+            var page = WebUtility.HtmlDecode(await _app.ClientFor(S.AliceId).GetStringAsync($"/Details?id={S.MeetingA}"));
             Assert.Contains("name=\"extraEmails\"", page);
             Assert.Contains("Ekip dışından birine de göndermek", page);
         }
