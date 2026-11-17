@@ -1,5 +1,5 @@
 #!/bin/sh
-# Her commit'ten önce scripts/verify.sh (build + testler). Kalırsa commit durur.
+# Her commit'ten önce scripts/verify.sh (lint, biçim, tip, build, testler). Kalırsa commit durur.
 # Claude da Codex de aynı hook'tan geçer. Yalnız doküman (docs/, *.md) değiştiyse atlanır.
 KOD=$(git diff --cached --name-only | grep -vE '^docs/|\.md$' || true)
 [ -z "$KOD" ] && exit 0
