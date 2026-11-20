@@ -65,6 +65,15 @@ public class CalendarSyncTests
         Assert.Equal("Görev: " + new string('a', 80) + "…", message.Subject);
     }
 
+    // Outlook files a message with the same subject into the conversation the person deleted (seen 2026-11-20 on
+    // Outlook mobile), so the "Takvimime gönder" invite gets a subject of its own.
+    [Fact]
+    public void Message_subject_of_a_resent_invite_differs_from_the_first_invite()
+    {
+        using var message = EmailService.BuildCalendarMessage(Invite() with { Resent = true }, CalendarMethod.Request, "sender@briefyn.test", "Briefyn AI");
+        Assert.Equal("Takviminiz için yeniden: Gizli görev", message.Subject);
+    }
+
     [Fact]
     public void Message_subject_keeps_exactly_80_characters_without_ellipsis()
     {
@@ -740,6 +749,8 @@ public class CalendarSelfServiceTests
         Assert.All(mail.Sent, sent => Assert.Equal(CalendarMethod.Request, sent.Method));
         Assert.Equal(mail.Sent[0].Invite.Uid, mail.Sent[1].Invite.Uid);
         Assert.Equal(1, mail.Sent[1].Invite.Sequence);
+        // Only the button's invite is marked as sent again (it gets its own subject, see the message test).
+        Assert.Equal((false, true), (mail.Sent[0].Invite.Resent, mail.Sent[1].Invite.Resent));
         await RunAsync(app, force: false);
         Assert.Equal(2, mail.Sent.Count);
     }

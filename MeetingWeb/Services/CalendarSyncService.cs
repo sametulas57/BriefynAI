@@ -162,7 +162,7 @@ namespace MeetingWeb.Services
                 record.SendPending = true;
                 record.UpdatedAtUtc = now;
                 await db.SaveChangesAsync();
-                var invite = BuildRequestData(task, user, record, now);
+                var invite = BuildRequestData(task, user, record, now) with { Resent = force };
                 await SendAsync(record, invite, CalendarMethod.Request);
                 requests++;
                 record.SendPending = false;
