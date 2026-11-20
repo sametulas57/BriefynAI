@@ -21,6 +21,7 @@ namespace MeetingWeb.Pages
         private readonly IMeetingAccessService _access;
         private readonly IMeetingSeriesService _series;
         private readonly ISpeakerNamingService _speakerNaming;
+        private readonly ILogger<DetailsModel> _logger;
 
         // Constructor injection for required services and physical path resolution.
         public DetailsModel(
@@ -28,8 +29,10 @@ namespace MeetingWeb.Pages
             UserManager<ApplicationUser> userManager,
             IBackgroundJobClient backgroundJobClient,
             IAudioStorage audioStorage,
-            IMeetingAccessService access, IMeetingSeriesService series, ISpeakerNamingService speakerNaming)
+            IMeetingAccessService access, IMeetingSeriesService series, ISpeakerNamingService speakerNaming,
+            ILogger<DetailsModel> logger)
         {
+            _logger = logger;
             _speakerNaming = speakerNaming;
             _series = series;
             _context = context;
@@ -400,6 +403,7 @@ namespace MeetingWeb.Pages
                 try
                 {
                     await _context.SaveChangesAsync();
+                    QueueCalendarSync(task.Id);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -435,6 +439,7 @@ namespace MeetingWeb.Pages
                 task.AssigneeUserId = null;
                 task.DueDate = null;
                 if (!await TrySaveTaskAsync()) return AssignFailed(meetingId, null);
+                QueueCalendarSync(taskId);
                 return AssignDone(meetingId, "Görevin ataması kaldırıldı.", null, null);
             }
 
@@ -445,9 +450,18 @@ namespace MeetingWeb.Pages
             task.AssigneeUserId = assigneeUserId;
             task.DueDate = dueDate;
             if (!await TrySaveTaskAsync()) return AssignFailed(meetingId, null);
+            QueueCalendarSync(taskId);
 
             var assignee = await FullNameAsync(assigneeUserId);
             return AssignDone(meetingId, $"Görev atandı: {assignee}.", assignee, dueDate);
+        }
+
+        // Calendar sync (SPEC.md): only the task id goes to Hangfire; the job reads the current state when it runs. A queue
+        // failure must not undo or fail the user's saved change, so it is logged and the page carries on.
+        private void QueueCalendarSync(int taskId)
+        {
+            try { _backgroundJobClient.Enqueue<ICalendarSyncService>(s => s.SyncAsync(taskId)); }
+            catch (Exception ex) { _logger.LogWarning("Takvim eşitleme işi kuyruğa alınamadı. Görev={ActionItemId}, HataTürü={ErrorType}", taskId, ex.GetType().Name); }
         }
 
         // The page's script asks for a short answer, so saving one task leaves the choices made in other rows as they are;
