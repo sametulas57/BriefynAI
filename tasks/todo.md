@@ -68,6 +68,6 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - [x] 6. Kod veritabanında yok (saklanmıyor), Hangfire argümanında ve günlükte yok: testte.
   - [x] 7. Sahte Host başlığı bağlantıyı çeviremiyor: testte.
   - [ ] 8. Yerel deneme: e-posta, bağlantı, ikinci kullanım geçti; e-postanın düştüğü klasör yazılmadı.
-  - [ ] 9. verify GEÇTİ, ADR-0016 yazıldı; push ve CI aşağıda.
-- [ ] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi; CI yeşil.
-- [ ] Ulaş'a `/agent-skills:review` hatırlatıldı.
+  - [x] 9. verify GEÇTİ, ADR-0016 yazıldı, push ve CI aşağıda.
+- [x] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi (`8b5ca0a..45995a4`); CI yeşil (Tests ve CodeQL, 45995a4).
+- [x] Ulaş'a `/agent-skills:review` hatırlatıldı (koşulmadı).
