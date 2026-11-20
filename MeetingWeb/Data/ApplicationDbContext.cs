@@ -23,6 +23,7 @@ namespace MeetingWeb.Data
         public DbSet<MeetingTranscript> MeetingTranscripts { get; set; }
         public DbSet<MeetingPoint> MeetingPoints { get; set; }
         public DbSet<ActionItem> ActionItems { get; set; }
+        public DbSet<CalendarInvite> CalendarInvites { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<CommentReaction> CommentReactions { get; set; }
         public DbSet<ZoomConnection> ZoomConnections { get; set; }
@@ -137,6 +138,15 @@ namespace MeetingWeb.Data
                 a.ToTable(t => t.HasCheckConstraint("CK_ActionItems_Source", "[Source] IN (1, 2)"));
             });
 
+            builder.Entity<CalendarInvite>(i =>
+            {
+                i.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                i.HasIndex(x => new { x.ActionItemId, x.UserId }).IsUnique();
+                i.HasIndex(x => x.Uid).IsUnique();
+                i.HasIndex(x => x.Status);
+                i.ToTable(t => t.HasCheckConstraint("CK_CalendarInvites_Status", "[Status] IN (1, 2)"));
+            });
+
             builder.Entity<Comment>(c =>
             {
                 // Comments discuss meeting content, so they are encrypted too.
@@ -171,6 +181,7 @@ namespace MeetingWeb.Data
             {
                 builder.Entity<Meeting>().Property(x => x.RowVersion).ValueGeneratedNever();
                 builder.Entity<ActionItem>().Property(x => x.RowVersion).ValueGeneratedNever();
+                builder.Entity<CalendarInvite>().Property(x => x.RowVersion).ValueGeneratedNever();
                 builder.Entity<ZoomConnection>().Property(x => x.RowVersion).ValueGeneratedNever();
             }
         }

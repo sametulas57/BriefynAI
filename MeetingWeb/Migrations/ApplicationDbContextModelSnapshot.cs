@@ -97,6 +97,9 @@ namespace MeetingWeb.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool>("CalendarInvitesEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -171,6 +174,65 @@ namespace MeetingWeb.Migrations
                         .HasFilter("[PhoneNumber] IS NOT NULL AND [PhoneNumber] <> ''");
 
                     b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.CalendarInvite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActionItemId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<bool>("SendPending")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Uid")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("Uid")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ActionItemId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("CalendarInvites", t =>
+                        {
+                            t.HasCheckConstraint("CK_CalendarInvites_Status", "[Status] IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.Comment", b =>
@@ -779,6 +841,17 @@ namespace MeetingWeb.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("Meeting");
+                });
+
+            modelBuilder.Entity("MeetingWeb.Models.CalendarInvite", b =>
+                {
+                    b.HasOne("MeetingWeb.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MeetingWeb.Models.Comment", b =>

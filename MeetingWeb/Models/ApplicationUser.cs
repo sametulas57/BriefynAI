@@ -22,5 +22,8 @@ namespace MeetingWeb.Models
         public DateTime? DeletionRequestedAtUtc { get; set; }
 
         public bool OverdueRemindersEnabled { get; set; } = true;
+
+        // Automatically send calendar invites for assigned tasks.
+        public bool CalendarInvitesEnabled { get; set; } = true;
     }
 }
