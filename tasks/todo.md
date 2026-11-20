@@ -16,7 +16,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Bağımlılık: yok.
   - Dosyalar: `MeetingWeb/Models/CalendarInvite.cs`, `MeetingWeb/Models/ApplicationUser.cs`, `MeetingWeb/Data/ApplicationDbContext.cs`, `MeetingWeb/Migrations/*_AddCalendarInvites.cs`, `MeetingWeb/appsettings.json`.
 
-- [ ] **Görev 3: Eşitleme servisi ve davet e-postası** (M)
+- [x] **Görev 3: Eşitleme servisi ve davet e-postası** (M)
   - Kabul: `SyncAsync(actionItemId)` plan karar 1, 3, 4, 7'ye göre davet / güncelleme / iptal gönderiyor ya da hiçbir şey yapmıyor; ikinci koşu e-posta göndermiyor; geçmiş tarihe otomatik davet yok. `SendCalendarInviteAsync` e-postası `text/calendar; method=REQUEST|CANCEL` parçası ve düz metin parçasıyla gidiyor; başlıkta satır sonu yok.
   - Doğrula: odaklı test (davranış tablosundaki her durum + eşzamanlı iki koşu).
   - Bağımlılık: 1, 2.
