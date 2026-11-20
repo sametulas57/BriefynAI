@@ -604,6 +604,8 @@ public class CalendarSyncTests
         public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
         public int FailNext { get; set; }
         public Action? OnSend { get; set; }
+        public Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText) => Task.CompletedTask;
+        public Task SendPasswordChangedAsync(string toEmail, string fullName) => Task.CompletedTask;
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
@@ -1220,6 +1222,8 @@ public class CalendarSelfServiceTests
     private sealed class RecordingEmail : IEmailService
     {
         public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
+        public Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText) => Task.CompletedTask;
+        public Task SendPasswordChangedAsync(string toEmail, string fullName) => Task.CompletedTask;
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
@@ -1490,6 +1494,8 @@ public class CalendarLossTests
     private sealed class RecordingEmail : IEmailService
     {
         public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
+        public Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText) => Task.CompletedTask;
+        public Task SendPasswordChangedAsync(string toEmail, string fullName) => Task.CompletedTask;
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
@@ -1674,6 +1680,8 @@ public class CalendarSweepTests
         public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
         public List<CalendarInviteData> Attempts { get; } = [];
         public bool FailNext { get; set; }
+        public Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText) => Task.CompletedTask;
+        public Task SendPasswordChangedAsync(string toEmail, string fullName) => Task.CompletedTask;
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;

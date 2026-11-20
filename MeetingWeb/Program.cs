@@ -122,6 +122,13 @@ try
         {
             options.WorkerCount = 1;
         });
+        // Reset emails must not wait behind a long meeting analysis on the single default worker.
+        builder.Services.AddHangfireServer(options =>
+        {
+            options.ServerName = $"{Environment.MachineName}:{PasswordResetService.EmailQueue}";
+            options.Queues = new[] { PasswordResetService.EmailQueue };
+            options.WorkerCount = 1;
+        });
     }
 
     // --- 6. Custom Services ---
@@ -135,6 +142,7 @@ try
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
     builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
     builder.Services.AddScoped<IOverdueReminderService, OverdueReminderService>();
+    builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
     builder.Services.AddScoped<ICalendarSyncService, CalendarSyncService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddScoped<IMeetingSeriesService, MeetingSeriesService>();

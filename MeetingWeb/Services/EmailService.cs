@@ -154,6 +154,54 @@ namespace MeetingWeb.Services
             await smtpClient.SendMailAsync(mail);
         }
 
+        public async Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText)
+        {
+            using var smtpClient = new SmtpClient(_emailSettings.SmtpServer) { Port = _emailSettings.Port, Credentials = new NetworkCredential(_emailSettings.SenderEmail, _emailSettings.Password), EnableSsl = true };
+            using var mail = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                Subject = "Briefyn AI: Şifre yenileme bağlantınız",
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = BuildPasswordResetText(fullName, resetUrl, lifetimeText)
+            };
+            mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildPasswordResetHtml(fullName, resetUrl, lifetimeText), Encoding.UTF8, "text/html"));
+            mail.To.Add(toEmail);
+            await smtpClient.SendMailAsync(mail);
+        }
+
+        public async Task SendPasswordChangedAsync(string toEmail, string fullName)
+        {
+            using var smtpClient = new SmtpClient(_emailSettings.SmtpServer) { Port = _emailSettings.Port, Credentials = new NetworkCredential(_emailSettings.SenderEmail, _emailSettings.Password), EnableSsl = true };
+            using var mail = new MailMessage
+            {
+                From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
+                Subject = "Briefyn AI: Şifreniz değiştirildi",
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = BuildPasswordChangedText(fullName)
+            };
+            mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildPasswordChangedHtml(fullName), Encoding.UTF8, "text/html"));
+            mail.To.Add(toEmail);
+            await smtpClient.SendMailAsync(mail);
+        }
+
+        public static string BuildPasswordResetText(string fullName, string resetUrl, string lifetimeText) =>
+            $"Merhaba {fullName},\n\nBriefyn AI hesabınız için şifre yenileme isteği aldık. Yeni şifrenizi belirlemek için bu bağlantıyı açın:\n{resetUrl}\n\nBağlantı {lifetimeText} geçerli ve yalnız bir kez kullanılabilir.\n\nBu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; şifreniz değişmez.";
+
+        public static string BuildPasswordResetHtml(string fullName, string resetUrl, string lifetimeText) => $@"
+<div style=""font-family:'Segoe UI',Tahoma,sans-serif;padding:30px;max-width:600px;margin:auto""><p>Merhaba {Html.Encode(fullName)},</p><p>Briefyn AI hesabınız için şifre yenileme isteği aldık. Yeni şifrenizi belirlemek için bu bağlantıyı açın:</p><p><a href=""{Html.Encode(resetUrl)}"" style=""display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none"">Şifrenizi yenileyin</a></p><p>Bağlantı {Html.Encode(lifetimeText)} geçerli ve yalnız bir kez kullanılabilir.</p><p>Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz; şifreniz değişmez.</p></div>";
+
+        public static string BuildPasswordChangedText(string fullName) =>
+            $"Merhaba {fullName},\n\nBriefyn AI hesabınızın şifresi az önce değiştirildi. Açık olan bütün oturumlarınız kapatıldı.\n\nBunu siz yapmadıysanız hemen bu e-postayı yanıtlayarak bize yazın.";
+
+        public static string BuildPasswordChangedHtml(string fullName) => $@"
+<div style=""font-family:'Segoe UI',Tahoma,sans-serif;padding:30px;max-width:600px;margin:auto""><p>Merhaba {Html.Encode(fullName)},</p><p>Briefyn AI hesabınızın şifresi az önce değiştirildi. Açık olan bütün oturumlarınız kapatıldı.</p><p>Bunu siz yapmadıysanız hemen bu e-postayı yanıtlayarak bize yazın.</p></div>";
+
         public async Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method)
         {
             using var smtpClient = new SmtpClient(_emailSettings.SmtpServer)
