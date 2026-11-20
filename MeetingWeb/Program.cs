@@ -337,6 +337,9 @@ try
             .AddOrUpdate<ILogCleanupService>("log-cleanup", s => s.RunAsync(), Cron.Daily());
         app.Services.GetRequiredService<IRecurringJobManager>()
             .AddOrUpdate<IAccountDeletionService>("account-deletion", s => s.RunAsync(), Cron.Daily());
+        // Sweep after account deletion and before the 09:00 reminders, in Turkey's time zone.
+        app.Services.GetRequiredService<IRecurringJobManager>()
+            .AddOrUpdate<ICalendarSyncService>("calendar-sweep", s => s.SweepAsync(), Cron.Daily(4), new RecurringJobOptions { TimeZone = DisplayTime.Zone });
         var reminderHour = builder.Configuration.GetValue<int>("Reminders:Hour", 9);
         app.Services.GetRequiredService<IRecurringJobManager>()
             .AddOrUpdate<IOverdueReminderService>("overdue-reminders", s => s.RunAsync(), Cron.Daily(reminderHour), new RecurringJobOptions { TimeZone = DisplayTime.Zone });

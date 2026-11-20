@@ -10,6 +10,9 @@ namespace MeetingWeb.Services
         // Brings the calendar of everyone who has or had this task in line with its current state (SPEC.md). Running it
         // twice sends nothing the second time. Only the task id goes through Hangfire (ADR-0009).
         Task SyncAsync(int actionItemId);
+        // Daily safety net (plan decision 6): re-syncs every task with a live calendar entry, so a cancellation missed by a rare
+        // path (a deleted team, a failed queue) still goes out. Running it twice sends nothing the second time.
+        Task SweepAsync();
         // Uses the same target eligibility as sync, including current team membership and account state.
         Task<bool> IsOwnDatedTaskAsync(int actionItemId, string userId);
         // Explicit request: sends again even when unchanged or automatic invitations are disabled.
@@ -34,6 +37,25 @@ namespace MeetingWeb.Services
         private static readonly TimeSpan SendClaim = TimeSpan.FromMinutes(10);
 
         public Task SyncAsync(int actionItemId) => SyncCoreAsync(actionItemId, force: false);
+
+        public async Task SweepAsync()
+        {
+            var ids = await db.CalendarInvites.AsNoTracking()
+                .Where(i => i.Status == CalendarInviteStatus.Active || i.SendPending)
+                .Select(i => i.ActionItemId).Distinct().ToListAsync();
+            var failed = 0;
+            foreach (var id in ids)
+            {
+                try { await SyncAsync(id); }
+                catch (Exception ex)
+                {
+                    db.ChangeTracker.Clear();
+                    failed++;
+                    logger.LogError("Takvim süpürmesinde bir görev eşitlenemedi. Görev={ActionItemId}, HataTürü={ErrorType}", id, ex.GetType().Name);
+                }
+            }
+            logger.LogInformation("Takvim süpürmesi tamamlandı. Görev={Tasks}, Hata={Failed}", ids.Count, failed);
+        }
 
         public Task ResendAsync(int actionItemId) => SyncCoreAsync(actionItemId, force: true);
 
