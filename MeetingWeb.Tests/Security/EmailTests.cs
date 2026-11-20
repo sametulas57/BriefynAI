@@ -87,5 +87,23 @@ namespace MeetingWeb.Tests.Security
             Assert.Equal(HttpStatusCode.Redirect, statuses[^1]);
             Assert.True(_app.Jobs.CountFor("SendMeetingSummaryAsync") <= 10);
         }
+
+        [Fact]
+        public async Task Sharing_limit_also_applies_to_trailing_slash_path()
+        {
+            using var app = new BriefynFactory();
+            await app.InitializeAsync();
+            var s = app.Seed;
+            using var alice = app.ClientFor(s.AliceId);
+            var token = await GetAntiforgeryTokenAsync(alice, $"/Details?id={s.MeetingA}");
+
+            for (var i = 0; i < 11; i++)
+            {
+                using var response = await PostFormAsync(alice, $"/Details/?id={s.MeetingA}&handler=Share", token,
+                    ("meetingId", $"{s.MeetingA}"), ("selectedEmails", SeedData.CarolEmail));
+            }
+
+            Assert.True(app.Jobs.CountFor("SendMeetingSummaryAsync") <= 10);
+        }
     }
 }
