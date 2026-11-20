@@ -1197,3 +1197,273 @@ public class CalendarSelfServiceTests
         }
     }
 }
+
+public class CalendarLossTests
+{
+    private static readonly DateTime Now = new(2026, 11, 20, 6, 0, 0, DateTimeKind.Utc);
+    private const string TaskText = "Gizli görev metni";
+
+    [Fact]
+    public async Task Owner_deletes_meeting_and_queues_only_invited_task_then_cancels_and_removes_record()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        app.WithDb(db => { db.ActionItems.Add(new ActionItem { MeetingId = app.Seed.MeetingA, Text = "Davetsiz görev" }); return db.SaveChanges(); });
+        var original = Assert.Single(Records(app));
+        using var alice = app.ClientFor(app.Seed.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, "/History");
+
+        using var response = await FormHelpers.PostFormAsync(alice, "/History?handler=Delete", token, ("id", $"{app.Seed.MeetingA}"));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/History", response.Headers.Location!.OriginalString);
+        Assert.False(app.WithDb(db => db.Meetings.Any(m => m.Id == app.Seed.MeetingA)));
+        AssertJobs(app, app.Seed.TaskA);
+        await RunQueuedAsync(app);
+        AssertCancellation(Assert.Single(mail.Sent), original);
+        Assert.Empty(Records(app));
+    }
+
+    [Fact]
+    public async Task Non_owner_cannot_delete_meeting_and_queues_nothing()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var carol = app.ClientFor(app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(carol, "/Workspace/Members");
+
+        using var response = await FormHelpers.PostFormAsync(carol, "/History?handler=Delete", token, ("id", $"{app.Seed.MeetingA}"));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("Geçmiş toplantıları yalnız ekip kurucusu silebilir.", System.Net.WebUtility.HtmlDecode(await carol.GetStringAsync("/History")));
+        Assert.True(app.WithDb(db => db.Meetings.Any(m => m.Id == app.Seed.MeetingA)));
+        Assert.Empty(app.Jobs.Created);
+        Assert.Empty(mail.Sent);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Missing_or_other_workspace_meeting_queues_nothing(bool otherWorkspace)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var alice = app.ClientFor(app.Seed.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, "/History");
+        var id = otherWorkspace ? app.Seed.MeetingB : int.MaxValue;
+
+        using var response = await FormHelpers.PostFormAsync(alice, "/History?handler=Delete", token, ("id", $"{id}"));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Empty(app.Jobs.Created);
+        Assert.Empty(mail.Sent);
+        Assert.True(app.WithDb(db => db.Meetings.Any(m => m.Id == app.Seed.MeetingB)));
+    }
+
+    [Fact]
+    public async Task Queue_failure_keeps_meeting_deleted_and_redirects_normally()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var alice = app.ClientFor(app.Seed.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, "/History");
+        app.Jobs.FailNext = true;
+
+        using var response = await FormHelpers.PostFormAsync(alice, "/History?handler=Delete", token, ("id", $"{app.Seed.MeetingA}"));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/History", response.Headers.Location!.OriginalString);
+        Assert.False(app.WithDb(db => db.Meetings.Any(m => m.Id == app.Seed.MeetingA)));
+        Assert.False(app.Jobs.FailNext);
+        Assert.Empty(app.Jobs.Created);
+        Assert.Single(Records(app));
+    }
+
+    [Theory]
+    [InlineData("RemoveMember")]
+    [InlineData("LeaveWorkspace")]
+    public async Task Membership_loss_queues_only_persons_live_tasks_in_that_workspace_and_sends_content_free_cancels(string handler)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        var extraIds = app.WithDb(db =>
+        {
+            db.WorkspaceMembers.Add(new WorkspaceMember { WorkspaceId = app.Seed.WorkspaceB, UserId = app.Seed.CarolId, Role = WorkspaceRole.Member });
+            var otherWorkspace = db.ActionItems.Single(a => a.Id == app.Seed.TaskB);
+            otherWorkspace.AssigneeUserId = app.Seed.CarolId;
+            otherWorkspace.DueDate = new(2026, 11, 22);
+            var secondMeeting = new Meeting { WorkspaceId = app.Seed.WorkspaceA, Title = "A gizli toplantı ikinci", Status = MeetingStatus.Failed };
+            var second = new ActionItem { Meeting = secondMeeting, Text = TaskText, AssigneeUserId = app.Seed.CarolId, DueDate = new(2026, 11, 22) };
+            var aliceTask = new ActionItem { MeetingId = app.Seed.MeetingA, Text = "Alice görevi", AssigneeUserId = app.Seed.AliceId, DueDate = new(2026, 11, 22) };
+            db.ActionItems.AddRange(second, aliceTask);
+            db.SaveChanges();
+            return new[] { second.Id, aliceTask.Id };
+        });
+        foreach (var id in extraIds.Append(app.Seed.TaskB)) await SyncAsync(app, id);
+        var originals = Records(app);
+        mail.Sent.Clear();
+        using var client = app.ClientFor(handler == "RemoveMember" ? app.Seed.AliceId : app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Workspace/Members");
+
+        using var response = await FormHelpers.PostFormAsync(client, "/Workspace/Members?handler=" + handler, token, ("targetUserId", app.Seed.CarolId));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(handler == "RemoveMember" ? "/Workspace/Members" : "/", response.Headers.Location!.OriginalString);
+        Assert.False(app.WithDb(db => db.WorkspaceMembers.Any(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId)));
+        AssertJobs(app, app.Seed.TaskA, extraIds[0]);
+        await RunQueuedAsync(app);
+        Assert.Equal(2, mail.Sent.Count);
+        foreach (var sent in mail.Sent)
+            AssertCancellation(sent, Assert.Single(originals, i => i.Uid == sent.Invite.Uid));
+        var remaining = Records(app);
+        Assert.All(remaining.Where(i => i.ActionItemId == app.Seed.TaskA || i.ActionItemId == extraIds[0]), i => Assert.Equal(CalendarInviteStatus.Cancelled, i.Status));
+        Assert.All(remaining.Where(i => i.ActionItemId == app.Seed.TaskB || i.ActionItemId == extraIds[1]), i => Assert.Equal(CalendarInviteStatus.Active, i.Status));
+    }
+
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("stale")]
+    public async Task Failed_remove_queues_nothing(string scenario)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        if (scenario == "owner") app.WithDb(db =>
+        {
+            db.WorkspaceMembers.Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId).Role = WorkspaceRole.Admin;
+            db.ActionItems.Single(a => a.Id == app.Seed.TaskA).AssigneeUserId = app.Seed.AliceId;
+            return db.SaveChanges();
+        });
+        if (scenario == "owner") { await SyncAsync(app, app.Seed.TaskA); mail.Sent.Clear(); }
+        using var client = app.ClientFor(scenario == "owner" ? app.Seed.CarolId : app.Seed.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Workspace/Members");
+        if (scenario == "stale") app.WithDb(db => db.WorkspaceMembers.Where(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId).ExecuteDelete());
+
+        using var response = await FormHelpers.PostFormAsync(client, "/Workspace/Members?handler=RemoveMember", token,
+            ("targetUserId", scenario == "owner" ? app.Seed.AliceId : app.Seed.CarolId));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains("Üye çıkarılamadı. Ekip üyeliklerini yeniden kontrol edin.", System.Net.WebUtility.HtmlDecode(await client.GetStringAsync("/Workspace/Members")));
+        Assert.Empty(app.Jobs.Created);
+        Assert.Empty(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Owner_cannot_leave_and_queues_nothing()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var alice = app.ClientFor(app.Seed.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, "/Workspace/Members");
+
+        using var response = await FormHelpers.PostFormAsync(alice, "/Workspace/Members?handler=LeaveWorkspace", token);
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.True(app.WithDb(db => db.WorkspaceMembers.Any(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.AliceId)));
+        Assert.Empty(app.Jobs.Created);
+        Assert.Empty(mail.Sent);
+    }
+
+    [Theory]
+    [InlineData(CalendarInviteStatus.Active, false, true)]
+    [InlineData(CalendarInviteStatus.Active, true, true)]
+    [InlineData(CalendarInviteStatus.Cancelled, false, false)]
+    [InlineData(CalendarInviteStatus.Cancelled, true, true)]
+    public async Task Service_queries_return_distinct_live_invited_tasks_with_meeting_workspace_and_recipient_scope(
+        CalendarInviteStatus status, bool pending, bool live)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        // Obtain a second recipient's record for the same task through the real sync path.
+        app.WithDb(db => { db.ActionItems.Single(a => a.Id == app.Seed.TaskA).AssigneeUserId = app.Seed.AliceId; return db.SaveChanges(); });
+        await SyncAsync(app, app.Seed.TaskA);
+        app.WithDb(db =>
+        {
+            foreach (var record in db.CalendarInvites) { record.Status = status; record.SendPending = pending; }
+            return db.SaveChanges();
+        });
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        int[] expected = live ? [app.Seed.TaskA] : [];
+
+        Assert.Equal(expected, await calendar.InvitedTaskIdsForMeetingAsync(app.Seed.MeetingA));
+        Assert.Equal(expected, await calendar.InvitedTaskIdsForMemberAsync(app.Seed.WorkspaceA, app.Seed.CarolId));
+        Assert.Equal(expected, await calendar.InvitedTaskIdsForMemberAsync(app.Seed.WorkspaceA, app.Seed.AliceId));
+        Assert.Empty(await calendar.InvitedTaskIdsForMeetingAsync(app.Seed.MeetingB));
+        Assert.Empty(await calendar.InvitedTaskIdsForMeetingAsync(int.MaxValue));
+        Assert.Empty(await calendar.InvitedTaskIdsForMemberAsync(app.Seed.WorkspaceB, app.Seed.CarolId));
+        Assert.Empty(await calendar.InvitedTaskIdsForMemberAsync(app.Seed.WorkspaceA, app.Seed.BobId));
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().ChangeTracker.Entries());
+    }
+
+    private static void AssertJobs(BriefynFactory app, params int[] ids)
+    {
+        var queued = app.Jobs.Created.Select(job =>
+        {
+            Assert.Equal(typeof(ICalendarSyncService), job.Type);
+            Assert.Equal(nameof(ICalendarSyncService.SyncAsync), job.Method.Name);
+            return Assert.IsType<int>(Assert.Single(job.Args));
+        });
+        Assert.Equal(ids.Order(), queued.Order());
+    }
+
+    private static async Task RunQueuedAsync(BriefynFactory app)
+    {
+        foreach (var job in app.Jobs.Created)
+        {
+            using var scope = app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().SyncAsync(Assert.IsType<int>(Assert.Single(job.Args)));
+        }
+    }
+
+    private static void AssertCancellation((CalendarInviteData Invite, CalendarMethod Method) sent, CalendarInvite original)
+    {
+        Assert.Equal(CalendarMethod.Cancel, sent.Method);
+        Assert.Equal(SeedData.CarolEmail, sent.Invite.AttendeeEmail);
+        Assert.Equal(original.Uid, sent.Invite.Uid);
+        Assert.Equal(original.Sequence + 1, sent.Invite.Sequence);
+        Assert.Equal("", sent.Invite.TaskText);
+        Assert.Equal("", sent.Invite.Description);
+        Assert.Null(sent.Invite.Url);
+        using var message = EmailService.BuildCalendarMessage(sent.Invite, sent.Method, "sender@briefyn.test", "Briefyn AI");
+        var stream = Assert.Single(message.AlternateViews).ContentStream;
+        stream.Position = 0;
+        using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+        var content = message.Subject + message.Body + reader.ReadToEnd();
+        Assert.DoesNotContain(TaskText, content);
+        Assert.DoesNotContain("A gizli toplantı", content);
+    }
+
+    private static List<CalendarInvite> Records(BriefynFactory app) => app.WithDb(db => db.CalendarInvites.AsNoTracking().ToList());
+
+    private static async Task SyncAsync(BriefynFactory app, int taskId)
+    {
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().SyncAsync(taskId);
+    }
+
+    private static async Task<BriefynFactory> ReadyAsync(RecordingEmail mail)
+    {
+        var app = new BriefynFactory { EmailServiceOverride = mail, TimeProviderOverride = new FixedTimeProvider() };
+        app.ExtraSettings["EmailSettings:SenderEmail"] = "sender@briefyn.test";
+        await app.InitializeAsync();
+        app.WithDb(db =>
+        {
+            var task = db.ActionItems.Single(a => a.Id == app.Seed.TaskA);
+            task.AssigneeUserId = app.Seed.CarolId;
+            task.DueDate = new(2026, 11, 22);
+            task.Text = TaskText;
+            return db.SaveChanges();
+        });
+        await SyncAsync(app, app.Seed.TaskA);
+        Assert.Equal(CalendarInviteStatus.Active, Assert.Single(Records(app)).Status);
+        mail.Sent.Clear();
+        return app;
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider { public override DateTimeOffset GetUtcNow() => new(Now); }
+
+    private sealed class RecordingEmail : IEmailService
+    {
+        public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
+        public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
+        public Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method)
+        {
+            Sent.Add((invite, method));
+            return Task.CompletedTask;
+        }
+    }
+}

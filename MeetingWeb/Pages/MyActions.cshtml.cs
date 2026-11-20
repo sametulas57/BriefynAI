@@ -102,12 +102,6 @@ namespace MeetingWeb.Pages
             return RedirectToPage();
         }
 
-        private void QueueCalendarSync(int taskId)
-        {
-            try { _backgroundJobClient.Enqueue<ICalendarSyncService>(s => s.SyncAsync(taskId)); }
-            catch (Exception ex) { _logger.LogWarning("Takvim eşitleme işi kuyruğa alınamadı. Görev={ActionItemId}, HataTürü={ErrorType}", taskId, ex.GetType().Name); }
-        }
-
         private async Task<IActionResult> SetDoneAsync(int taskId, bool done)
         {
             var userId = _userManager.GetUserId(User);
@@ -122,7 +116,7 @@ namespace MeetingWeb.Pages
             try
             {
                 await _context.SaveChangesAsync();
-                QueueCalendarSync(taskId);
+                _backgroundJobClient.QueueCalendarSync(taskId, _logger);
             }
             catch (DbUpdateConcurrencyException)
             {

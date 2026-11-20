@@ -16,6 +16,11 @@ namespace MeetingWeb.Services
         Task ResendAsync(int actionItemId);
         // No email; returns a PUBLISH file sharing the emailed invitation's stable UID.
         Task<string?> BuildDownloadAsync(int actionItemId, string userId);
+        // Tasks of a meeting whose calendar entry is live (Active, or a send still pending). Call before deleting the meeting:
+        // afterwards the tasks are gone and only these ids lead the sync to the stored invites.
+        Task<IReadOnlyList<int>> InvitedTaskIdsForMeetingAsync(int meetingId);
+        // Tasks in the workspace's meetings for which this person has a live calendar entry.
+        Task<IReadOnlyList<int>> InvitedTaskIdsForMemberAsync(int workspaceId, string userId);
     }
 
     public class CalendarSyncService(
@@ -31,6 +36,18 @@ namespace MeetingWeb.Services
         public Task SyncAsync(int actionItemId) => SyncCoreAsync(actionItemId, force: false);
 
         public Task ResendAsync(int actionItemId) => SyncCoreAsync(actionItemId, force: true);
+
+        public async Task<IReadOnlyList<int>> InvitedTaskIdsForMeetingAsync(int meetingId) =>
+            await db.CalendarInvites.AsNoTracking()
+                .Where(i => (i.Status == CalendarInviteStatus.Active || i.SendPending)
+                    && db.ActionItems.Any(a => a.Id == i.ActionItemId && a.MeetingId == meetingId))
+                .Select(i => i.ActionItemId).Distinct().ToListAsync();
+
+        public async Task<IReadOnlyList<int>> InvitedTaskIdsForMemberAsync(int workspaceId, string userId) =>
+            await db.CalendarInvites.AsNoTracking()
+                .Where(i => i.UserId == userId && (i.Status == CalendarInviteStatus.Active || i.SendPending)
+                    && db.ActionItems.Any(a => a.Id == i.ActionItemId && a.Meeting!.WorkspaceId == workspaceId))
+                .Select(i => i.ActionItemId).Distinct().ToListAsync();
 
         public async Task<bool> IsOwnDatedTaskAsync(int actionItemId, string userId)
         {

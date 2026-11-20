@@ -403,7 +403,7 @@ namespace MeetingWeb.Pages
                 try
                 {
                     await _context.SaveChangesAsync();
-                    QueueCalendarSync(task.Id);
+                    _backgroundJobClient.QueueCalendarSync(task.Id, _logger);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -439,7 +439,7 @@ namespace MeetingWeb.Pages
                 task.AssigneeUserId = null;
                 task.DueDate = null;
                 if (!await TrySaveTaskAsync()) return AssignFailed(meetingId, null);
-                QueueCalendarSync(taskId);
+                _backgroundJobClient.QueueCalendarSync(taskId, _logger);
                 return AssignDone(meetingId, "Görevin ataması kaldırıldı.", null, null);
             }
 
@@ -450,18 +450,10 @@ namespace MeetingWeb.Pages
             task.AssigneeUserId = assigneeUserId;
             task.DueDate = dueDate;
             if (!await TrySaveTaskAsync()) return AssignFailed(meetingId, null);
-            QueueCalendarSync(taskId);
+            _backgroundJobClient.QueueCalendarSync(taskId, _logger);
 
             var assignee = await FullNameAsync(assigneeUserId);
             return AssignDone(meetingId, $"Görev atandı: {assignee}.", assignee, dueDate);
-        }
-
-        // Calendar sync (SPEC.md): only the task id goes to Hangfire; the job reads the current state when it runs. A queue
-        // failure must not undo or fail the user's saved change, so it is logged and the page carries on.
-        private void QueueCalendarSync(int taskId)
-        {
-            try { _backgroundJobClient.Enqueue<ICalendarSyncService>(s => s.SyncAsync(taskId)); }
-            catch (Exception ex) { _logger.LogWarning("Takvim eşitleme işi kuyruğa alınamadı. Görev={ActionItemId}, HataTürü={ErrorType}", taskId, ex.GetType().Name); }
         }
 
         // The page's script asks for a short answer, so saving one task leaves the choices made in other rows as they are;
