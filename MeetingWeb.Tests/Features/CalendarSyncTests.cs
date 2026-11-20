@@ -917,6 +917,22 @@ public class CalendarSelfServiceTests
         Assert.Equal(3, app.Jobs.CountFor(nameof(ICalendarSyncService.ResendAsync)));
     }
 
+    [Theory]
+    [InlineData("/MyActions/?handler=SendToCalendar")]
+    [InlineData("/myactions?handler=SendToCalendar")]
+    public async Task Resend_limit_also_applies_to_routed_page_variants(string path)
+    {
+        using var app = await ReadyAsync(new RecordingEmail(), resendLimit: 2);
+        using var client = app.ClientFor(app.Seed.CarolId);
+        client.DefaultRequestHeaders.Referrer = new Uri("https://localhost/MyActions");
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            using var response = await FormHelpers.PostFormAsync(client, path, token, ("taskId", $"{app.Seed.TaskA}"));
+        }
+        Assert.Equal(2, app.Jobs.CountFor(nameof(ICalendarSyncService.ResendAsync)));
+    }
+
     [Fact]
     public async Task Profile_switch_off_blocks_automatic_invite_but_manual_send_still_works()
     {

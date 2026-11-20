@@ -146,6 +146,9 @@ try
         options.Cookie.HttpOnly = true;
         options.Cookie.IsEssential = true;
     });
+    // Match the routed page, not the raw path, because routing also accepts a trailing slash.
+    static string? MatchedPage(HttpContext http) => http.Request.RouteValues["page"] as string;
+
     // S8: sharing a report sends real email from our account, so each user gets a small hourly budget.
     builder.Services.AddRateLimiter(options =>
     {
@@ -161,7 +164,7 @@ try
                 return ValueTask.CompletedTask;
             }
             var tempData = http.RequestServices.GetRequiredService<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory>().GetTempData(http);
-            tempData["ErrorMessage"] = http.Request.Path.Equals("/MyActions", StringComparison.OrdinalIgnoreCase)
+            tempData["ErrorMessage"] = string.Equals(MatchedPage(http), "/MyActions", StringComparison.Ordinal)
                 ? "Bu saat içinde çok fazla takvim daveti istediniz. Lütfen biraz sonra tekrar deneyin."
                 : "Bu saat içinde çok fazla rapor gönderdiniz. Lütfen biraz sonra tekrar deneyin.";
             tempData.Save();
@@ -183,7 +186,7 @@ try
                 });
 
             var userKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
-            if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Equals("/MyActions", StringComparison.OrdinalIgnoreCase)
+            if (HttpMethods.IsPost(context.Request.Method) && string.Equals(MatchedPage(context), "/MyActions", StringComparison.Ordinal)
                 && string.Equals(context.Request.Query["handler"], "SendToCalendar", StringComparison.OrdinalIgnoreCase))
                 return RateLimitPartition.GetFixedWindowLimiter("calendar:" + userKey, _ => new FixedWindowRateLimiterOptions
                 {
@@ -193,9 +196,9 @@ try
                 });
 
             var isShare = HttpMethods.IsPost(context.Request.Method) &&
-                          ((context.Request.Path.Equals("/Details", StringComparison.OrdinalIgnoreCase) &&
+                          ((string.Equals(MatchedPage(context), "/Details", StringComparison.Ordinal) &&
                             string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase)) ||
-                           (context.Request.Path.StartsWithSegments("/Series") &&
+                           (string.Equals(MatchedPage(context), "/Series/Show", StringComparison.Ordinal) &&
                             string.Equals(context.Request.Query["handler"], "SendAgenda", StringComparison.OrdinalIgnoreCase)));
             if (!isShare) return RateLimitPartition.GetNoLimiter("unlimited");
 
