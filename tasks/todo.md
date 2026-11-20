@@ -22,7 +22,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Bağımlılık: 1, 2.
   - Dosyalar: `MeetingWeb/Services/CalendarSyncService.cs`, `MeetingWeb/Services/IEmailService.cs`, `MeetingWeb/Services/EmailService.cs`, `MeetingWeb/Program.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs`.
 
-- [ ] **Görev 4: Toplantı sayfasından tetikleme** (S)
+- [x] **Görev 4: Toplantı sayfasından tetikleme** (S)
   - Kabul: `Details:PostAssignAction` ve `Details:PostToggleTask` başarılı kayıttan sonra eşitleme işini kuyruğa atıyor; kayıt başarısızsa atmıyor; iş argümanında yalnız görev kimliği var.
   - Doğrula: odaklı test (`FakeBackgroundJobClient.CountFor`).
   - Bağımlılık: 3.

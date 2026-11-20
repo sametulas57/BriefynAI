@@ -591,3 +591,116 @@ public class CalendarSyncTests
         }
     }
 }
+
+public class CalendarSyncTriggerTests : IAsyncLifetime
+{
+    private readonly BriefynFactory _app = new();
+    private SeedData S => _app.Seed;
+
+    public Task InitializeAsync() => _app.InitializeAsync();
+    public Task DisposeAsync() { _app.Dispose(); return Task.CompletedTask; }
+
+    [Fact]
+    public async Task Assigning_with_a_date_queues_only_the_task_id()
+    {
+        using var alice = _app.ClientFor(S.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, $"/Details?id={S.MeetingA}");
+
+        var json = await FormHelpers.PostFormForJsonAsync(alice, "/Details?handler=AssignAction", token,
+            ("taskId", $"{S.TaskA}"), ("assigneeUserId", S.CarolId), ("dueDate", "2026-11-22"));
+
+        Assert.True(json.GetProperty("success").GetBoolean());
+        Assert.Equal(1, _app.Jobs.CountFor(nameof(ICalendarSyncService.SyncAsync),
+            args => args.Count == 1 && args[0] is int id && id == S.TaskA));
+        var job = Assert.Single(_app.Jobs.Created);
+        Assert.Equal(typeof(ICalendarSyncService), job.Type);
+        Assert.Equal(S.TaskA, Assert.IsType<int>(Assert.Single(job.Args)));
+        Assert.DoesNotContain(_app.Jobs.Created.SelectMany(j => j.Args), arg => arg is string);
+    }
+
+    [Fact]
+    public async Task Clearing_an_assignment_queues_one_sync_job()
+    {
+        _app.WithDb(db =>
+        {
+            var task = db.ActionItems.Single(a => a.Id == S.TaskA);
+            task.AssigneeUserId = S.CarolId;
+            task.DueDate = new DateOnly(2026, 11, 22);
+            return db.SaveChanges();
+        });
+        using var alice = _app.ClientFor(S.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, $"/Details?id={S.MeetingA}");
+
+        var json = await FormHelpers.PostFormForJsonAsync(alice, "/Details?handler=AssignAction", token,
+            ("taskId", $"{S.TaskA}"), ("assigneeUserId", ""));
+
+        Assert.True(json.GetProperty("success").GetBoolean());
+        Assert.Equal(1, _app.Jobs.CountFor(nameof(ICalendarSyncService.SyncAsync),
+            args => args.Count == 1 && args[0] is int id && id == S.TaskA));
+        Assert.Null(_app.WithDb(db => db.ActionItems.Single(a => a.Id == S.TaskA).AssigneeUserId));
+    }
+
+    [Fact]
+    public async Task Completing_queues_one_job_and_repeating_the_same_state_queues_none()
+    {
+        using var alice = _app.ClientFor(S.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, $"/Details?id={S.MeetingA}");
+        var url = $"/Details?handler=ToggleTask&taskId={S.TaskA}";
+
+        var first = await FormHelpers.PostFormForJsonAsync(alice, url, token, ("done", "true"));
+
+        Assert.True(first.GetProperty("success").GetBoolean());
+        Assert.True(first.GetProperty("isDone").GetBoolean());
+        Assert.Equal(1, _app.Jobs.CountFor(nameof(ICalendarSyncService.SyncAsync),
+            args => args.Count == 1 && args[0] is int id && id == S.TaskA));
+
+        var second = await FormHelpers.PostFormForJsonAsync(alice, url, token, ("done", "true"));
+
+        Assert.True(second.GetProperty("success").GetBoolean());
+        Assert.True(second.GetProperty("isDone").GetBoolean());
+        Assert.Equal(1, _app.Jobs.CountFor(nameof(ICalendarSyncService.SyncAsync)));
+    }
+
+    [Fact]
+    public async Task Assigning_to_a_non_teammate_queues_no_job()
+    {
+        using var alice = _app.ClientFor(S.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, $"/Details?id={S.MeetingA}");
+
+        var json = await FormHelpers.PostFormForJsonAsync(alice, "/Details?handler=AssignAction", token,
+            ("taskId", $"{S.TaskA}"), ("assigneeUserId", S.BobId), ("dueDate", "2026-11-22"));
+
+        Assert.False(json.GetProperty("success").GetBoolean());
+        Assert.Empty(_app.Jobs.Created);
+    }
+
+    [Fact]
+    public async Task Toggling_without_meeting_access_queues_no_job()
+    {
+        using var bob = _app.ClientFor(S.BobId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(bob, $"/Details?id={S.MeetingB}");
+
+        using var response = await FormHelpers.PostFormAsync(bob,
+            $"/Details?handler=ToggleTask&taskId={S.TaskA}", token, ("done", "true"));
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Empty(_app.Jobs.Created);
+        Assert.False(_app.WithDb(db => db.ActionItems.Single(a => a.Id == S.TaskA).IsDone));
+    }
+
+    [Fact]
+    public async Task Queue_failure_keeps_the_assignment_saved_and_returns_success()
+    {
+        using var alice = _app.ClientFor(S.AliceId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(alice, $"/Details?id={S.MeetingA}");
+        _app.Jobs.FailNext = true;
+
+        var json = await FormHelpers.PostFormForJsonAsync(alice, "/Details?handler=AssignAction", token,
+            ("taskId", $"{S.TaskA}"), ("assigneeUserId", S.CarolId), ("dueDate", "2026-11-22"));
+
+        Assert.True(json.GetProperty("success").GetBoolean());
+        Assert.Equal(S.CarolId, _app.WithDb(db => db.ActionItems.Single(a => a.Id == S.TaskA).AssigneeUserId));
+        Assert.False(_app.Jobs.FailNext);
+        Assert.Empty(_app.Jobs.Created);
+    }
+}
