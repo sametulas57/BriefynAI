@@ -466,6 +466,36 @@
         <details class="soft-card mt-5 p-4">
             <summary class="fw-bold text-dark" style="cursor: pointer;"><i class="bi bi-file-text me-2 text-primary"></i>Toplantı dökümü</summary>
             <p class="text-muted small mt-2 mb-3">Kaydın otomatik yazıya dökülmüş hâli. Küçük yazım hataları olabilir.</p>
+            @if (Model.SpeakerLabels.Count > 0)
+            {
+                <form method="post" asp-page-handler="NameSpeakers" class="p-3 bg-soft-light mb-4" style="border-radius: 1.25rem;">
+                    <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
+                    <p id="speaker-naming-hint" class="small text-muted d-flex align-items-start gap-2 mb-3">
+                        <i class="bi bi-people text-primary flex-shrink-0" aria-hidden="true"></i>
+                        <span>Konuşmacıların kim olduğunu yazın; döküm ve özet bu adlarla güncellenir, elle eklenenler ile atanmış ya da tamamlanmış görevler korunur. Bilmediğinizi boş bırakın.</span>
+                    </p>
+                    <div class="d-grid gap-2">
+                        @for (var i = 0; i < Model.SpeakerLabels.Count; i++)
+                        {
+                            var label = Model.SpeakerLabels[i];
+                            <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-1 gap-sm-2">
+                                <label for="speaker-name-@i" class="badge rounded-pill bg-soft-primary text-primary fw-medium px-3 py-2 mb-0 text-start align-self-start align-self-sm-center flex-shrink-0" style="min-width: 7.5rem; font-size: 0.8rem;">@label</label>
+                                <input type="hidden" name="labels" value="@label" />
+                                <input type="text" id="speaker-name-@i" name="names" maxlength="60" list="speaker-member-names" autocomplete="off" aria-describedby="speaker-naming-hint" class="form-control border-0 bg-white rounded-pill px-3 small flex-grow-1" placeholder="Adı yazın" style="height: 38px;" />
+                            </div>
+                        }
+                    </div>
+                    <datalist id="speaker-member-names">
+                        @foreach (var fullName in Model.WorkspaceMembers.Select(m => m.User?.FullName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct())
+                        {
+                            <option value="@fullName"></option>
+                        }
+                    </datalist>
+                    <div class="d-grid d-sm-flex justify-content-sm-end mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Adları kaydet</button>
+                    </div>
+                </form>
+            }
             <div class="text-dark" style="white-space: pre-wrap; line-height: 1.7;">@Model.Meeting.Transcript.Text</div>
         </details>
     }
