@@ -7,6 +7,21 @@ namespace MeetingWeb.Tests.Features;
 public class CalendarInviteBuilderTests
 {
     [Fact]
+    public void Publish_keeps_request_content_and_alarm_without_attendee()
+    {
+        var invite = CreateInvite();
+        var output = Unfold(CalendarInviteBuilder.Build(invite, CalendarMethod.Publish));
+        var request = Unfold(CalendarInviteBuilder.Build(invite, CalendarMethod.Request));
+
+        Assert.Contains("METHOD:PUBLISH\r\n", output);
+        Assert.DoesNotContain(output.Split("\r\n"), line => line.StartsWith("ATTENDEE", StringComparison.Ordinal));
+        Assert.Contains("SUMMARY:" + invite.TaskText + "\r\n", output);
+        Assert.Contains("BEGIN:VALARM\r\n", output);
+        Assert.Equal(request.Split("\r\n").Where(line => !line.StartsWith("ATTENDEE", StringComparison.Ordinal))
+            .Select(line => line == "METHOD:REQUEST" ? "METHOD:PUBLISH" : line), output.Split("\r\n"));
+    }
+
+    [Fact]
     public void Request_contains_ordered_all_day_event_and_alarm()
     {
         var invite = CreateInvite();

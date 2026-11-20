@@ -38,13 +38,13 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
 
 ## Aşama 2: Kişinin kendi kontrolü
 
-- [ ] **Görev 5: Bana Atananlar'da tetik, düğme ve dosya indirme** (M)
+- [x] **Görev 5: Bana Atananlar'da tetik, düğme ve dosya indirme** (M)
   - Kabul: `PostComplete` ve `PostReopen` eşitleme işini kuyruğa atıyor. Açık ve tarihli görevde "Takvimime gönder" (zorla gönderim, kişi başı sınır) ve "Takvim dosyasını indir" (`METHOD:PUBLISH`, aynı UID) var; ikisi de başkasının ve başka ekibin görevinde reddediliyor; yeni işleyiciler `WorkspaceBoundaryTests` listesinde.
   - Doğrula: odaklı test + `WorkspaceBoundaryTests`; inen dosya Outlook web'de ve Google Takvim'de açılıyor.
   - Bağımlılık: 3.
   - Dosyalar: `MeetingWeb/Pages/MyActions.cshtml`, `MeetingWeb/Pages/MyActions.cshtml.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs`, `MeetingWeb.Tests/Security/WorkspaceBoundaryTests.cs`.
 
-- [ ] **Görev 6: Profil'de otomatik davet anahtarı** (S)
+- [x] **Görev 6: Profil'de otomatik davet anahtarı** (S)
   - Kabul: "Bana atanan görevleri takvim daveti olarak gönder" anahtarı kaydediliyor; kapalıyken yeni otomatik davet gitmiyor, düğme çalışıyor, mevcut kayıtlar güncelleniyor (plan karar 4).
   - Doğrula: odaklı test.
   - Bağımlılık: 3.

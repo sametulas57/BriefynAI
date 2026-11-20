@@ -3,7 +3,7 @@ using System.Text;
 
 namespace MeetingWeb.Services
 {
-    public enum CalendarMethod { Request, Cancel }
+    public enum CalendarMethod { Request, Cancel, Publish }
 
     public sealed record CalendarInviteData(
         string Uid,
@@ -31,7 +31,7 @@ namespace MeetingWeb.Services
             writer.Line("VERSION:2.0");
             writer.Line("PRODID:-//Briefyn AI//Gorevler//TR");
             writer.Line("CALSCALE:GREGORIAN");
-            writer.Line("METHOD:" + (cancel ? "CANCEL" : "REQUEST"));
+            writer.Line("METHOD:" + (cancel ? "CANCEL" : method == CalendarMethod.Publish ? "PUBLISH" : "REQUEST"));
             writer.Line("BEGIN:VEVENT");
             writer.Line("UID:" + new string(invite.Uid.Where(c => !char.IsControl(c)).ToArray()));
             writer.Line("SEQUENCE:" + invite.Sequence.ToString(CultureInfo.InvariantCulture));
@@ -47,8 +47,9 @@ namespace MeetingWeb.Services
                     writer.Line("URL:" + invite.Url.Replace("\r", "", StringComparison.Ordinal).Replace("\n", "", StringComparison.Ordinal));
             }
             writer.Line("ORGANIZER;CN=" + QuoteName(invite.OrganizerName) + ":mailto:" + CleanEmail(invite.OrganizerEmail));
-            writer.Line("ATTENDEE;CN=" + QuoteName(invite.AttendeeName)
-                + ";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE:mailto:" + CleanEmail(invite.AttendeeEmail));
+            if (method != CalendarMethod.Publish)
+                writer.Line("ATTENDEE;CN=" + QuoteName(invite.AttendeeName)
+                    + ";ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE:mailto:" + CleanEmail(invite.AttendeeEmail));
             writer.Line("STATUS:" + (cancel ? "CANCELLED" : "CONFIRMED"));
             writer.Line("TRANSP:TRANSPARENT");
             writer.Line("X-MICROSOFT-CDO-BUSYSTATUS:FREE");

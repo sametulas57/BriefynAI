@@ -161,7 +161,9 @@ try
                 return ValueTask.CompletedTask;
             }
             var tempData = http.RequestServices.GetRequiredService<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory>().GetTempData(http);
-            tempData["ErrorMessage"] = "Bu saat içinde çok fazla rapor gönderdiniz. Lütfen biraz sonra tekrar deneyin.";
+            tempData["ErrorMessage"] = http.Request.Path.Equals("/MyActions", StringComparison.OrdinalIgnoreCase)
+                ? "Bu saat içinde çok fazla takvim daveti istediniz. Lütfen biraz sonra tekrar deneyin."
+                : "Bu saat içinde çok fazla rapor gönderdiniz. Lütfen biraz sonra tekrar deneyin.";
             tempData.Save();
 
             var referer = http.Request.Headers.Referer.ToString();
@@ -180,6 +182,16 @@ try
                     QueueLimit = 0
                 });
 
+            var userKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+            if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Equals("/MyActions", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(context.Request.Query["handler"], "SendToCalendar", StringComparison.OrdinalIgnoreCase))
+                return RateLimitPartition.GetFixedWindowLimiter("calendar:" + userKey, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailSettings:CalendarResendLimitPerHour", 5),
+                    Window = TimeSpan.FromHours(1),
+                    QueueLimit = 0
+                });
+
             var isShare = HttpMethods.IsPost(context.Request.Method) &&
                           ((context.Request.Path.Equals("/Details", StringComparison.OrdinalIgnoreCase) &&
                             string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase)) ||
@@ -187,7 +199,6 @@ try
                             string.Equals(context.Request.Query["handler"], "SendAgenda", StringComparison.OrdinalIgnoreCase)));
             if (!isShare) return RateLimitPartition.GetNoLimiter("unlimited");
 
-            var userKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
             return RateLimitPartition.GetFixedWindowLimiter("share:" + userKey, _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailSettings:ShareLimitPerHour", 10),
