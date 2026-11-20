@@ -49,6 +49,9 @@ namespace MeetingWeb.Tests.Infrastructure
             // Program reads these before the host is built, so they must be environment variables.
             Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "unused-in-tests");
             Environment.SetEnvironmentVariable("EncryptionSettings__KeyV2", TestKeys.KeyV2Base64);
+            // No inotify watchers in test hosts (TestHostFileWatchingTests): a full run exhausted Linux's per-user limit on CI.
+            Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+            Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
         }
 
         public BriefynFactory()
