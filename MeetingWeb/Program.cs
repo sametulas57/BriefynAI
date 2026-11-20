@@ -50,6 +50,7 @@ try
             options.SignIn.RequireConfirmedAccount = false;
             options.Tokens.PasswordResetTokenProvider = PasswordResetTokenProvider.ProviderName;
         })
+        .AddErrorDescriber<TurkishIdentityErrorDescriber>()
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddTokenProvider<PasswordResetTokenProvider>(PasswordResetTokenProvider.ProviderName)
         .AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>();
@@ -134,6 +135,7 @@ try
     // --- 6. Custom Services ---
     builder.Services.AddSingleton<IArchiveSearchService, ArchiveSearchService>();
     builder.Services.AddSingleton<AskRateLimiter>();
+    builder.Services.AddSingleton<PasswordResetRateLimiter>();
     builder.Services.AddScoped<IAskService, AskService>();
     builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
     builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
@@ -179,6 +181,13 @@ try
                 return ValueTask.CompletedTask;
             }
             var tempData = http.RequestServices.GetRequiredService<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataDictionaryFactory>().GetTempData(http);
+            if (MatchedPage(http) is "/Auth/ForgotPassword" or "/Auth/ResetPassword")
+            {
+                tempData["ErrorMessage"] = "Çok fazla deneme yaptınız. Lütfen biraz sonra tekrar deneyin.";
+                tempData.Save();
+                http.Response.Redirect("/Auth/ForgotPassword");
+                return ValueTask.CompletedTask;
+            }
             tempData["ErrorMessage"] = string.Equals(MatchedPage(http), "/MyActions", StringComparison.Ordinal)
                 ? "Bu saat içinde çok fazla takvim daveti istediniz. Lütfen biraz sonra tekrar deneyin."
                 : "Bu saat içinde çok fazla rapor gönderdiniz. Lütfen biraz sonra tekrar deneyin.";
@@ -197,6 +206,22 @@ try
                 {
                     PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("Zoom:WebhookLimitPerMinute", 60),
                     Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                });
+
+            if (HttpMethods.IsPost(context.Request.Method) && MatchedPage(context) == "/Auth/ForgotPassword")
+                return RateLimitPartition.GetFixedWindowLimiter("forgot-password:" + context.Connection.RemoteIpAddress, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("PasswordReset:RequestsPerIpPer15Minutes", 5),
+                    Window = TimeSpan.FromMinutes(15),
+                    QueueLimit = 0
+                });
+
+            if (HttpMethods.IsPost(context.Request.Method) && MatchedPage(context) == "/Auth/ResetPassword")
+                return RateLimitPartition.GetFixedWindowLimiter("reset-password:" + context.Connection.RemoteIpAddress, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("PasswordReset:ResetsPerIpPer15Minutes", 10),
+                    Window = TimeSpan.FromMinutes(15),
                     QueueLimit = 0
                 });
 
