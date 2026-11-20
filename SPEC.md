@@ -54,6 +54,7 @@ Durum: onaylandı (Ulaş, 2026-11-21) · plan `tasks/plan.md`, görevler `tasks/
 6. **Sıfırlamadan sonra:** kullanıcı otomatik giriş yapmaz, giriş sayfasına yönlenir. Hesap çok fazla yanlış denemeden kilitliyse kilit kalkar ve yanlış deneme sayacı sıfırlanır (bağlantıya ulaşan kişi e-postanın sahibi).
 7. **Şifre değişti bildirimi:** sıfırlamadan sonra kullanıcıya kısa bir "Şifreniz değiştirildi; bunu siz yapmadıysanız bize yazın" e-postası gider. Hesabı ele geçirilen kişi fark etsin diye.
 8. **Türkçe şifre hataları:** Identity'nin şifre kuralı hataları (rakam, büyük harf, uzunluk...) için Türkçe metin eklenir. Kayıt sayfası da bundan yararlanır; bugün oradaki bu hatalar İngilizce.
+11. **Yeni şifre eskisiyle aynı olamaz** (Ulaş, 2026-11-21, elle denemede eski şifre kabul edildi): bağlantı geçerliyse ve yeni şifre mevcut şifreyle aynıysa "Yeni şifreniz eskisiyle aynı olamaz. Lütfen farklı bir şifre seçin." yazar, şifre değişmez, bağlantı geçerli kalır. Bağlantı geçersizse önce o söylenir; geçersiz bağlantıyla şifre tahmini yapılamaz.
 9. **Oturum açıkken:** "Şifremi unuttum" sayfası giriş sayfası gibi ana sayfaya yönlendirir. Yeni şifre sayfası oturumdan bağımsız çalışır (bağlantıdaki koda bakar).
 10. **Silme isteği bekleyen hesap:** özel işlem yok. Sıfırlama çalışır; kullanıcı sonra giriş yapınca mevcut kural silme isteğini iptal eder.
 
@@ -126,6 +127,7 @@ xUnit, `MeetingWeb.Tests`, mevcut `BriefynFactory` (`EmailServiceOverride` ile e
 - Kilitli hesap sıfırlamadan sonra giriş yapabiliyor.
 - Sıfırlamadan sonra "şifreniz değişti" e-postası gidiyor.
 - Kurala uymayan yeni şifre → Türkçe hata, şifre değişmiyor, kod hâlâ geçerli.
+- Eskisiyle aynı yeni şifre → "eskisiyle aynı olamaz" hatası, şifre değişmiyor, kod hâlâ geçerli. Geçersiz bağlantıyla eski şifre → yalnız "bağlantı geçerli değil".
 
 **Güvenlik:**
 - Kayıtlı olmayan adres → kayıtlı adresle aynı sayfa metni ve durum kodu; kuyrukta iş yok.
@@ -149,7 +151,7 @@ xUnit, `MeetingWeb.Tests`, mevcut `BriefynFactory` (`EmailServiceOverride` ile e
 
 1. Giriş sayfasında "Şifremi unuttum" bağlantısı var; e-posta formu çalışıyor.
 2. Kayıtlı adrese 1 saat geçerli bir bağlantı e-postayla gidiyor; kayıtlı olmayan adres için ekran ve durum kodu aynı, e-posta gitmiyor.
-3. Bağlantıyla yeni şifre kaydediliyor; yeni şifreyle giriş oluyor, eskisiyle olmuyor.
+3. Bağlantıyla yeni şifre kaydediliyor; yeni şifreyle giriş oluyor, eskisiyle olmuyor. Eskisiyle aynı şifre kabul edilmiyor.
 4. Aynı bağlantı ikinci kez, süresi dolmuşsa ya da bozuksa reddediliyor; şifre değişince eski bağlantılar ve açık oturumlar geçersiz.
 5. Adres başına ve hesap başına sınır çalışıyor.
 6. Sıfırlama kodu veritabanında, Hangfire'da ve günlüklerde yok (testle).

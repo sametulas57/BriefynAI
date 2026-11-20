@@ -28,16 +28,19 @@ namespace MeetingWeb.Services
         private readonly IBackgroundJobClient _jobs;
         private readonly IEmailService _email;
         private readonly PasswordResetOptions _options;
+        private readonly PasswordResetRateLimiter _limiter;
         private readonly ILogger<PasswordResetService> _logger;
 
         public PasswordResetService(UserManager<ApplicationUser> users, IBackgroundJobClient jobs,
-            IEmailService email, IOptions<PasswordResetOptions> options, ILogger<PasswordResetService> logger)
+            IEmailService email, IOptions<PasswordResetOptions> options, ILogger<PasswordResetService> logger,
+            PasswordResetRateLimiter limiter)
         {
             _users = users;
             _jobs = jobs;
             _email = email;
             _options = options.Value;
             _logger = logger;
+            _limiter = limiter;
         }
 
         public async Task RequestAsync(string email, string? baseUrl)
@@ -50,6 +53,7 @@ namespace MeetingWeb.Services
 
             var user = await _users.FindByEmailAsync(email);
             if (user == null || string.IsNullOrEmpty(user.Email)) return;
+            if (!_limiter.TryAccept(user.Id)) return;
 
             try
             {
@@ -89,6 +93,13 @@ namespace MeetingWeb.Services
                 return new(PasswordResetOutcome.InvalidLink, []);
             var user = await _users.FindByIdAsync(userId);
             if (user == null) return new(PasswordResetOutcome.InvalidLink, []);
+
+            if (!await _users.VerifyUserTokenAsync(user, _users.Options.Tokens.PasswordResetTokenProvider,
+                UserManager<ApplicationUser>.ResetPasswordTokenPurpose, token))
+                return new(PasswordResetOutcome.InvalidLink, []);
+            if (await _users.CheckPasswordAsync(user, newPassword))
+                return new(PasswordResetOutcome.PasswordRejected,
+                    ["Yeni şifreniz eskisiyle aynı olamaz. Lütfen farklı bir şifre seçin."]);
 
             var result = await _users.ResetPasswordAsync(user, token, newPassword);
             if (!result.Succeeded)

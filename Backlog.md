@@ -6,6 +6,7 @@ Yapılacak her iş burada, tek listede, önem sırasıyla. Sıradaki iş en üst
    - gizli anahtarların yenilenmesi;
    - alan adı (site ve mail). Alınınca yerel Zoom denemeleri ngrok'tan Cloudflare adlı tünele geçer; tarif `docs/raporlar/2026-10-22-sabit-tunel.md`;
    - prod compose (bugün yalnız `docker-compose.yml` var);
+   - tünel ya da vekil sunucunun arkasında gerçek istek adresi için `ForwardedHeaders`; kurulmazsa bütün istekler aynı adresten gelir ve şifre sıfırlama ile Zoom bildirim ucundaki adres başına sınır herkesi birlikte kilitler (ADR-0016);
    - herkese açık adres belli olunca `App:PublicUrl` ayarı doldurulur; takvim davetindeki Briefyn bağlantısı ancak o zaman çıkar (takvime aktarma işi, `SPEC.md`; Ulaş, 2026-11-20);
    - KVKK aydınlatma metni ve kullanım sözleşmesi. `Privacy` sayfasındaki metin taslak, hukuken gözden geçirilmiş metinle değişmeli;
    - Zoom Aşama 3: Marketplace beta onayı, başka hesapların bağlanabilmesi. Herkese açık kalıcı adres ve gizlilik metni gerektirdiği için yayınla birlikte (Ulaş, 2026-10-22);

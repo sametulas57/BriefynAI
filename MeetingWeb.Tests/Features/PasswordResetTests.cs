@@ -66,7 +66,8 @@ public class PasswordResetTests
     }
 
     [Theory]
-    [InlineData("abcdef", "abcdef", "Passwords must have")]
+    [InlineData("abcdef", "abcdef", "Şifrenizde en az bir rakam olmalı.")]
+    [InlineData(OldPassword, OldPassword, "Yeni şifreniz eskisiyle aynı olamaz. Lütfen farklı bir şifre seçin.")]
     [InlineData(NewPassword, "Different-Password-123!", "Şifreler birbiriyle eşleşmiyor")]
     [InlineData("", "", "Şifre alanı zorunludur.")]
     [InlineData("abc", "abc", "Şifreniz en az 6 karakter uzunluğunda olmalıdır.")]
@@ -81,11 +82,85 @@ public class PasswordResetTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(error, body);
+        if (password == "abcdef")
+        {
+            Assert.Contains("Şifrenizde en az bir büyük harf olmalı.", body);
+            Assert.DoesNotContain("Passwords must", body);
+        }
         Assert.Contains("Şifremi Kaydet", body);
         await AssertPasswordAsync(app, OldPassword);
         using var scope = app.Services.CreateScope();
         Assert.True(await scope.ServiceProvider.GetRequiredService<IPasswordResetService>().IsLinkValidAsync(app.Seed.AliceId, code));
         Assert.Contains("Şifremi Kaydet", WebUtility.HtmlDecode(await client.GetStringAsync(url)));
+        Assert.Empty(app.Jobs.Created);
+    }
+
+    [Fact]
+    public async Task Register_with_weak_password_shows_Turkish_identity_errors()
+    {
+        using var app = await PasswordAppAsync();
+        using var client = CookieClient(app);
+        var antiforgery = await GetAntiforgeryTokenAsync(client, "/Auth/Register");
+
+        var response = await PostFormAsync(client, "/Auth/Register", antiforgery,
+            ("Input.FullName", "Deneme Kullanıcısı"), ("Input.Email", "register-weak@example.test"),
+            ("Input.PhoneNumber", "5551234567"), ("Input.Password", "abcdef"),
+            ("Input.ConfirmPassword", "abcdef"), ("Input.IsKvkkAccepted", "true"));
+        var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Şifrenizde en az bir rakam olmalı.", body);
+        Assert.Contains("Şifrenizde en az bir büyük harf olmalı.", body);
+        Assert.DoesNotContain("Passwords must", body);
+        using var scope = app.Services.CreateScope();
+        Assert.Null(await scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>()
+            .FindByEmailAsync("register-weak@example.test"));
+    }
+
+    [Theory]
+    [InlineData("PasswordTooShort", "Şifreniz en az 8 karakter olmalı.")]
+    [InlineData("PasswordRequiresNonAlphanumeric", "Şifrenizde en az bir işaret (ör. ! ya da *) olmalı.")]
+    [InlineData("PasswordRequiresDigit", "Şifrenizde en az bir rakam olmalı.")]
+    [InlineData("PasswordRequiresLower", "Şifrenizde en az bir küçük harf olmalı.")]
+    [InlineData("PasswordRequiresUpper", "Şifrenizde en az bir büyük harf olmalı.")]
+    [InlineData("PasswordRequiresUniqueChars", "Şifrenizde en az 4 farklı karakter olmalı.")]
+    [InlineData("InvalidToken", "Bu bağlantı artık geçerli değil.")]
+    public async Task Identity_errors_keep_codes_and_use_exact_Turkish_descriptions(string code, string description)
+    {
+        using var app = await ReadyAsync();
+        using var scope = app.Services.CreateScope();
+        var describer = scope.ServiceProvider.GetRequiredService<IdentityErrorDescriber>();
+
+        var error = code switch
+        {
+            "PasswordTooShort" => describer.PasswordTooShort(8),
+            "PasswordRequiresNonAlphanumeric" => describer.PasswordRequiresNonAlphanumeric(),
+            "PasswordRequiresDigit" => describer.PasswordRequiresDigit(),
+            "PasswordRequiresLower" => describer.PasswordRequiresLower(),
+            "PasswordRequiresUpper" => describer.PasswordRequiresUpper(),
+            "PasswordRequiresUniqueChars" => describer.PasswordRequiresUniqueChars(4),
+            _ => describer.InvalidToken()
+        };
+
+        Assert.Equal(code, error.Code);
+        Assert.Equal(description, error.Description);
+    }
+
+    [Theory]
+    [InlineData("!garbage!")]
+    [InlineData("bm90IGEgdG9rZW4")]
+    public async Task Invalid_link_with_current_password_does_not_disclose_same_password_error(string code)
+    {
+        using var app = await PasswordAppAsync();
+        using var client = CookieClient(app);
+
+        var response = await PostResetAsync(client, app.Seed.AliceId, code, OldPassword);
+        var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Bu bağlantı artık geçerli değil", body);
+        Assert.DoesNotContain("Yeni şifreniz eskisiyle aynı olamaz", body);
+        await AssertPasswordAsync(app, OldPassword);
         Assert.Empty(app.Jobs.Created);
     }
 

@@ -15,6 +15,84 @@ namespace MeetingWeb.Tests.Security;
 public class PasswordResetSecurityTests
 {
     [Theory]
+    [InlineData("/Auth/ForgotPassword", 5, null)]
+    [InlineData("/Auth/ResetPassword", 10, null)]
+    [InlineData("/Auth/ForgotPassword", 2, "PasswordReset:RequestsPerIpPer15Minutes")]
+    [InlineData("/Auth/ResetPassword", 2, "PasswordReset:ResetsPerIpPer15Minutes")]
+    public async Task Post_limits_use_matched_page_and_leave_gets_unlimited(string page, int limit, string? setting)
+    {
+        using var app = new BriefynFactory { UseCookieAuthentication = true };
+        if (setting != null) app.ExtraSettings[setting] = limit.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await app.InitializeAsync();
+        using var client = CookieClient(app);
+        var antiforgery = await GetAntiforgeryTokenAsync(client, "/Auth/Login");
+        for (var i = 0; i < 12; i++)
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(page)).StatusCode);
+
+        for (var i = 0; i < limit; i++)
+        {
+            var response = await PostFormAsync(client, page + (i % 2 == 0 ? "/" : ""), antiforgery,
+                ("Input.Email", "unknown@example.test"), ("Input.UserId", app.Seed.AliceId),
+                ("Input.Code", "bm90IGEgdG9rZW4"), ("Input.Password", NewPassword),
+                ("Input.ConfirmPassword", NewPassword));
+            Assert.Equal(page == "/Auth/ForgotPassword" ? HttpStatusCode.Redirect : HttpStatusCode.OK, response.StatusCode);
+            if (page == "/Auth/ForgotPassword")
+                Assert.Contains("?sent=True", response.Headers.Location!.OriginalString);
+        }
+
+        var limited = await PostFormAsync(client, page, antiforgery, ("Input.Email", "unknown@example.test"));
+        Assert.Equal(HttpStatusCode.Redirect, limited.StatusCode);
+        Assert.Equal("/Auth/ForgotPassword", limited.Headers.Location!.OriginalString);
+        Assert.Contains("Çok fazla deneme yaptınız. Lütfen biraz sonra tekrar deneyin.",
+            WebUtility.HtmlDecode(await client.GetStringAsync(limited.Headers.Location)));
+        for (var i = 0; i < 12; i++)
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(page + "/")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(2)]
+    [InlineData(0)]
+    public async Task Account_email_limit_keeps_response_identical_and_expires_after_an_hour(int configuredLimit)
+    {
+        var clock = new ManualClock();
+        using var app = new BriefynFactory
+        {
+            UseCookieAuthentication = true,
+            TimeProviderOverride = clock,
+            ExtraSettings =
+            {
+                ["PasswordReset:RequestsPerIpPer15Minutes"] = "20",
+                ["PasswordReset:EmailsPerAccountPerHour"] = configuredLimit.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            }
+        };
+        await app.InitializeAsync();
+        using var client = CookieClient(app);
+        var antiforgery = await GetAntiforgeryTokenAsync(client, "/Auth/ForgotPassword");
+        var limit = Math.Max(1, configuredLimit);
+        for (var i = 0; i < limit + 1; i++)
+        {
+            var response = await PostFormAsync(client, "/Auth/ForgotPassword", antiforgery, ("Input.Email", SeedData.AliceEmail));
+            Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal("/Auth/ForgotPassword?sent=True", response.Headers.Location!.OriginalString);
+        }
+        Assert.Equal(limit, app.Jobs.CountFor(nameof(IPasswordResetService.SendResetEmailAsync)));
+
+        clock.Advance(TimeSpan.FromMinutes(61));
+        var renewed = await PostFormAsync(client, "/Auth/ForgotPassword", antiforgery, ("Input.Email", SeedData.AliceEmail));
+        Assert.Equal(HttpStatusCode.Redirect, renewed.StatusCode);
+        Assert.Equal("/Auth/ForgotPassword?sent=True", renewed.Headers.Location!.OriginalString);
+        Assert.Equal(limit + 1, app.Jobs.CountFor(nameof(IPasswordResetService.SendResetEmailAsync)));
+    }
+
+    private sealed class ManualClock : TimeProvider
+    {
+        private DateTimeOffset _now = DateTimeOffset.UtcNow;
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan elapsed) => _now += elapsed;
+    }
+
+    [Theory]
     [InlineData("unknown-user", false)]
     [InlineData("unknown-user", true)]
     [InlineData("garbage", false)]
