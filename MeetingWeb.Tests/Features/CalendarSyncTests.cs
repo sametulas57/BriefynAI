@@ -1467,3 +1467,194 @@ public class CalendarLossTests
         }
     }
 }
+
+public class CalendarSweepTests
+{
+    [Fact]
+    public void Sweep_job_has_no_arguments()
+    {
+        var method = typeof(ICalendarSyncService).GetMethod("SweepAsync", Type.EmptyTypes);
+        Assert.NotNull(method);
+        Assert.Equal(typeof(Task), method.ReturnType);
+    }
+
+    [Fact]
+    public async Task Deleted_team_is_cancelled_once_using_stored_identity_without_task_text()
+    {
+        var mail = new RecordingEmail();
+        using var app = await ReadyAsync(mail);
+        var original = Assert.Single(Records(app));
+        app.WithDb(db => db.Workspaces.Where(w => w.Id == app.Seed.WorkspaceA).ExecuteDelete());
+        Assert.False(app.WithDb(db => db.ActionItems.Any(a => a.Id == app.Seed.TaskA)));
+
+        await SweepAsync(app);
+
+        AssertCancellation(Assert.Single(mail.Sent), original);
+        Assert.Empty(Records(app));
+        await SweepAsync(app);
+        Assert.Single(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Missed_completion_is_cancelled_once()
+    {
+        var mail = new RecordingEmail();
+        using var app = await ReadyAsync(mail);
+        var original = Assert.Single(Records(app));
+        app.WithDb(db => db.ActionItems.Where(a => a.Id == app.Seed.TaskA)
+            .ExecuteUpdate(s => s.SetProperty(a => a.CompletedAtUtc, (DateTime?)Now)));
+        Assert.Empty(app.Jobs.Created);
+
+        await SweepAsync(app);
+
+        AssertCancellation(Assert.Single(mail.Sent), original);
+        Assert.Equal(CalendarInviteStatus.Cancelled, Assert.Single(Records(app)).Status);
+        Assert.False(Assert.Single(Records(app)).SendPending);
+        await SweepAsync(app);
+        Assert.Single(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Matching_active_entry_sends_nothing()
+    {
+        var mail = new RecordingEmail();
+        var logs = new CapturingLoggerProvider();
+        using var app = await ReadyAsync(mail, logs);
+
+        await SweepAsync(app);
+
+        Assert.Empty(mail.Sent);
+        Assert.Equal(CalendarInviteStatus.Active, Assert.Single(Records(app)).Status);
+        Assert.Contains(logs.Lines, line => line.Trim() == "Takvim süpürmesi tamamlandı. Görev=1, Hata=0");
+    }
+
+    [Fact]
+    public async Task Failed_send_does_not_stop_next_task_or_log_personal_data()
+    {
+        var mail = new RecordingEmail();
+        var logs = new CapturingLoggerProvider();
+        using var app = await ReadyAsync(mail, logs);
+        app.WithDb(db =>
+        {
+            db.CalendarInvites.Add(new CalendarInvite
+            {
+                ActionItemId = app.Seed.TaskB,
+                UserId = app.Seed.CarolId,
+                Uid = "second@briefyn.test",
+                Sequence = 3,
+                DueDate = new(2026, 11, 22),
+                Status = CalendarInviteStatus.Active
+            });
+            db.ActionItems.Where(a => a.Id == app.Seed.TaskA || a.Id == app.Seed.TaskB)
+                .ExecuteUpdate(s => s.SetProperty(a => a.CompletedAtUtc, (DateTime?)Now));
+            return db.SaveChanges();
+        });
+        mail.FailNext = true;
+
+        await SweepAsync(app);
+
+        Assert.Equal(2, mail.Attempts.Count);
+        var sent = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Cancel, sent.Method);
+        Assert.NotEqual(mail.Attempts[0].Uid, sent.Invite.Uid);
+        var failed = Assert.Single(Records(app), i => i.Uid == mail.Attempts[0].Uid);
+        Assert.True(failed.SendPending);
+        Assert.Contains(logs.Lines, line => line.Trim() == $"Takvim süpürmesinde bir görev eşitlenemedi. Görev={failed.ActionItemId}, HataTürü=InvalidOperationException");
+        Assert.Contains(logs.Lines, line => line.Trim() == "Takvim süpürmesi tamamlandı. Görev=2, Hata=1");
+        var output = string.Join("\n", logs.Lines);
+        foreach (var secret in new[] { SeedData.CarolEmail, "Carol Secret", TaskText, "A gizli toplantı", "Private mail failure" })
+            Assert.DoesNotContain(secret, output);
+    }
+
+    [Fact]
+    public async Task Deleted_account_cascades_invites_and_sweep_sends_no_email()
+    {
+        var mail = new RecordingEmail();
+        using var app = await ReadyAsync(mail);
+        app.WithDb(db =>
+        {
+            db.Users.Single(u => u.Id == app.Seed.CarolId).DeletionRequestedAtUtc = DateTime.UtcNow.AddDays(-8);
+            return db.SaveChanges();
+        });
+
+        using (var scope = app.Services.CreateScope())
+            await scope.ServiceProvider.GetRequiredService<IAccountDeletionService>().RunAsync();
+
+        Assert.False(app.WithDb(db => db.Users.Any(u => u.Id == app.Seed.CarolId)));
+        Assert.Empty(Records(app));
+        await SweepAsync(app);
+        Assert.Empty(mail.Attempts);
+        Assert.Empty(mail.Sent);
+    }
+
+    private const string TaskText = "Gizli görev metni";
+    private static readonly DateTime Now = new(2026, 11, 20, 6, 0, 0, DateTimeKind.Utc);
+
+    private static void AssertCancellation((CalendarInviteData Invite, CalendarMethod Method) sent, CalendarInvite original)
+    {
+        Assert.Equal(CalendarMethod.Cancel, sent.Method);
+        Assert.Equal(SeedData.CarolEmail, sent.Invite.AttendeeEmail);
+        Assert.Equal(original.Uid, sent.Invite.Uid);
+        Assert.Equal(original.Sequence + 1, sent.Invite.Sequence);
+        Assert.Equal("", sent.Invite.TaskText);
+        Assert.Equal("", sent.Invite.Description);
+        Assert.Null(sent.Invite.Url);
+        var content = CalendarInviteBuilder.Build(sent.Invite, sent.Method);
+        Assert.DoesNotContain(TaskText, content);
+        Assert.DoesNotContain("A gizli toplantı", content);
+    }
+
+    private static List<CalendarInvite> Records(BriefynFactory app) => app.WithDb(db => db.CalendarInvites.AsNoTracking().ToList());
+
+    private static async Task SweepAsync(BriefynFactory app)
+    {
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        await calendar.SweepAsync();
+    }
+
+    private static async Task<BriefynFactory> ReadyAsync(RecordingEmail mail, CapturingLoggerProvider? logs = null)
+    {
+        var app = new BriefynFactory { EmailServiceOverride = mail, TimeProviderOverride = new FixedTimeProvider(), LogCapture = logs };
+        app.ExtraSettings["EmailSettings:SenderEmail"] = "sender@briefyn.test";
+        await app.InitializeAsync();
+        app.WithDb(db =>
+        {
+            var task = db.ActionItems.Single(a => a.Id == app.Seed.TaskA);
+            task.AssigneeUserId = app.Seed.CarolId;
+            task.DueDate = new(2026, 11, 22);
+            task.Text = TaskText;
+            return db.SaveChanges();
+        });
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().SyncAsync(app.Seed.TaskA);
+        Assert.Equal(CalendarInviteStatus.Active, Assert.Single(Records(app)).Status);
+        mail.Sent.Clear();
+        mail.Attempts.Clear();
+        return app;
+    }
+
+    private sealed class FixedTimeProvider : TimeProvider { public override DateTimeOffset GetUtcNow() => new(Now); }
+
+    private sealed class RecordingEmail : IEmailService
+    {
+        public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
+        public List<CalendarInviteData> Attempts { get; } = [];
+        public bool FailNext { get; set; }
+        public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
+        public Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method)
+        {
+            Attempts.Add(invite);
+            if (FailNext)
+            {
+                FailNext = false;
+                throw new InvalidOperationException("Private mail failure: " + invite.AttendeeEmail + " " + invite.AttendeeName);
+            }
+            Sent.Add((invite, method));
+            return Task.CompletedTask;
+        }
+    }
+
+}

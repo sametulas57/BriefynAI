@@ -65,7 +65,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Bağımlılık: 3.
   - Dosyalar: `MeetingWeb/Pages/History.cshtml.cs`, `MeetingWeb/Pages/Workspace/Members.cshtml.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs`.
 
-- [ ] **Görev 8: Günlük süpürme ve hesap silme** (S)
+- [x] **Görev 8: Günlük süpürme ve hesap silme** (S)
   - Kabul: her gün Türkiye saatiyle bir kez etkin davet kayıtları için eşitleme koşuyor (ekip silme ve ekip sahibinin hesap silmesiyle kaybolan görevlerin iptali bu yolla gidiyor). Hesap silmede o kişinin davet kayıtları siliniyor, ona e-posta gitmiyor.
   - Doğrula: odaklı test (ekip silindi → süpürme iptal gönderdi; hesap silindi → satır yok, e-posta yok).
   - Bağımlılık: 3.
