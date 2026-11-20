@@ -78,7 +78,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Dosyalar: `docs/decisions/0015-takvim-daveti.md`, `docs/decisions/README.md`, `docs/raporlar/…`, `Backlog.md`.
 
 ### Kontrol C: bitiş
-- [x] `scripts/verify.sh` GEÇTİ (17fb5c1, .NET 535/535). [ ] CI yeşil: henüz push edilmedi, CI koşmadı.
+- [x] `scripts/verify.sh` GEÇTİ (17fb5c1, .NET 535/535). [x] CI yeşil: 5bc0d28 (Tests, 536/536). İlk push kırmızıydı: test uygulamaları Linux dosya izleyici sınırını aşıyordu, 5bc0d28 düzeltti.
 - Spec başarı ölçütleri (2026-11-20):
   - [x] 1. Tek davet; Kabul et ile tüm gün kayıt: Outlook mobilde geçti. Outlook web ve yeni Outlook denenmedi (Ulaş'ın kararı), raporda risk.
   - [x] 2. Tarih değişince aynı kayıt taşınıyor: Outlook mobilde geçti.
