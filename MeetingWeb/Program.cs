@@ -72,6 +72,7 @@ try
     // --- 3. Application Settings ---
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection("Reminders"));
+    builder.Services.Configure<AppOptions>(builder.Configuration.GetSection("App"));
     builder.Services.Configure<AskOptions>(builder.Configuration.GetSection("Ask"));
     builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 

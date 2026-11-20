@@ -10,7 +10,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Bağımlılık: yok.
   - Dosyalar: `MeetingWeb/Services/CalendarInviteBuilder.cs`, `MeetingWeb.Tests/Features/CalendarInviteBuilderTests.cs`.
 
-- [ ] **Görev 2: Davet tablosu, kişi tercihi, site adresi ayarı** (M)
+- [x] **Görev 2: Davet tablosu, kişi tercihi, site adresi ayarı** (M)
   - Kabul: `CalendarInvites` tablosu (görev kimliği yabancı anahtarsız, kişi, UID, sıra no, gönderilen tarih, durum, "gönderilecek" işareti, `RowVersion`; (görev, kişi) tekil); `ApplicationUser.CalendarInvitesEnabled` varsayılan açık; `App:PublicUrl` ayarı boş değerle ve bir seçenek sınıfıyla.
   - Doğrula: migration temiz uygulanıyor; `SchemaTests` ve build geçiyor.
   - Bağımlılık: yok.
