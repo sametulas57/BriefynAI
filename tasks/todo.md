@@ -71,7 +71,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Bağımlılık: 3.
   - Dosyalar: `MeetingWeb/Program.cs`, `MeetingWeb/Services/CalendarSyncService.cs`, `MeetingWeb/Services/AccountDeletionService.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs`.
 
-- [ ] **Görev 9: Belgeler** (S)
+- [x] **Görev 9: Belgeler** (S)
   - Kabul: `docs/decisions/0015-takvim-daveti.md` (ADR-0008'deki ".ics ayrı iş" notunu kapatır); `docs/raporlar/2026-11-..-takvim-daveti-deneme.md` (her Outlook için üç adımın sonucu, denenemeyenler risk olarak); Backlog 5'ten takvim adımı çıktı, Slack/Teams ve Trello/Jira kaldı; `docs/decisions/README.md` güncel.
   - Doğrula: belgeler okunuyor, bağlantılar doğru.
   - Bağımlılık: 1-8.
