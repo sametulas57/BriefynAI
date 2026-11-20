@@ -118,6 +118,12 @@
                         <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="overdueReminders" name="enabled" value="true" checked="@(Model.OverdueRemindersEnabled)" /><label class="form-check-label" for="overdueReminders">Geciken görevlerim için e-posta hatırlatması al</label></div>
                         <button type="submit" class="btn btn-outline-primary fw-bold rounded-pill px-4">Kaydet</button>
                     </form>
+                    <hr class="my-4 text-muted" />
+                    <form method="post" asp-page-handler="CalendarInvites">
+                        <div class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" id="calendarInvites" name="enabled" value="true" checked="@(Model.CalendarInvitesEnabled)" aria-describedby="calendarInvitesHelp" /><label class="form-check-label" for="calendarInvites">Bana atanan görevleri takvim daveti olarak gönder</label></div>
+                        <p id="calendarInvitesHelp" class="small text-muted mb-3">Kapatırsanız yeni görevler için kendiliğinden davet gelmez; Bana Atananlar sayfasındaki düğmeyle yine gönderebilirsiniz. Takviminizde zaten duran görevler güncel tutulur.</p>
+                        <button type="submit" class="btn btn-outline-primary fw-bold rounded-pill px-4">Kaydet</button>
+                    </form>
                 </div>
             </div>
 

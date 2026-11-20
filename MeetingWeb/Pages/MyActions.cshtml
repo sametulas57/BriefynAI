@@ -79,6 +79,19 @@
                                 <span><i class="bi bi-calendar-event me-1"></i>Son tarih: @t.DueDate.Value.ToString("d MMMM yyyy", DisplayTime.Culture)</span>
                             }
                         </div>
+                        @if (t.DueDate != null)
+                        {
+                            <div class="d-flex flex-wrap gap-2 mt-3" role="group" aria-label="Takvim">
+                                <form method="post" asp-page-handler="SendToCalendar" class="m-0">
+                                    <input type="hidden" name="taskId" value="@t.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>Takvimime gönder<span class="visually-hidden">: @t.Text</span></button>
+                                </form>
+                                <form method="post" asp-page-handler="CalendarFile" class="m-0">
+                                    <input type="hidden" name="taskId" value="@t.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-download me-1" aria-hidden="true"></i>Takvim dosyasını indir<span class="visually-hidden">: @t.Text</span></button>
+                                </form>
+                            </div>
+                        }
                     </div>
                     <form method="post" asp-page-handler="Complete" class="flex-shrink-0">
                         <input type="hidden" name="taskId" value="@t.Id" />

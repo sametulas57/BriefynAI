@@ -10,6 +10,12 @@ namespace MeetingWeb.Services
         // Brings the calendar of everyone who has or had this task in line with its current state (SPEC.md). Running it
         // twice sends nothing the second time. Only the task id goes through Hangfire (ADR-0009).
         Task SyncAsync(int actionItemId);
+        // Uses the same target eligibility as sync, including current team membership and account state.
+        Task<bool> IsOwnDatedTaskAsync(int actionItemId, string userId);
+        // Explicit request: sends again even when unchanged or automatic invitations are disabled.
+        Task ResendAsync(int actionItemId);
+        // No email; returns a PUBLISH file sharing the emailed invitation's stable UID.
+        Task<string?> BuildDownloadAsync(int actionItemId, string userId);
     }
 
     public class CalendarSyncService(
@@ -22,7 +28,58 @@ namespace MeetingWeb.Services
     {
         private static readonly TimeSpan SendClaim = TimeSpan.FromMinutes(10);
 
-        public async Task SyncAsync(int actionItemId)
+        public Task SyncAsync(int actionItemId) => SyncCoreAsync(actionItemId, force: false);
+
+        public Task ResendAsync(int actionItemId) => SyncCoreAsync(actionItemId, force: true);
+
+        public async Task<bool> IsOwnDatedTaskAsync(int actionItemId, string userId)
+        {
+            var task = await ReadTaskAsync(actionItemId);
+            return task?.AssigneeUserId == userId && await TargetUserAsync(task) != null;
+        }
+
+        public async Task<string?> BuildDownloadAsync(int actionItemId, string userId)
+        {
+            for (var attempt = 0; ; attempt++)
+            {
+                var task = await ReadTaskAsync(actionItemId);
+                if (task?.AssigneeUserId != userId) return null;
+                var user = await TargetUserAsync(task);
+                if (task == null || user == null) return null;
+                var record = await db.CalendarInvites.SingleOrDefaultAsync(i => i.ActionItemId == actionItemId && i.UserId == userId);
+                var now = time.GetUtcNow().UtcDateTime;
+                try
+                {
+                    if (record == null)
+                    {
+                        record = new CalendarInvite
+                        {
+                            ActionItemId = actionItemId,
+                            UserId = userId,
+                            Uid = NewUid(),
+                            Sequence = 0,
+                            Status = CalendarInviteStatus.Active,
+                            SendPending = false,
+                            DueDate = task.DueDate!.Value,
+                            UpdatedAtUtc = now
+                        };
+                        db.CalendarInvites.Add(record);
+                    }
+                    if (!InFlight(record, now))
+                    {
+                        // A re-added entry must outrank the cancellation the person may have received.
+                        if (record.Status == CalendarInviteStatus.Cancelled) record.Sequence++;
+                        record.Status = CalendarInviteStatus.Active;
+                        record.DueDate = task.DueDate!.Value;
+                        await db.SaveChangesAsync();
+                    }
+                    return CalendarInviteBuilder.Build(BuildRequestData(task, user, record, now), CalendarMethod.Publish);
+                }
+                catch (DbUpdateException) when (attempt == 0) { db.ChangeTracker.Clear(); }
+            }
+        }
+
+        private async Task SyncCoreAsync(int actionItemId, bool force)
         {
             var requests = 0;
             var cancels = 0;
@@ -47,24 +104,8 @@ namespace MeetingWeb.Services
 
             async Task SyncOnceAsync()
             {
-                var task = await db.ActionItems.AsNoTracking()
-                    .Select(a => new
-                    {
-                        a.Id,
-                        a.Text,
-                        a.AssigneeUserId,
-                        a.DueDate,
-                        a.CompletedAtUtc,
-                        MeetingTitle = a.Meeting!.Title,
-                        a.Meeting.CreatedAtUtc,
-                        a.Meeting.WorkspaceId
-                    })
-                    .SingleOrDefaultAsync(a => a.Id == actionItemId);
-                ApplicationUser? user = null;
-                if (task?.AssigneeUserId != null && task.DueDate != null && task.CompletedAtUtc == null
-                    && await db.WorkspaceMembers.AnyAsync(m => m.UserId == task.AssigneeUserId && m.WorkspaceId == task.WorkspaceId))
-                    user = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == task.AssigneeUserId
-                        && u.DeletionRequestedAtUtc == null && u.Email != null && u.Email != "");
+                var task = await ReadTaskAsync(actionItemId);
+                var user = await TargetUserAsync(task);
                 var records = await db.CalendarInvites.Where(i => i.ActionItemId == actionItemId).ToListAsync();
                 var now = time.GetUtcNow().UtcDateTime;
                 foreach (var previous in records.Where(i => i.UserId != user?.Id))
@@ -103,16 +144,17 @@ namespace MeetingWeb.Services
                 }
                 var record = records.FirstOrDefault(i => i.UserId == user.Id);
                 if (record != null && InFlight(record, now)) return;
-                if ((record == null || record.Status == CalendarInviteStatus.Cancelled)
+                if (!force && (record == null || record.Status == CalendarInviteStatus.Cancelled)
                     && (!user.CalendarInvitesEnabled || task.DueDate < DisplayTime.TodayIn(now))) return;
                 if (record == null)
                 {
-                    record = new CalendarInvite { ActionItemId = actionItemId, UserId = user.Id, Uid = Guid.NewGuid().ToString("N") + "@briefyn.ai" };
+                    record = new CalendarInvite { ActionItemId = actionItemId, UserId = user.Id, Uid = NewUid() };
                     db.CalendarInvites.Add(record);
                 }
                 else
                 {
-                    if (record.Status == CalendarInviteStatus.Active && record.DueDate == task.DueDate && !record.SendPending) return;
+                    if (!force && record.Status == CalendarInviteStatus.Active && record.DueDate == task.DueDate && !record.SendPending) return;
+                    // A cancelled entry always moves past its cancellation; otherwise only a completed send moves on.
                     if (record.Status == CalendarInviteStatus.Cancelled || !record.SendPending) record.Sequence++;
                 }
                 record.Status = CalendarInviteStatus.Active;
@@ -120,18 +162,43 @@ namespace MeetingWeb.Services
                 record.SendPending = true;
                 record.UpdatedAtUtc = now;
                 await db.SaveChangesAsync();
-                var url = string.IsNullOrWhiteSpace(appOptions.Value.PublicUrl) ? null : appOptions.Value.PublicUrl.TrimEnd('/') + "/MyActions";
-                var description = $"Toplantı: {task.MeetingTitle} ({DisplayTime.Format(task.CreatedAtUtc, "d MMMM yyyy")})"
-                    + (url == null ? "" : $"\nGörevlerinizi görmek için: {url}");
-                var invite = new CalendarInviteData(record.Uid, record.Sequence, record.DueDate, task.Text, description, url,
-                    emailSettings.Value.SenderName, emailSettings.Value.SenderEmail,
-                    string.IsNullOrWhiteSpace(user.FullName) ? UserDisplay.UnknownName : user.FullName, user.Email!, now);
+                var invite = BuildRequestData(task, user, record, now);
                 await SendAsync(record, invite, CalendarMethod.Request);
                 requests++;
                 record.SendPending = false;
                 await db.SaveChangesAsync();
             }
         }
+
+        private sealed record CalendarTask(int Id, string Text, string? AssigneeUserId, DateOnly? DueDate,
+            DateTime? CompletedAtUtc, string MeetingTitle, DateTime CreatedAtUtc, int WorkspaceId);
+
+        private Task<CalendarTask?> ReadTaskAsync(int actionItemId) => db.ActionItems.AsNoTracking()
+            .Where(a => a.Id == actionItemId)
+            .Select(a => new CalendarTask(a.Id, a.Text, a.AssigneeUserId, a.DueDate, a.CompletedAtUtc,
+                a.Meeting!.Title, a.Meeting.CreatedAtUtc, a.Meeting.WorkspaceId))
+            .SingleOrDefaultAsync();
+
+        private async Task<ApplicationUser?> TargetUserAsync(CalendarTask? task)
+        {
+            if (task?.AssigneeUserId == null || task.DueDate == null || task.CompletedAtUtc != null
+                || !await db.WorkspaceMembers.AnyAsync(m => m.UserId == task.AssigneeUserId && m.WorkspaceId == task.WorkspaceId))
+                return null;
+            return await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == task.AssigneeUserId
+                && u.DeletionRequestedAtUtc == null && u.Email != null && u.Email != "");
+        }
+
+        private CalendarInviteData BuildRequestData(CalendarTask task, ApplicationUser user, CalendarInvite record, DateTime now)
+        {
+            var url = string.IsNullOrWhiteSpace(appOptions.Value.PublicUrl) ? null : appOptions.Value.PublicUrl.TrimEnd('/') + "/MyActions";
+            var description = $"Toplantı: {task.MeetingTitle} ({DisplayTime.Format(task.CreatedAtUtc, "d MMMM yyyy")})"
+                + (url == null ? "" : $"\nGörevlerinizi görmek için: {url}");
+            return new CalendarInviteData(record.Uid, record.Sequence, task.DueDate!.Value, task.Text, description, url,
+                emailSettings.Value.SenderName, emailSettings.Value.SenderEmail,
+                string.IsNullOrWhiteSpace(user.FullName) ? UserDisplay.UnknownName : user.FullName, user.Email!, now);
+        }
+
+        private static string NewUid() => Guid.NewGuid().ToString("N") + "@briefyn.ai";
 
         private static bool InFlight(CalendarInvite record, DateTime now) => record.SendPending && record.UpdatedAtUtc > now - SendClaim;
 

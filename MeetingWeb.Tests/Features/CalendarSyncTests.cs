@@ -704,3 +704,486 @@ public class CalendarSyncTriggerTests : IAsyncLifetime
         Assert.Empty(_app.Jobs.Created);
     }
 }
+
+public class CalendarSelfServiceTests
+{
+    private static readonly DateTime Now = new(2026, 11, 20, 6, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task Profile_calendar_handler_changes_only_callers_setting_and_requires_antiforgery()
+    {
+        using var app = await ReadyAsync(new RecordingEmail());
+        using var client = app.ClientFor(app.Seed.CarolId);
+        using var noToken = await client.PostAsync("/Profile?handler=CalendarInvites",
+            new FormUrlEncodedContent([new("enabled", "false")]));
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, noToken.StatusCode);
+        foreach (var enabled in new[] { false, true })
+        {
+            var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+            using var response = await FormHelpers.PostFormAsync(client, "/Profile?handler=CalendarInvites", token,
+                ("enabled", enabled.ToString()), ("userId", app.Seed.AliceId));
+            Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal(enabled, app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled));
+            Assert.True(app.WithDb(db => db.Users.AsNoTracking().Single(u => u.Id == app.Seed.AliceId).CalendarInvitesEnabled));
+            var page = System.Net.WebUtility.HtmlDecode(await client.GetStringAsync("/Profile"));
+            Assert.Contains(enabled ? "Görevleriniz için takvim daveti gönderimi açıldı." : "Takviminizde zaten duran görevler yine güncel tutulur.", page);
+        }
+    }
+
+    [Fact]
+    public async Task Resend_for_unchanged_active_record_increments_sequence_and_sync_then_sends_nothing()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        await RunAsync(app, force: false);
+        await RunAsync(app, force: true);
+        Assert.Equal(2, mail.Sent.Count);
+        Assert.All(mail.Sent, sent => Assert.Equal(CalendarMethod.Request, sent.Method));
+        Assert.Equal(mail.Sent[0].Invite.Uid, mail.Sent[1].Invite.Uid);
+        Assert.Equal(1, mail.Sent[1].Invite.Sequence);
+        await RunAsync(app, force: false);
+        Assert.Equal(2, mail.Sent.Count);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task Resend_bypasses_preference_and_past_due_date(bool enabled, bool past)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled = enabled; return db.SaveChanges(); });
+        if (past) ChangeTask(app, task => task.DueDate = new(2026, 11, 19));
+        await RunAsync(app, force: false);
+        Assert.Empty(mail.Sent);
+        await RunAsync(app, force: true);
+        Assert.Equal(CalendarMethod.Request, Assert.Single(mail.Sent).Method);
+    }
+
+    [Fact]
+    public async Task Download_creates_stable_active_record_without_email_and_date_update_reuses_it()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        var output = await calendar.BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+        var record = app.WithDb(db => db.CalendarInvites.AsNoTracking().Single());
+        Assert.NotNull(output);
+        Assert.Contains("METHOD:PUBLISH\r\n", output);
+        Assert.Contains("UID:" + record.Uid + "\r\n", output);
+        Assert.DoesNotContain(output.Split("\r\n"), line => line.StartsWith("ATTENDEE", StringComparison.Ordinal));
+        Assert.Equal((CalendarInviteStatus.Active, 0, false, Now), (record.Status, record.Sequence, record.SendPending, record.UpdatedAtUtc));
+        Assert.Equal(output, await calendar.BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId));
+        Assert.Empty(mail.Sent);
+        ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
+        await RunAsync(app, force: false);
+        var update = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Request, update.Method);
+        Assert.Equal(record.Uid, update.Invite.Uid);
+        Assert.Equal(1, update.Invite.Sequence);
+        Assert.Equal(new DateOnly(2026, 11, 25), update.Invite.DueDate);
+        Assert.Contains("https://briefyn.example/MyActions", update.Invite.Description);
+    }
+
+    [Theory]
+    [InlineData("Complete")]
+    [InlineData("Reopen")]
+    public async Task My_actions_completion_changes_queue_exactly_one_sync_with_only_id(string handler)
+    {
+        using var app = await ReadyAsync(new RecordingEmail());
+        if (handler == "Reopen") ChangeTask(app, task => task.SetDone(true, app.Seed.CarolId));
+        using var client = app.ClientFor(app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=" + handler, token, ("taskId", $"{app.Seed.TaskA}"));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        AssertOnlyJob(app, nameof(ICalendarSyncService.SyncAsync));
+        Assert.Equal(handler == "Complete", app.WithDb(db => db.ActionItems.Single(a => a.Id == app.Seed.TaskA).IsDone));
+    }
+
+    [Fact]
+    public async Task Send_to_calendar_queues_only_resend_id_then_sends_unchanged_invite()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        await RunAsync(app, force: false);
+        using var client = app.ClientFor(app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=SendToCalendar", token, ("taskId", $"{app.Seed.TaskA}"));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        AssertOnlyJob(app, nameof(ICalendarSyncService.ResendAsync));
+        Assert.Contains("Takvim daveti e-postanıza gönderiliyor.", System.Net.WebUtility.HtmlDecode(await client.GetStringAsync("/MyActions")));
+        await RunAsync(app, force: true);
+        Assert.Equal(2, mail.Sent.Count);
+        Assert.Equal(1, mail.Sent[1].Invite.Sequence);
+        Assert.Equal(CalendarMethod.Request, mail.Sent[1].Method);
+        await RunAsync(app, force: false);
+        Assert.Equal(2, mail.Sent.Count);
+    }
+
+    [Theory]
+    [InlineData("teammate", "SendToCalendar")]
+    [InlineData("outsider", "SendToCalendar")]
+    [InlineData("undated", "SendToCalendar")]
+    [InlineData("done", "SendToCalendar")]
+    [InlineData("teammate", "CalendarFile")]
+    [InlineData("outsider", "CalendarFile")]
+    [InlineData("undated", "CalendarFile")]
+    [InlineData("done", "CalendarFile")]
+    public async Task Calendar_handlers_reject_tasks_not_owned_open_and_dated(string scenario, string handler)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        if (scenario == "undated") ChangeTask(app, task => task.DueDate = null);
+        if (scenario == "done") ChangeTask(app, task => task.SetDone(true, app.Seed.CarolId));
+        var caller = scenario == "teammate" ? app.Seed.AliceId : scenario == "outsider" ? app.Seed.BobId : app.Seed.CarolId;
+        using var client = app.ClientFor(caller);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=" + handler, token, ("taskId", $"{app.Seed.TaskA}"));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/MyActions", response.Headers.Location!.OriginalString);
+        Assert.Contains("Bu görev size atanmış, açık ve son tarihli görünmüyor.", System.Net.WebUtility.HtmlDecode(await client.GetStringAsync("/MyActions")));
+        Assert.Empty(app.Jobs.Created);
+        Assert.Empty(app.WithDb(db => db.CalendarInvites.AsNoTracking().ToList()));
+        Assert.Empty(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Calendar_file_returns_utf8_publish_with_same_uid_and_no_email()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var client = app.ClientFor(app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=CalendarFile", token, ("taskId", $"{app.Seed.TaskA}"));
+            Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/calendar", response.Content.Headers.ContentType!.MediaType);
+            Assert.Equal("utf-8", response.Content.Headers.ContentType.CharSet);
+            Assert.Equal($"briefyn-gorev-{app.Seed.TaskA}.ics", response.Content.Headers.ContentDisposition!.FileName);
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            Assert.False(bytes.AsSpan().StartsWith(Encoding.UTF8.Preamble));
+            var output = Encoding.UTF8.GetString(bytes);
+            Assert.Contains("METHOD:PUBLISH\r\n", output);
+            Assert.Contains("UID:" + app.WithDb(db => db.CalendarInvites.Single().Uid) + "\r\n", output);
+            Assert.DoesNotContain(output.Split("\r\n"), line => line.StartsWith("ATTENDEE", StringComparison.Ordinal));
+        }
+        Assert.Empty(mail.Sent);
+        Assert.Empty(app.Jobs.Created);
+    }
+
+    [Theory]
+    [InlineData("SendToCalendar")]
+    [InlineData("CalendarFile")]
+    public async Task Calendar_handlers_require_antiforgery(string handler)
+    {
+        using var app = await ReadyAsync(new RecordingEmail());
+        using var client = app.ClientFor(app.Seed.CarolId);
+        using var response = await client.PostAsync("/MyActions?handler=" + handler,
+            new FormUrlEncodedContent([new("taskId", $"{app.Seed.TaskA}")]));
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(app.Jobs.Created);
+        Assert.Empty(app.WithDb(db => db.CalendarInvites.AsNoTracking().ToList()));
+    }
+
+    [Fact]
+    public async Task Resend_limit_is_per_user_and_does_not_limit_downloads()
+    {
+        using var app = await ReadyAsync(new RecordingEmail(), resendLimit: 2);
+        using var client = app.ClientFor(app.Seed.CarolId);
+        client.DefaultRequestHeaders.Referrer = new Uri("https://localhost/MyActions");
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=sEnDtOcAlEnDaR", token, ("taskId", $"{app.Seed.TaskA}"));
+            Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+            Assert.Equal("/MyActions", response.Headers.Location!.OriginalString);
+        }
+        Assert.Equal(2, app.Jobs.CountFor(nameof(ICalendarSyncService.ResendAsync)));
+        var page = System.Net.WebUtility.HtmlDecode(await client.GetStringAsync("/MyActions"));
+        Assert.Contains("Bu saat içinde çok fazla takvim daveti istediniz. Lütfen biraz sonra tekrar deneyin.", page);
+        using var download = await FormHelpers.PostFormAsync(client, "/MyActions?handler=CalendarFile", token, ("taskId", $"{app.Seed.TaskA}"));
+        Assert.Equal(System.Net.HttpStatusCode.OK, download.StatusCode);
+        ChangeTask(app, task => task.AssigneeUserId = app.Seed.AliceId);
+        using var alice = app.ClientFor(app.Seed.AliceId);
+        token = await FormHelpers.GetAntiforgeryTokenAsync(alice, "/Profile");
+        using var ownBudget = await FormHelpers.PostFormAsync(alice, "/MyActions?handler=SendToCalendar", token, ("taskId", $"{app.Seed.TaskA}"));
+        Assert.Equal(3, app.Jobs.CountFor(nameof(ICalendarSyncService.ResendAsync)));
+    }
+
+    [Fact]
+    public async Task Profile_switch_off_blocks_automatic_invite_but_manual_send_still_works()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        using var client = app.ClientFor(app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        using var setting = await FormHelpers.PostFormAsync(client, "/Profile?handler=CalendarInvites", token, ("enabled", "false"));
+        await RunAsync(app, force: false);
+        Assert.Empty(mail.Sent);
+        using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=SendToCalendar", token, ("taskId", $"{app.Seed.TaskA}"));
+        AssertOnlyJob(app, nameof(ICalendarSyncService.ResendAsync));
+        await RunAsync(app, force: true);
+        Assert.Equal(CalendarMethod.Request, Assert.Single(mail.Sent).Method);
+    }
+
+    [Theory]
+    [InlineData("Complete")]
+    [InlineData("Reopen")]
+    [InlineData("SendToCalendar")]
+    public async Task Queue_failure_returns_a_redirect_and_keeps_saved_completion(string handler)
+    {
+        var logs = new CapturingLoggerProvider();
+        using var app = await ReadyAsync(new RecordingEmail(), logs: logs);
+        if (handler == "Reopen") ChangeTask(app, task => task.SetDone(true, app.Seed.CarolId));
+        using var client = app.ClientFor(app.Seed.CarolId);
+        var token = await FormHelpers.GetAntiforgeryTokenAsync(client, "/Profile");
+        app.Jobs.FailNext = true;
+        using var response = await FormHelpers.PostFormAsync(client, "/MyActions?handler=" + handler, token, ("taskId", $"{app.Seed.TaskA}"));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.False(app.Jobs.FailNext);
+        Assert.Empty(app.Jobs.Created);
+        if (handler == "SendToCalendar")
+            Assert.Contains("Takvim daveti şu an gönderilemedi. Lütfen biraz sonra tekrar deneyin.", System.Net.WebUtility.HtmlDecode(await client.GetStringAsync("/MyActions")));
+        else
+            Assert.Equal(handler == "Complete", app.WithDb(db => db.ActionItems.Single(a => a.Id == app.Seed.TaskA).IsDone));
+        Assert.Contains(logs.Lines, line => line.Contains($"Görev={app.Seed.TaskA}, HataTürü=InvalidOperationException", StringComparison.Ordinal));
+        Assert.DoesNotContain(logs.Lines, line => line.Contains(SeedData.CarolEmail, StringComparison.Ordinal));
+    }
+
+    // A cancelled record moves past its cancellation instead (Resend_after_a_failed_cancellation_raises_the_sequence).
+    [Theory]
+    [InlineData(CalendarInviteStatus.Active)]
+    public async Task Resend_retries_stale_pending_record_without_increasing_sequence(CalendarInviteStatus status)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app, status, pending: true, updated: Now.AddMinutes(-11));
+        await RunAsync(app, force: true);
+        var sent = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Request, sent.Method);
+        Assert.Equal(3, sent.Invite.Sequence);
+        Assert.False(app.WithDb(db => db.CalendarInvites.Single().SendPending));
+    }
+
+    [Fact]
+    public async Task Download_and_resend_do_not_modify_an_in_flight_record()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app, CalendarInviteStatus.Cancelled, pending: true, updated: Now);
+        ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        Assert.NotNull(await calendar.BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId));
+        await RunAsync(app, force: true);
+        var record = app.WithDb(db => db.CalendarInvites.AsNoTracking().Single());
+        Assert.Equal((CalendarInviteStatus.Cancelled, true, 3, new DateOnly(2026, 11, 22), Now),
+            (record.Status, record.SendPending, record.Sequence, record.DueDate, record.UpdatedAtUtc));
+        Assert.Empty(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Download_reactivates_cancelled_record_with_same_uid_and_current_due_date()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app, CalendarInviteStatus.Cancelled);
+        ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
+        using var scope = app.Services.CreateScope();
+        var output = await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+        Assert.Contains("UID:existing@briefyn.ai\r\n", output);
+        var record = app.WithDb(db => db.CalendarInvites.AsNoTracking().Single());
+        Assert.Equal(CalendarInviteStatus.Active, record.Status);
+        Assert.Equal(new DateOnly(2026, 11, 25), record.DueDate);
+        Assert.False(record.SendPending);
+        Assert.Empty(mail.Sent);
+    }
+
+    [Theory]
+    [InlineData("left")]
+    [InlineData("leaving")]
+    [InlineData("email")]
+    [InlineData("missing")]
+    public async Task Calendar_eligibility_matches_sync_target_and_download_creates_no_record(string scenario)
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        app.WithDb(db =>
+        {
+            if (scenario == "left") db.WorkspaceMembers.Remove(db.WorkspaceMembers.Single(m => m.WorkspaceId == app.Seed.WorkspaceA && m.UserId == app.Seed.CarolId));
+            if (scenario == "leaving") db.Users.Single(u => u.Id == app.Seed.CarolId).DeletionRequestedAtUtc = Now;
+            if (scenario == "email") db.Users.Single(u => u.Id == app.Seed.CarolId).Email = "";
+            if (scenario == "missing") db.ActionItems.Remove(db.ActionItems.Single(a => a.Id == app.Seed.TaskA));
+            return db.SaveChanges();
+        });
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        Assert.False(await calendar.IsOwnDatedTaskAsync(app.Seed.TaskA, app.Seed.CarolId));
+        Assert.Null(await calendar.BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId));
+        await RunAsync(app, force: true);
+        Assert.Empty(app.WithDb(db => db.CalendarInvites.AsNoTracking().ToList()));
+        Assert.Empty(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Resend_after_task_becomes_ineligible_cancels_existing_invite()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app, CalendarInviteStatus.Active);
+        ChangeTask(app, task => task.SetDone(true, app.Seed.CarolId));
+        await RunAsync(app, force: true);
+        var sent = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Cancel, sent.Method);
+        Assert.Equal(4, sent.Invite.Sequence);
+        Assert.Equal("", sent.Invite.TaskText);
+        Assert.Equal(CalendarInviteStatus.Cancelled, app.WithDb(db => db.CalendarInvites.Single().Status));
+    }
+
+    [Fact]
+    public async Task Download_unique_insert_race_reloads_winning_uid()
+    {
+        var writes = new DownloadWriteInterceptor();
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail, interceptor: writes);
+        writes.BeforeWrite = () => { writes.BeforeWrite = null; AddRecord(app, CalendarInviteStatus.Active); };
+        using var scope = app.Services.CreateScope();
+        var output = await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+        Assert.Contains("UID:existing@briefyn.ai\r\n", output);
+        Assert.Equal(1, writes.Attempts);
+        Assert.Equal("existing@briefyn.ai", app.WithDb(db => db.CalendarInvites.Single().Uid));
+        Assert.Empty(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Download_retries_a_database_failure_only_once()
+    {
+        var writes = new DownloadWriteInterceptor { BeforeWrite = () => throw new DbUpdateException("retryable failure") };
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail, interceptor: writes);
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        await Assert.ThrowsAsync<DbUpdateException>(() => calendar.BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId));
+        Assert.Equal(2, writes.Attempts);
+        Assert.Empty(app.WithDb(db => db.CalendarInvites.AsNoTracking().ToList()));
+        Assert.Empty(mail.Sent);
+    }
+
+    [Fact]
+    public async Task Download_concurrent_update_reloads_and_leaves_in_flight_winner_unchanged()
+    {
+        var writes = new DownloadWriteInterceptor();
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail, interceptor: writes);
+        AddRecord(app, CalendarInviteStatus.Active);
+        ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
+        writes.BeforeWrite = () =>
+        {
+            writes.BeforeWrite = null;
+            app.WithDb(db =>
+            {
+                var winner = db.CalendarInvites.Single();
+                winner.SendPending = true; winner.UpdatedAtUtc = Now;
+                return db.SaveChanges();
+            });
+        };
+        using var scope = app.Services.CreateScope();
+        Assert.NotNull(await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId));
+        var record = app.WithDb(db => db.CalendarInvites.AsNoTracking().Single());
+        Assert.Equal((true, Now, new DateOnly(2026, 11, 22)), (record.SendPending, record.UpdatedAtUtc, record.DueDate));
+        Assert.Equal(1, writes.Attempts);
+        Assert.Empty(mail.Sent);
+    }
+
+    private sealed class DownloadWriteInterceptor : DbCommandInterceptor
+    {
+        public Action? BeforeWrite { get; set; }
+        public int Attempts { get; private set; }
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData,
+            InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("INSERT INTO \"CalendarInvites\"", StringComparison.Ordinal)
+                || command.CommandText.StartsWith("UPDATE \"CalendarInvites\"", StringComparison.Ordinal))
+            {
+                Attempts++;
+                BeforeWrite?.Invoke();
+            }
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    private static void AddRecord(BriefynFactory app, CalendarInviteStatus status, bool pending = false, DateTime? updated = null) => app.WithDb(db =>
+    {
+        db.CalendarInvites.Add(new CalendarInvite
+        {
+            ActionItemId = app.Seed.TaskA,
+            UserId = app.Seed.CarolId,
+            Uid = "existing@briefyn.ai",
+            Status = status,
+            Sequence = 3,
+            DueDate = new(2026, 11, 22),
+            SendPending = pending,
+            UpdatedAtUtc = updated ?? Now
+        });
+        return db.SaveChanges();
+    });
+
+    // A cancellation that may have arrived must be outranked: the resent invite and the downloaded file both carry a
+    // higher sequence than the cancellation that was being sent.
+    [Fact]
+    public async Task Resend_after_a_failed_cancellation_raises_the_sequence()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app, CalendarInviteStatus.Cancelled, pending: true, updated: DateTime.MinValue);
+        await RunAsync(app, force: true);
+        var sent = Assert.Single(mail.Sent);
+        Assert.Equal((CalendarMethod.Request, 4), (sent.Method, sent.Invite.Sequence));
+    }
+
+    [Fact]
+    public async Task Download_of_a_cancelled_entry_raises_the_sequence()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app, CalendarInviteStatus.Cancelled);
+        using var scope = app.Services.CreateScope();
+        var file = await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+        Assert.Contains("SEQUENCE:4\r\n", file);
+        Assert.Empty(mail.Sent);
+    }
+
+    private static void AssertOnlyJob(BriefynFactory app, string method)
+    {
+        var job = Assert.Single(app.Jobs.Created);
+        Assert.Equal(typeof(ICalendarSyncService), job.Type);
+        Assert.Equal(method, job.Method.Name);
+        Assert.Equal(app.Seed.TaskA, Assert.IsType<int>(Assert.Single(job.Args)));
+    }
+
+    private static async Task RunAsync(BriefynFactory app, bool force)
+    {
+        using var scope = app.Services.CreateScope();
+        var calendar = scope.ServiceProvider.GetRequiredService<ICalendarSyncService>();
+        if (force) await calendar.ResendAsync(app.Seed.TaskA);
+        else await calendar.SyncAsync(app.Seed.TaskA);
+    }
+
+    private static async Task<BriefynFactory> ReadyAsync(RecordingEmail mail, int resendLimit = 5, CapturingLoggerProvider? logs = null, DbCommandInterceptor? interceptor = null)
+    {
+        var app = new BriefynFactory { EmailServiceOverride = mail, TimeProviderOverride = new FixedTimeProvider(), LogCapture = logs, CommandInterceptor = interceptor };
+        app.ExtraSettings["EmailSettings:CalendarResendLimitPerHour"] = resendLimit.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        app.ExtraSettings["EmailSettings:SenderEmail"] = "sender@briefyn.test";
+        app.ExtraSettings["App:PublicUrl"] = "https://briefyn.example/";
+        await app.InitializeAsync();
+        ChangeTask(app, task => { task.AssigneeUserId = app.Seed.CarolId; task.DueDate = new(2026, 11, 22); });
+        return app;
+    }
+
+    private static void ChangeTask(BriefynFactory app, Action<ActionItem> change) => app.WithDb(db =>
+    {
+        change(db.ActionItems.Single(a => a.Id == app.Seed.TaskA));
+        return db.SaveChanges();
+    });
+
+    private sealed class FixedTimeProvider : TimeProvider { public override DateTimeOffset GetUtcNow() => new(Now); }
+
+    private sealed class RecordingEmail : IEmailService
+    {
+        public List<(CalendarInviteData Invite, CalendarMethod Method)> Sent { get; } = [];
+        public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
+        public Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method)
+        {
+            Sent.Add((invite, method));
+            return Task.CompletedTask;
+        }
+    }
+}

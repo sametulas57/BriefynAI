@@ -82,11 +82,14 @@ public class WorkspaceBoundaryTests : IClassFixture<MeetingAccessFixture>
         ["History:PostDelete"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_delete_another_workspaces_meeting))),
         ["Index:Get"] = new NotWorkspaceScoped("The public landing page has no workspace data or target input."),
         ["MyActions:Get"] = new NoForeignInput("Only lists tasks assigned to the signed-in caller within workspaces whose membership is verified; no target input is accepted."),
+        ["MyActions:PostSendToCalendar"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_request_another_workspaces_calendar_task))),
+        ["MyActions:PostCalendarFile"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_request_another_workspaces_calendar_task))),
         ["MyActions:PostComplete"] = new Covered((typeof(MyActionsTests), nameof(MyActionsTests.Outsider_cannot_complete_someone_elses_task))),
         ["MyActions:PostReopen"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_reopen_another_workspaces_task))),
         ["Profile/Profile:Get"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostChangePassword"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostOverdueReminders"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
+        ["Profile/Profile:PostCalendarInvites"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostRemoveAvatar"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostRequestDeletion"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostUpdateProfile"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
@@ -364,6 +367,32 @@ public class WorkspaceBoundaryAttackTests : IClassFixture<WorkspaceBoundaryAttac
             var before = Snapshot();
             var response = await PostFormAsync(bob, "/MyActions?handler=Reopen", token, ("taskId", S.TaskA.ToString()));
             await AssertRejectedAsync(response, HttpStatusCode.Redirect, before, "/MyActions");
+        }
+    }
+
+    [Theory]
+    [InlineData("SendToCalendar")]
+    [InlineData("CalendarFile")]
+    public async Task Outsider_cannot_request_another_workspaces_calendar_task(string handler)
+    {
+        _app.WithDb(db =>
+        {
+            var task = db.ActionItems.Single(a => a.Id == S.TaskA);
+            task.AssigneeUserId = S.AliceId;
+            task.DueDate = new DateOnly(2026, 11, 22);
+            task.SetDone(false, S.AliceId);
+            return db.SaveChanges();
+        });
+        var (bob, token) = await BobAsync();
+        using (bob)
+        {
+            var before = Snapshot();
+            var jobs = _app.Jobs.Created.Count;
+            var invites = _app.WithDb(db => db.CalendarInvites.Count());
+            var response = await PostFormAsync(bob, "/MyActions?handler=" + handler, token, ("taskId", S.TaskA.ToString()));
+            await AssertRejectedAsync(response, HttpStatusCode.Redirect, before, "/MyActions");
+            Assert.Equal(jobs, _app.Jobs.Created.Count);
+            Assert.Equal(invites, _app.WithDb(db => db.CalendarInvites.Count()));
         }
     }
 
