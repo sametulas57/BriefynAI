@@ -29,10 +29,12 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Dosyalar: `MeetingWeb/Pages/Details.cshtml.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs`.
 
 ### Kontrol A: gerçek Outlook (devam etmeden önce)
-- [ ] `scripts/verify.sh` GEÇTİ.
-- [ ] Yerelde Docker yığınıyla gerçek SMTP üzerinden, Ulaş'ın kişisel adresine: atama → davet geldi, Kabul et ile takvime girdi; tarih değişti → aynı kayıt taşındı; bitti → kayıt kalktı. Outlook web'de Claude (giriş ve Kabul et onayı Ulaş'ta), mobilde ve yeni Outlook'ta Ulaş.
-- [ ] Davet gereksiz klasörüne düşmedi.
-- [ ] Biri bile geçmezse dur; e-posta biçimi düzeltilmeden Aşama 2'ye geçilmez.
+- [x] `scripts/verify.sh` GEÇTİ (971e072'nin commit öncesi kontrolü, .NET 473/473).
+- [x] Yerelde Docker yığınıyla gerçek SMTP üzerinden, Ulaş'ın kişisel adresine (2026-11-20, görev 7002):
+  - Outlook mobil (iOS, kişisel hesap), Ulaş denedi: davet takvim daveti olarak tanındı ("28 Kasım, 1 gün", RSVP düğmesi), kabul edince takvime tüm gün girdi; son tarih 30 Kasım'a çekilince aynı kayıt taşındı, ikinci kayıt açılmadı (sıra no 1); bitti işaretlenince iptal geldi, kayıt kalktı (sıra no 2).
+  - Outlook web: denenmedi (Ulaş'ın kararı, mobil yeterli görüldü). Yeni Outlook (Mac): denenmedi. İkisi rapora risk olarak yazılır (görev 9).
+- [ ] Davet gereksiz klasörüne düşmedi: mail uygulamada görüldü, hangi klasörde olduğu kontrol edilmedi.
+- [x] Biri bile geçmezse dur: üç adım da geçti, Aşama 2'ye geçilebilir.
 
 ## Aşama 2: Kişinin kendi kontrolü
 
