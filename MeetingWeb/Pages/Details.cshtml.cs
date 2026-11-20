@@ -55,7 +55,7 @@ namespace MeetingWeb.Pages
         public List<SeriesSummary> AvailableSeries { get; private set; } = new();
         public MeetingSeries? CurrentSeries { get; private set; }
         public List<WorkspaceMember> WorkspaceMembers { get; set; } = new();
-        public IReadOnlyList<string> SpeakerLabels { get; private set; } = Array.Empty<string>();
+        public IReadOnlyList<SpeakerNamingService.SpeakerRow> SpeakerRows { get; private set; } = Array.Empty<SpeakerNamingService.SpeakerRow>();
         public List<Comment> Comments { get; set; } = new();
 
         // Data Transfer Object (DTO) to hold cached user metadata for UI rendering.
@@ -84,7 +84,7 @@ namespace MeetingWeb.Pages
 
             if (meeting == null) return MeetingUnavailable();
             Meeting = meeting;
-            SpeakerLabels = SpeakerNamingService.Labels(meeting.Transcript?.Text);
+            SpeakerRows = SpeakerNamingService.Rows(meeting.Transcript?.Text, meeting.Transcript?.SpeakerSuggestions);
             AvailableSeries = await _series.ListAsync(_userManager.GetUserId(User), meeting.WorkspaceId);
             if (meeting.SeriesId != null) CurrentSeries = await _series.FindAsync(_userManager.GetUserId(User), meeting.SeriesId.Value);
 

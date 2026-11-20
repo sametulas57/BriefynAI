@@ -59,6 +59,79 @@ def test_correct_key_is_accepted(client):
     assert res.json()["success"] is True
 
 
+@pytest.mark.parametrize("summary", [SUMMARY, None])
+def test_process_meeting_returns_speaker_proposals_even_if_summary_fails(
+    client, monkeypatch, summary
+):
+    suggestions = {"Konuşmacı 2": {"ad": "Murat", "gerekce": "Cevap veriyor."}}
+    seen = []
+    monkeypatch.setattr(
+        api_server,
+        "suggest_speaker_names",
+        lambda text: seen.append(text) or suggestions,
+    )
+    monkeypatch.setattr(api_server, "generate_meeting_summary", lambda text: summary)
+
+    response = upload(client, {"X-Api-Key": KEY})
+
+    assert response.status_code == 200
+    assert response.json()["konusmaci_onerileri"] == suggestions
+    assert response.json()["success"] is bool(summary)
+    assert seen == ["metin"]
+
+
+@pytest.mark.parametrize("fail_in_factory", [False, True])
+def test_speaker_suggester_failure_does_not_fail_processing(
+    client, monkeypatch, caplog, fail_in_factory
+):
+    class BrokenSuggester:
+        def suggest(self, text):
+            raise RuntimeError("private transcript content")
+
+    def build():
+        if fail_in_factory:
+            raise RuntimeError("private transcript content")
+        return BrokenSuggester()
+
+    monkeypatch.setattr(api_server, "build_speaker_suggester", build)
+
+    response = upload(client, {"X-Api-Key": KEY})
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert response.json()["konusmaci_onerileri"] == {}
+    assert "private transcript content" not in caplog.text
+    assert any(record.levelname == "ERROR" for record in caplog.records)
+
+
+def test_zoom_speakers_skip_name_suggestions(client, monkeypatch):
+    monkeypatch.setattr(
+        api_server, "transcribe_audio", lambda path, speakers_vtt=None: "Ali: Merhaba."
+    )
+    monkeypatch.setattr(
+        api_server,
+        "suggest_speaker_names",
+        lambda text: pytest.fail("Zoom speaker names need no suggestions"),
+    )
+
+    response = client.post(
+        URL,
+        headers={"X-Api-Key": KEY},
+        files={
+            "file": ("audio.m4a", b"audio", "audio/mp4"),
+            "speakers": (
+                "names.vtt",
+                b"WEBVTT\n\n00:00.000 --> 00:02.000\nAli: Merhaba.",
+                "text/vtt",
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    assert response.json()["konusmaci_onerileri"] == {}
+
+
 @pytest.mark.parametrize(
     "transcript",
     [

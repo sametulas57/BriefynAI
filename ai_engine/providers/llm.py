@@ -12,6 +12,8 @@ from .groq_client import GroqClient
 # task -> (provider variable, model variable, default model)
 TASKS = {
     "summary": ("SUMMARIZER", "AI_SUMMARY_MODEL", "qwen/qwen3.8-27b"),
+    # 2026-11-20, one sample transcript x3 runs: gpt-oss-120b 3/3 valid, no wrong name; qwen3.8-27b one empty/broken answer.
+    "speakers": ("SPEAKER_SUGGESTER", "AI_SPEAKERS_MODEL", "openai/gpt-oss-120b"),
     "answer": (
         "ANSWERER",
         "AI_ANSWER_MODEL",

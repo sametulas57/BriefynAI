@@ -75,6 +75,9 @@ namespace MeetingWeb.Services
                     {
                         m.Transcript ??= new MeetingTranscript();
                         m.Transcript.Text = ai.Transkript;
+                        m.Transcript.SpeakerSuggestions = ai.KonusmaciOnerileri is { Count: > 0 }
+                            ? JsonSerializer.Serialize(ai.KonusmaciOnerileri)
+                            : null;
                     }
 
                     if (ai is { Success: true, Summary: not null })

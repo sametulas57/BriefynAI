@@ -9,7 +9,12 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 # AI providers live behind small interfaces in providers/; see providers/__init__.py.
-from providers import build_answerer, build_summarizer, build_transcriber
+from providers import (
+    build_answerer,
+    build_speaker_suggester,
+    build_summarizer,
+    build_transcriber,
+)
 from providers.speakers import is_only_hallucinated_captions, parse_vtt
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -21,6 +26,18 @@ def transcribe_audio(path: str, speakers_vtt: str | None = None) -> str:
 
 def generate_meeting_summary(text: str) -> dict:
     return build_summarizer().summarize(text)
+
+
+def suggest_speaker_names(text: str) -> dict:
+    try:
+        return build_speaker_suggester().suggest(text)
+    except Exception:
+        # Provider exceptions may contain transcript data, so omit their details.
+        logging.exception(  # noqa: LOG015 - Keep the configured root logger.
+            "Speaker name suggestions failed; continuing without proposals.",
+            exc_info=False,
+        )
+        return {}
 
 
 # Configure logging for production-level observability
@@ -144,6 +161,9 @@ async def process_meeting(
             raise HTTPException(status_code=422, detail="no_speech")
 
         logging.info("✅ Transcription completed successfully.")  # noqa: LOG015 - Keep the configured root logger.
+        speaker_suggestions = (
+            suggest_speaker_names(transcribed_text) if not speakers_vtt else {}
+        )
 
         # STEP 3: SUMMARIZATION - Extract context and actions via the LLM provider.
         # If only this step fails, the transcript is still returned so the backend can keep it and retry the summary alone.
@@ -162,6 +182,7 @@ async def process_meeting(
                     "success": False,
                     "transkript": transcribed_text,
                     "summary": None,
+                    "konusmaci_onerileri": speaker_suggestions,
                 }
             )
 
@@ -175,6 +196,7 @@ async def process_meeting(
                 "success": True,
                 "transkript": transcribed_text,
                 "summary": summary_result,
+                "konusmaci_onerileri": speaker_suggestions,
             }
         )
 
