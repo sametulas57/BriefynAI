@@ -351,6 +351,23 @@ public class CalendarSyncTests
     }
 
     [Fact]
+    public async Task In_flight_cancellation_is_skipped_by_nested_sync_on_another_scope()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        AddRecord(app);
+        ChangeTask(app, task => task.CompletedAtUtc = Now);
+        mail.OnSend = () =>
+        {
+            mail.OnSend = null;
+            // SQLite shares one connection: finish the nested scope synchronously, on this thread.
+            RunAsync(app).GetAwaiter().GetResult();
+        };
+        await RunAsync(app);
+        Assert.Equal(CalendarMethod.Cancel, Assert.Single(mail.Sent).Method);
+        Assert.False(Record(app).SendPending);
+    }
+
+    [Fact]
     public async Task Stale_pending_request_is_retried_without_increasing_sequence()
     {
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
