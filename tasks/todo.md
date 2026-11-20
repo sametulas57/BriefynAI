@@ -78,7 +78,15 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Dosyalar: `docs/decisions/0015-takvim-daveti.md`, `docs/decisions/README.md`, `docs/raporlar/…`, `Backlog.md`.
 
 ### Kontrol C: bitiş
-- [ ] `scripts/verify.sh` GEÇTİ, CI yeşil.
-- [ ] Spec'teki sekiz başarı ölçütü tek tek işaretlendi.
-- [ ] Elle deneme tablosu dolu (web, yeni Outlook, mobil, Gmail).
-- [ ] `/agent-skills:review` koşuldu (aşama "yayında değil": özellik bitince hatırlatılır).
+- [x] `scripts/verify.sh` GEÇTİ (17fb5c1, .NET 535/535). [ ] CI yeşil: henüz push edilmedi, CI koşmadı.
+- Spec başarı ölçütleri (2026-11-20):
+  - [x] 1. Tek davet; Kabul et ile tüm gün kayıt: Outlook mobilde geçti. Outlook web ve yeni Outlook denenmedi (Ulaş'ın kararı), raporda risk.
+  - [x] 2. Tarih değişince aynı kayıt taşınıyor: Outlook mobilde geçti.
+  - [x] 3. Bitti, atama kaldırma, tarih silme, toplantı silme, ekipten çıkma iptal ediyor: hepsi testte; gerçek Outlook'ta yalnız "bitti" denendi.
+  - [x] 4. Başkasına geçince eskiye iptal, yeniye davet: testte.
+  - [x] 5. Profil'de kapatana otomatik davet yok, düğme çalışıyor: testte ve yerelde; düğme Outlook mobilde.
+  - [ ] 6. İnen dosya Outlook ve Google Takvim'de açılıyor: dosyanın içeriği yerelde doğrulandı, takvime yükleme denenmedi.
+  - [x] 7. Başkasının ya da başka ekibin görevinde düğme ve indirme reddediliyor: WorkspaceBoundaryTests.
+  - [x] 8. verify GEÇTİ; deneme notu `docs/raporlar/2026-11-20-takvim-daveti-deneme.md` (yerel); ADR-0015 yazıldı; Backlog 5'te takvim adımı çıktı.
+- [ ] Elle deneme tablosu: yalnız Outlook mobil dolu; web, yeni Outlook ve Gmail denenmedi.
+- [ ] `/agent-skills:review` koşulmadı (Ulaş'a hatırlatıldı).
