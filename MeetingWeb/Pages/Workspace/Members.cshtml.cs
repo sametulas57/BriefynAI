@@ -1,4 +1,5 @@
 using System.Data;
+using Hangfire;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
@@ -19,9 +20,16 @@ namespace MeetingWeb.Pages.Workspace
 
         private readonly IActiveWorkspaceService _activeWorkspace;
         private readonly IAudioStorage _audioStorage;
+        private readonly ICalendarSyncService _calendar;
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        private readonly ILogger<MembersModel> _logger;
 
-        public MembersModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IActiveWorkspaceService activeWorkspace, IAudioStorage audioStorage)
+        public MembersModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IActiveWorkspaceService activeWorkspace,
+            IAudioStorage audioStorage, ICalendarSyncService calendar, IBackgroundJobClient backgroundJobClient, ILogger<MembersModel> logger)
         {
+            _calendar = calendar;
+            _backgroundJobClient = backgroundJobClient;
+            _logger = logger;
             _activeWorkspace = activeWorkspace;
             _audioStorage = audioStorage;
             _context = context;
@@ -244,6 +252,9 @@ namespace MeetingWeb.Pages.Workspace
                         ((c.Role == WorkspaceRole.Owner && (m.Role == WorkspaceRole.Member || m.Role == WorkspaceRole.Admin)) ||
                          (c.Role == WorkspaceRole.Admin && m.Role == WorkspaceRole.Member))))
                 .ExecuteDeleteAsync();
+            if (removed == 1)
+                foreach (var taskId in await _calendar.InvitedTaskIdsForMemberAsync(activeWorkspaceId!.Value, targetUserId))
+                    _backgroundJobClient.QueueCalendarSync(taskId, _logger);
             TempData[removed == 1 ? "StatusMessage" : "ErrorMessage"] = removed == 1
                 ? "Üye başarıyla ekipten çıkarıldı."
                 : "Üye çıkarılamadı. Ekip üyeliklerini yeniden kontrol edin.";
@@ -337,6 +348,9 @@ namespace MeetingWeb.Pages.Workspace
                     TempData["ErrorMessage"] = "Ekipten ayrılamadınız. Üyeliğinizi yeniden kontrol edin.";
                     return RedirectToPage();
                 }
+
+                foreach (var taskId in await _calendar.InvitedTaskIdsForMemberAsync(activeWorkspaceId!.Value, CurrentUserId))
+                    _backgroundJobClient.QueueCalendarSync(taskId, _logger);
 
                 // Clear session context upon departure.
                 HttpContext.Session.Remove(ActiveWorkspaceService.SessionKey);

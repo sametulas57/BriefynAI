@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
+using Hangfire;
 
 namespace MeetingWeb.Pages
 {
@@ -17,10 +18,17 @@ namespace MeetingWeb.Pages
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAudioStorage _audioStorage;
         private readonly IActiveWorkspaceService _activeWorkspace;
+        private readonly ICalendarSyncService _calendar;
+        private readonly IBackgroundJobClient _backgroundJobClient;
+        private readonly ILogger<HistoryModel> _logger;
 
         public HistoryModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IAudioStorage audioStorage,
-            IActiveWorkspaceService activeWorkspace)
+            IActiveWorkspaceService activeWorkspace, ICalendarSyncService calendar,
+            IBackgroundJobClient backgroundJobClient, ILogger<HistoryModel> logger)
         {
+            _calendar = calendar;
+            _backgroundJobClient = backgroundJobClient;
+            _logger = logger;
             _activeWorkspace = activeWorkspace;
             _context = context;
             _userManager = userManager;
@@ -122,8 +130,10 @@ namespace MeetingWeb.Pages
 
             if (meeting != null)
             {
+                var invitedTaskIds = await _calendar.InvitedTaskIdsForMeetingAsync(meeting.Id);
                 _context.Meetings.Remove(meeting);
                 await _context.SaveChangesAsync();
+                foreach (var taskId in invitedTaskIds) _backgroundJobClient.QueueCalendarSync(taskId, _logger);
                 _audioStorage.Delete(meeting.AudioFileName);
 
                 TempData["StatusMessage"] = "Toplantı özeti kalıcı olarak silindi.";

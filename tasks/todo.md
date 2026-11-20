@@ -59,7 +59,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
 
 ## Aşama 3: Görevin kaybolduğu yollar
 
-- [ ] **Görev 7: Toplantı silme ve ekipten çıkma** (M)
+- [x] **Görev 7: Toplantı silme ve ekipten çıkma** (M)
   - Kabul: `History:PostDelete` silmeden önce o toplantının davetli görevlerini bulup silmeden sonra eşitlemeyi kuyruğa atıyor → iptal gidiyor, satır siliniyor. `Members:PostRemoveMember` ve `PostLeaveWorkspace` o kişinin o ekipteki davetleri için eşitleme atıyor → iptal gidiyor, iptalde görev metni yok.
   - Doğrula: odaklı test.
   - Bağımlılık: 3.
