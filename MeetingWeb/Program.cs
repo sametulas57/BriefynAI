@@ -128,6 +128,7 @@ try
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();
     builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
     builder.Services.AddScoped<IOverdueReminderService, OverdueReminderService>();
+    builder.Services.AddScoped<ICalendarSyncService, CalendarSyncService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddScoped<IMeetingSeriesService, MeetingSeriesService>();
     builder.Services.AddScoped<ISpeakerNamingService, SpeakerNamingService>();

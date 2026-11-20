@@ -9,5 +9,6 @@ namespace MeetingWeb.Services
         Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient);
         Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient);
         Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks);
+        Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method);
     }
 }

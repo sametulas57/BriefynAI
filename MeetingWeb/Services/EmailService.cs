@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using System.Net.Mail;
+using System.Net.Mime;
+using System.Text.RegularExpressions;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using Microsoft.EntityFrameworkCore;
@@ -150,6 +152,42 @@ namespace MeetingWeb.Services
             mail.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(BuildOverdueReminderHtml(fullName, tasks), Encoding.UTF8, "text/html"));
             mail.To.Add(toEmail);
             await smtpClient.SendMailAsync(mail);
+        }
+
+        public async Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method)
+        {
+            using var smtpClient = new SmtpClient(_emailSettings.SmtpServer)
+            {
+                Port = _emailSettings.Port,
+                Credentials = new NetworkCredential(_emailSettings.SenderEmail, _emailSettings.Password),
+                EnableSsl = true
+            };
+            using var message = BuildCalendarMessage(invite, method, _emailSettings.SenderEmail, _emailSettings.SenderName);
+            await smtpClient.SendMailAsync(message);
+        }
+
+        public static MailMessage BuildCalendarMessage(CalendarInviteData invite, CalendarMethod method, string senderEmail, string senderName)
+        {
+            var cancel = method == CalendarMethod.Cancel;
+            var taskSubject = Regex.Replace(invite.TaskText, @"[\r\n\t]+", " ").Trim();
+            if (taskSubject.Length > 80) taskSubject = taskSubject[..80] + "…";
+            var message = new MailMessage
+            {
+                From = new MailAddress(senderEmail, senderName),
+                Subject = cancel ? "Takviminizden kaldırılan görev" : "Görev: " + taskSubject,
+                SubjectEncoding = Encoding.UTF8,
+                HeadersEncoding = Encoding.UTF8,
+                BodyEncoding = Encoding.UTF8,
+                IsBodyHtml = false,
+                Body = cancel
+                    ? "Briefyn'deki bir görev takviminizden kaldırıldı. Görev bitmiş, başkasına verilmiş ya da son tarihi kaldırılmış olabilir.\n\nBriefyn AI"
+                    : $"{invite.TaskText}\nSon tarih: {invite.DueDate.ToString("d MMMM yyyy", DisplayTime.Culture)}\n\nBu görevi takviminize eklemek için daveti kabul edin.\n\nBriefyn AI"
+            };
+            message.To.Add(invite.AttendeeEmail);
+            message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(
+                CalendarInviteBuilder.Build(invite, method),
+                new ContentType("text/calendar; method=" + (cancel ? "CANCEL" : "REQUEST") + "; charset=UTF-8")));
+            return message;
         }
 
         public static string BuildOverdueReminderText(string fullName, IReadOnlyList<OverdueTask> tasks)

@@ -177,6 +177,7 @@ public class OverdueReminderTests
         public List<(string Address, string Name, IReadOnlyList<OverdueTask> Tasks)> Sent { get; } = [];
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
+        public Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks)
         {
             Sent.Add((toEmail, fullName, tasks));
