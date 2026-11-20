@@ -1,19 +1,19 @@
 # Backlog
 
-Açık işler ve planlanan özellikler. Sıradaki iş buradan seçilir; o anki iş `SPEC.md` ve `tasks/`'ta yürür, bitince maddesi buradan çıkarılır. Bitenler git geçmişinde, kalıcı kararlar `docs/decisions/`'da, kısıtlar `AGENTS.md`'de.
+Yapılacak her iş burada, tek listede, önem sırasıyla. Sıradaki iş en üstten seçilir; o anki iş `SPEC.md` ve `tasks/`'ta yürür, bitince maddesi buradan çıkarılır. Yeni iş listenin sonuna eklenir; sırayı Ulaş değiştirir. Bitenler git geçmişinde, kalıcı kararlar `docs/decisions/`'da, kısıtlar `AGENTS.md`'de.
 
-## Açık işler (sırayla)
-1. **Yayına kalanlar:** yayın öncesi gizli anahtarların yenilenmesi, mail alan adı, prod compose, KVKK metinleri ve standart sözleşme, Microsoft for Startups Founders Hub başvurusu (yayından hemen önce; kredi 90 gün), **Zoom Aşama 3** (Marketplace beta onayı, başka hesapların bağlanabilmesi; kalıcı herkese açık adres ve gizlilik metni gerektirdiği için yayınla birlikte, Ulaş 2026-10-22).
-2. **Ertelenen özellik:** yüklenen dosyada konuşmacı ayırma (Groq Whisper desteklemiyor; yayında Azure Speech ile). Zoom'dan alınan kayıtta adlar 1b ile geliyor.
-3. **Sonra (küçük işler incelemesi, 2026-10-22):** avatar yalnız JPEG imzasına bakıyor; imzalı bozuk dosya kabul edilir (yalnız kişinin kendi fotoğrafı bozuk görünür, resim olarak sunulduğu için kod çalışmaz). İstenirse görüntüyü açıp doğrulamak ya da `X-Content-Type-Options: nosniff`. İpucu yankısı süzgeci, ipucundaki 6+ terimi tam o sırayla söyleyen gerçek sözü de siler (çok düşük olasılık).
-4. **Sonra (seriler işi, 2026-10-22):** sabit tünel seçildi (Ulaş, 2026-10-22): ngrok ücretsiz sabit adres; adres yalnız `.env`'de (`ZOOM_REDIRECT_URI`). Kalan (Ulaş): Marketplace'teki üç adres, ilk denemede Zoom'u yeniden bağlama. Tarif `docs/raporlar/2026-10-22-sabit-tunel.md`; alan adı alınınca Cloudflare adlı tünel. Seriler işinin kapsam dışı bıraktıkları (takvimli gündem e-postası, "bitti denenleri kapat" önerisi, seriler arası birleştirme vb.).
-5. **Azure (Ulaş, 2026-11-17):** Azure for Students hesabı alındı. Briefyn'de kullanılıp kullanılmayacağı (yalnız Speech mi) Ulaş'ın zamanı olunca denenip karar verilecek.
-6. **Taze göz ve kırıcı ajan denemesi (2026-11-12):** ikisi de yazıldı, Briefyn'de hiç denenmedi (taze göz: uygulamayı ilk kez gören kullanıcı gibi tarayıcıdan kullanır; kırıcı: verinin kopyasında bozmaya çalışır). Önce netleşecek: taze göz kayıt mı olur, test hesabıyla mı girer; hangi ses dosyasını yükler (`.taze-goz/` içine konur); AI motorunun bir koşudaki maliyeti; kırıcı ajan için Docker yığınında ayrı test veritabanı (yoksa ajan durur).
-
-- **Sonra (doğrulama betikleri incelemesi, 2026-11-09):** `.githooks/pre-commit` önerisi `git stash -u --keep-index` olmalı (izlenmeyen dosya kalınca hook yine kalıyor); `scripts/verify.sh` pytest süzgeci `xfailed`'ı da hata sayıyor; `--hash` boş dönerse damga kontrolsüz basılıyor, boşsa KALDI demeli; yeni klonda `ai_engine/.venv` kurulumu AGENTS.md'de yazmıyor.
-- **Sonra (arşive soru sor, 2026-10-24):** sonradan değişen kararda aramanın yeni kararı öne alması (Q06); henüz olmamış olayın "sonucu" sorusu için istem kuralı (Q44); uzun tek konuşmacı satırı bölününce konuşmacı adının sonraki parçaya taşınması; işlem onayı her commit'te indeks neslini artırıyor (performans); ad önceliği önek eşleşmesi ("Ali" ~ "alışveriş").
-
-## Planlanan büyük özellikler (Ulaş, 2026-10-21; her biri `/spec` ile başlar)
-1. **Dış araçlara aktarma:** öncelik takvim. En yaygın iki takvim Google Takvim ve Outlook / Microsoft 365. İlk adım hesap bağlamadan: tarihli aksiyon için `.ics` dosyası (ikisi de açar) + "Google Takvim'e ekle" bağlantısı. Sonra Slack/Teams'e özet, Trello/Jira'ya aksiyon.
-2. **Konuşmacı ayırma:** yukarıdaki ertelenen iş. Ucuz yol adayı: Zoom bulut kaydının kendi dökümü konuşmacı adı taşıyabilir; Zoom araştırmasında bakılır.
-3. **Arayüz yenileme (2026-10-25):** karar bekliyor (Ulaş): bileşen kütüphanesi ve arayüz yönü (sade, sıcak ya da koyu). Öneri Tailwind v4 + daisyUI 5: HTML sınıflarıyla çalıştığı için Razor Pages'e uyar, React gerektirmez; Tailwind eklemek gerekir.
+1. **Yayın hazırlığı:**
+   - gizli anahtarların yenilenmesi;
+   - alan adı (site ve mail). Alınınca yerel Zoom denemeleri ngrok'tan Cloudflare adlı tünele geçer; tarif `docs/raporlar/2026-10-22-sabit-tunel.md`;
+   - prod compose (bugün yalnız `docker-compose.yml` var);
+   - KVKK aydınlatma metni ve kullanım sözleşmesi. `Privacy` sayfasındaki metin taslak, hukuken gözden geçirilmiş metinle değişmeli;
+   - Zoom Aşama 3: Marketplace beta onayı, başka hesapların bağlanabilmesi. Herkese açık kalıcı adres ve gizlilik metni gerektirdiği için yayınla birlikte (Ulaş, 2026-10-22);
+   - Microsoft for Startups Founders Hub başvurusu, yayından hemen önce (kredi 90 gün).
+2. **Konuşmacı ayırma** (`/spec` ile başlar): yüklenen dosyada kim ne dedi ayrılmıyor; Groq Whisper desteklemiyor. Zoom'dan alınan kayıtta adlar zaten geliyor. Adaylar: Azure Speech (Azure for Students hesabı var, 2026-11-17; yalnız Speech için mi kullanılacağına Ulaş deneyip karar verecek) ya da Zoom bulut kaydının kendi dökümü.
+3. **Taze göz ve kırıcı ajan denemesi:** ikisi de yazıldı, Briefyn'de hiç denenmedi. Önce netleşecek: taze göz kayıt mı olur, test hesabıyla mı girer; hangi ses dosyasını yükler (`.taze-goz/` içine konur); AI motorunun bir koşudaki maliyeti; kırıcı ajan için Docker yığınında ayrı test veritabanı (yoksa ajan durur).
+4. **Arayüz yenileme** (`/spec` ile başlar): karar bekliyor (Ulaş): bileşen kütüphanesi ve görünüm yönü (sade, sıcak ya da koyu). Öneri Tailwind v4 + daisyUI 5: HTML sınıflarıyla çalıştığı için Razor Pages'e uyar, React gerektirmez; Tailwind eklemek gerekir.
+5. **Dış araçlara aktarma** (`/spec` ile başlar): öncelik takvim (Google Takvim ve Outlook / Microsoft 365). İlk adım hesap bağlamadan: tarihli aksiyon için `.ics` dosyası (ikisi de açar) ve "Google Takvim'e ekle" bağlantısı. Sonra Slack/Teams'e özet, Trello/Jira'ya aksiyon.
+6. **Arşive soru sor doğruluğu:**
+   - kararı sonradan değişen konuda arama eski kararı öne alabiliyor (altın soru Q06);
+   - henüz olmamış bir olayın "sonucu" sorulunca cevap uydurmaması için istem kuralı (Q44);
+   - uzun tek konuşmacı satırı bölününce konuşmacı adı sonraki parçaya taşınmıyor.
