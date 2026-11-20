@@ -1,6 +1,6 @@
 """AI providers behind small interfaces, so swapping a vendor touches one module (modular architecture).
 
-TRANSCRIBER / SUMMARIZER / ANSWERER environment variables choose the implementation; today only "groq" exists.
+TRANSCRIBER selects "groq" (default) or "azure"; SUMMARIZER / ANSWERER select chat providers.
 Chat models go through llm.build_llm (ADR-0014).
 """
 
@@ -18,14 +18,28 @@ def _groq_client() -> GroqClient:
     return GroqClient(key)
 
 
-def build_transcriber():
-    kind = os.getenv("TRANSCRIBER", "groq")
+def build_transcriber(kind: str | None = None):
+    kind = kind or os.getenv("TRANSCRIBER") or "groq"
     if kind == "groq":
         from .groq_transcriber import GroqTranscriber
 
         return GroqTranscriber(
             _groq_client(),
             model=os.getenv("AI_TRANSCRIBE_MODEL", TRANSCRIBE_MODEL_DEFAULT),
+        )
+    if kind == "azure":
+        from .azure_transcriber import AzureTranscriber
+
+        key = os.getenv("AZURE_SPEECH_KEY", "")
+        if not key:
+            raise RuntimeError("AZURE_SPEECH_KEY is not set")
+        endpoint = os.getenv("AZURE_SPEECH_ENDPOINT", "")
+        if not endpoint:
+            raise RuntimeError("AZURE_SPEECH_ENDPOINT is not set")
+        return AzureTranscriber(
+            endpoint,
+            key,
+            max_speakers=int(os.getenv("AZURE_SPEECH_MAX_SPEAKERS", "10")),
         )
     raise RuntimeError(f"Unknown TRANSCRIBER: {kind}")
 
