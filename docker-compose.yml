@@ -81,6 +81,10 @@ services:
     environment:
       # Faz 2: yazıya dökme ve özet Groq'ta (ZDR Groq panelinden açılır). Anahtar .env'deki GROQ_KEY.
       - GROQ_API_KEY=${GROQ_KEY}
+      # Yazıya dökme: boş ya da groq = Groq; azure = yüklenen dosyalar Azure Speech'te (konuşmacı ayırma). Zoom kayıtları her durumda Groq + Zoom'un adları.
+      - TRANSCRIBER=${TRANSCRIBER:-groq}
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY:-}
+      - AZURE_SPEECH_ENDPOINT=${AZURE_SPEECH_ENDPOINT:-}
       # Paylaşılan anahtar .env'den gelir; yoksa servis her isteği reddeder (503).
       - AI_ENGINE_API_KEY=${AI_ENGINE_API_KEY}
       # Arşive soru sor (ADR-0014): boşsa koddaki varsayılan (providers/llm.py). Model değişimi yalnız .env'den.

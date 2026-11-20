@@ -8,14 +8,15 @@ import uvicorn
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
-# AI providers (Groq today) live behind small interfaces in providers/; see providers/__init__.py.
+# AI providers live behind small interfaces in providers/; see providers/__init__.py.
 from providers import build_answerer, build_summarizer, build_transcriber
 from providers.speakers import is_only_hallucinated_captions, parse_vtt
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def transcribe_audio(path: str, speakers_vtt: str | None = None) -> str:
-    return build_transcriber().transcribe(path, speakers_vtt)
+    transcriber = build_transcriber("groq") if speakers_vtt else build_transcriber()
+    return transcriber.transcribe(path, speakers_vtt)
 
 
 def generate_meeting_summary(text: str) -> dict:
@@ -102,7 +103,7 @@ async def process_meeting(
     """
     Primary orchestration endpoint:
     1) Receives audio binary via multipart/form-data.
-    2) Transcribes audio with the configured provider (Groq Whisper, see providers/).
+    2) Transcribes audio with Groq Whisper, or Azure for uploads when TRANSCRIBER=azure (see providers/).
     3) Summarizes the transcript with the configured LLM provider.
     4) Returns structured JSON to the .NET Backend.
     """
