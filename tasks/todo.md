@@ -51,8 +51,11 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Dosyalar: `MeetingWeb/Pages/Profile/Index.cshtml`, `MeetingWeb/Pages/Profile/Index.cshtml.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs`.
 
 ### Kontrol B
-- [ ] `scripts/verify.sh` GEÇTİ.
-- [ ] Ekranda: düğme, indirme ve anahtar görünüyor, metinler sade Türkçe; düğmeyle gelen davet Outlook web'de mevcut kaydı güncelliyor, ikinci kayıt açmıyor.
+- [x] `scripts/verify.sh` GEÇTİ (bf4ca0c, .NET 514/514; a3422bf, 515/515).
+- [x] Ekranda (yerel, test hesabı, 2026-11-20): Bana Atananlar'da iki düğme masaüstünde görev bilgisinin altında, 375 piksel genişlikte alt alta; Profil'de anahtar ve açıklaması görünüyor; metinler sade Türkçe. Anahtar kapalıyken tarihli atamada davet gitmedi. İnen dosya `METHOD:PUBLISH`, katılımcı satırı yok, Türkçe harfler bölünmeden katlanmış, aynı kimlikle kayıt oluştu.
+- [x] Outlook mobil (iOS, Ulaş): yeniden açılan görev için yeni davet geldi; "Takvimime gönder" iki kez gönderildi (sıra no 4, 5), Outlook ikisini de 30 Kasım'daki mevcut kayda işledi, ikinci kayıt açılmadı.
+  - Not: Outlook kabul edilen davet mailini ve mevcut kayda gelen güncellemeyi kendisi kaldırıp Silinmiş Öğeler'e koyuyor; kullanıcı "mail gelmedi" sanabilir (Ulaş da öyle sandı). Rapora yazılır (görev 9).
+  - Düğmeyle giden davetin konusu ayrı: "Takviminiz için yeniden: …" (a3422bf; Ulaş istedi, kalsın).
 
 ## Aşama 3: Görevin kaybolduğu yollar
 

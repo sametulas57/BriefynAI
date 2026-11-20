@@ -65,8 +65,7 @@ public class CalendarSyncTests
         Assert.Equal("Görev: " + new string('a', 80) + "…", message.Subject);
     }
 
-    // Outlook files a message with the same subject into the conversation the person deleted (seen 2026-11-20 on
-    // Outlook mobile), so the "Takvimime gönder" invite gets a subject of its own.
+    // The "Takvimime gönder" invite gets a subject of its own, so it reads apart from the first invite.
     [Fact]
     public void Message_subject_of_a_resent_invite_differs_from_the_first_invite()
     {
