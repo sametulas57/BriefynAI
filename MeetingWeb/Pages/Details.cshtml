@@ -59,6 +59,23 @@
         scroll-behavior: smooth;
     }
 
+    /* Speaker naming: the first sentence reads as a quote, the guess sits inside the name field */
+    .speaker-first-line { font-style: italic; overflow-wrap: anywhere; }
+    .speaker-first-line::before { content: "“"; }
+    .speaker-first-line::after { content: "”"; }
+    .speaker-guess-badge {
+        position: absolute; top: 50%; right: 0.4rem; transform: translateY(-50%);
+        font-size: 0.7rem; pointer-events: none;
+    }
+    .speaker-name-input[data-suggested="true"] { padding-right: 5.25rem !important; }
+    .speaker-suggestion { color: #6c757d; }
+    /* Without a reason the line only repeats the badge; keep it for screen readers only */
+    .speaker-suggestion[data-reasonless] { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .speaker-merge-note:empty { display: none; }
+    @@media (min-width: 576px) {
+        .speaker-row-notes { padding-left: calc(7.5rem + 0.5rem + 0.75rem); }
+    }
+
     /* Custom Checkbox override */
     .form-check-input:checked {
         background-color: #198754;
@@ -466,22 +483,52 @@
         <details class="soft-card mt-5 p-4">
             <summary class="fw-bold text-dark" style="cursor: pointer;"><i class="bi bi-file-text me-2 text-primary"></i>Toplantı dökümü</summary>
             <p class="text-muted small mt-2 mb-3">Kaydın otomatik yazıya dökülmüş hâli. Küçük yazım hataları olabilir.</p>
-            @if (Model.SpeakerLabels.Count > 0)
+            @if (Model.SpeakerRows.Count > 0)
             {
-                <form method="post" asp-page-handler="NameSpeakers" class="p-3 bg-soft-light mb-4" style="border-radius: 1.25rem;">
+                var hasSpeakerGuesses = Model.SpeakerRows.Any(r => r.SuggestedName != null);
+                <form id="speaker-naming-form" method="post" asp-page-handler="NameSpeakers" class="p-3 bg-soft-light mb-4" style="border-radius: 1.25rem;">
                     <input type="hidden" name="meetingId" value="@Model.Meeting.Id" />
                     <p id="speaker-naming-hint" class="small text-muted d-flex align-items-start gap-2 mb-3">
                         <i class="bi bi-people text-primary flex-shrink-0" aria-hidden="true"></i>
-                        <span>Konuşmacıların kim olduğunu yazın; döküm ve özet bu adlarla güncellenir, elle eklenenler ile atanmış ya da tamamlanmış görevler korunur. Bilmediğinizi boş bırakın.</span>
+                        <span>Her konuşmacının kim olduğunu yazın; döküm ve özet bu adlarla güncellenir. Bilmediğinizi boş bırakın. Aynı kişi iki numarayla görünüyorsa ikisine de aynı adı yazın, satırları birleşir.</span>
                     </p>
-                    <div class="d-grid gap-2">
-                        @for (var i = 0; i < Model.SpeakerLabels.Count; i++)
+                    <div class="d-grid gap-3">
+                        @for (var i = 0; i < Model.SpeakerRows.Count; i++)
                         {
-                            var label = Model.SpeakerLabels[i];
-                            <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-1 gap-sm-2">
-                                <label for="speaker-name-@i" class="badge rounded-pill bg-soft-primary text-primary fw-medium px-3 py-2 mb-0 text-start align-self-start align-self-sm-center flex-shrink-0" style="min-width: 7.5rem; font-size: 0.8rem;">@label</label>
-                                <input type="hidden" name="labels" value="@label" />
-                                <input type="text" id="speaker-name-@i" name="names" maxlength="60" list="speaker-member-names" autocomplete="off" aria-describedby="speaker-naming-hint" class="form-control border-0 bg-white rounded-pill px-3 small flex-grow-1" placeholder="Adı yazın" style="height: 38px;" />
+                            var row = Model.SpeakerRows[i];
+                            var describedBy = $"speaker-naming-hint speaker-first-line-{i}" + (row.SuggestedName != null ? $" speaker-guess-{i}" : "") + (row.Reason != null ? $" speaker-suggestion-{i}" : "") + $" speaker-merge-{i}";
+                            <div class="speaker-row" data-label="@row.Label">
+                                <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-1 gap-sm-2">
+                                    <label for="speaker-name-@i" class="badge rounded-pill bg-soft-primary text-primary fw-medium px-3 py-2 mb-0 text-start align-self-start align-self-sm-center flex-shrink-0" style="min-width: 7.5rem; font-size: 0.8rem;">@row.Label</label>
+                                    <input type="hidden" name="labels" value="@row.Label" />
+                                    <div class="position-relative flex-grow-1">
+                                        @if (row.SuggestedName != null)
+                                        {
+                                            <input type="text" id="speaker-name-@i" name="names" maxlength="60" list="speaker-member-names" value="@row.SuggestedName" data-suggested="true" autocomplete="off" aria-describedby="@describedBy" class="speaker-name-input form-control border-0 bg-white rounded-pill px-3 small w-100" placeholder="Adı yazın" style="height: 38px;" />
+                                            <span id="speaker-guess-@i" class="speaker-guess-badge badge rounded-pill bg-soft-warning fw-medium px-2 py-1"><i class="bi bi-stars me-1" aria-hidden="true"></i>Tahmin</span>
+                                        }
+                                        else
+                                        {
+                                            <input type="text" id="speaker-name-@i" name="names" maxlength="60" list="speaker-member-names" value="" autocomplete="off" aria-describedby="@describedBy" class="speaker-name-input form-control border-0 bg-white rounded-pill px-3 small w-100" placeholder="Adı yazın" style="height: 38px;" />
+                                        }
+                                    </div>
+                                </div>
+                                <div class="speaker-row-notes mt-1 d-grid gap-1">
+                                    <div id="speaker-first-line-@i" class="speaker-first-line small text-muted">@row.FirstLine</div>
+                                    @if (row.SuggestedName != null)
+                                    {
+                                        @* A plain bool attribute renders as "False" and still matches the CSS selector, so it is written only when needed. *@
+                                        if (row.Reason == null)
+                                        {
+                                            <div id="speaker-suggestion-@i" data-reasonless class="speaker-suggestion small">Tahmin</div>
+                                        }
+                                        else
+                                        {
+                                            <div id="speaker-suggestion-@i" class="speaker-suggestion small">Tahmin: @row.Reason</div>
+                                        }
+                                    }
+                                    <div id="speaker-merge-@i" class="speaker-merge-note small text-primary" aria-live="polite"></div>
+                                </div>
                             </div>
                         }
                     </div>
@@ -491,10 +538,64 @@
                             <option value="@fullName"></option>
                         }
                     </datalist>
-                    <div class="d-grid d-sm-flex justify-content-sm-end mt-3">
-                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Adları kaydet</button>
+                    <div class="d-grid d-sm-flex align-items-sm-center justify-content-sm-end gap-2 mt-3">
+                        @if (hasSpeakerGuesses)
+                        {
+                            <span id="speaker-guess-save-note" class="small text-muted text-center text-sm-end">Tahminler siz kaydedene kadar uygulanmaz.</span>
+                        }
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold flex-shrink-0"><i class="bi bi-check2 me-1" aria-hidden="true"></i>Adları kaydet</button>
                     </div>
                 </form>
+                <script>
+                    (function () {
+                        const form = document.getElementById('speaker-naming-form');
+                        if (!form) return;
+                        const rows = Array.from(form.querySelectorAll('.speaker-row')).map(function (el) {
+                            const input = el.querySelector('input[name="names"]');
+                            return {
+                                label: el.dataset.label,
+                                input: input,
+                                guess: input.dataset.suggested === 'true' ? input.value.trim().toLocaleLowerCase('tr') : null,
+                                badge: el.querySelector('.speaker-guess-badge'),
+                                reason: el.querySelector('.speaker-suggestion'),
+                                merge: el.querySelector('.speaker-merge-note'),
+                                baseDescribedBy: (input.getAttribute('aria-describedby') || '').split(' ')
+                            };
+                        });
+                        const saveNote = document.getElementById('speaker-guess-save-note');
+                        const key = function (row) { return row.input.value.trim().toLocaleLowerCase('tr'); };
+                        const joinLabels = function (labels) {
+                            return labels.length === 1 ? labels[0] : labels.slice(0, -1).join(', ') + ' ve ' + labels[labels.length - 1];
+                        };
+
+                        function refreshGuess(row) {
+                            if (row.guess === null) return;
+                            const stillGuess = key(row) === row.guess;
+                            row.badge.classList.toggle('d-none', !stillGuess);
+                            if (row.reason) row.reason.classList.toggle('d-none', !stillGuess);
+                            if (stillGuess) row.input.dataset.suggested = 'true';
+                            else delete row.input.dataset.suggested;
+                            const hiddenIds = stillGuess ? [] : [row.badge.id, row.reason && row.reason.id];
+                            row.input.setAttribute('aria-describedby', row.baseDescribedBy.filter(function (id) { return hiddenIds.indexOf(id) === -1; }).join(' '));
+                        }
+
+                        function refreshMerges() {
+                            rows.forEach(function (row) {
+                                const name = key(row);
+                                const others = name ? rows.filter(function (o) { return o !== row && key(o) === name; }).map(function (o) { return o.label; }) : [];
+                                const text = others.length ? joinLabels(others) + ' ile aynı kişi sayılacak; satırları birleşir.' : '';
+                                if (row.merge.textContent !== text) row.merge.textContent = text;
+                            });
+                            if (saveNote) saveNote.classList.toggle('d-none', !rows.some(function (r) { return r.guess !== null && key(r) === r.guess; }));
+                        }
+
+                        rows.forEach(function (row) {
+                            refreshGuess(row);
+                            row.input.addEventListener('input', function () { refreshGuess(row); refreshMerges(); });
+                        });
+                        refreshMerges();
+                    })();
+                </script>
             }
             <div class="text-dark" style="white-space: pre-wrap; line-height: 1.7;">@Model.Meeting.Transcript.Text</div>
         </details>

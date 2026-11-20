@@ -11,9 +11,21 @@ namespace MeetingWeb.Models
         [JsonPropertyName("transkript")]
         public string Transkript { get; set; } = string.Empty;
 
+        [JsonPropertyName("konusmaci_onerileri")]
+        public Dictionary<string, AiSpeakerSuggestion>? KonusmaciOnerileri { get; set; }
+
         // Null when the summary step failed; the transcript may still be present (Faz 2).
         [JsonPropertyName("summary")]
         public AiSummaryData? Summary { get; set; }
+    }
+
+    public class AiSpeakerSuggestion
+    {
+        [JsonPropertyName("ad")]
+        public string? Ad { get; set; }
+
+        [JsonPropertyName("gerekce")]
+        public string? Gerekce { get; set; }
     }
 
     // Nested DTO encapsulating the structured AI extraction results.

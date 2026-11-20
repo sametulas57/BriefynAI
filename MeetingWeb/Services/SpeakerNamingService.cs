@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Hangfire;
 using MeetingWeb.Data;
@@ -15,6 +16,8 @@ public interface ISpeakerNamingService
 
 public class SpeakerNamingService : ISpeakerNamingService
 {
+    public sealed record SpeakerRow(string Label, string FirstLine, string? SuggestedName, string? Reason);
+
     public const int MaxNameLength = 60;
     private static readonly Regex LabelPattern = new(@"^Konuşmacı \d+(?=: )", RegexOptions.Multiline | RegexOptions.Compiled);
     private static readonly Regex WhitespacePattern = new(@"\s+", RegexOptions.Compiled);
@@ -32,6 +35,50 @@ public class SpeakerNamingService : ISpeakerNamingService
     public static IReadOnlyList<string> Labels(string? transcript) =>
         LabelPattern.Matches(transcript ?? "").Select(m => m.Value).Distinct(StringComparer.Ordinal).ToArray();
 
+    public static IReadOnlyList<SpeakerRow> Rows(string? transcript, string? suggestionsJson)
+    {
+        Dictionary<string, AiSpeakerSuggestion>? suggestions = null;
+        if (!string.IsNullOrWhiteSpace(suggestionsJson))
+        {
+            try { suggestions = JsonSerializer.Deserialize<Dictionary<string, AiSpeakerSuggestion>>(suggestionsJson); }
+            catch (JsonException) { /* Suggestions are optional; a malformed value must not prevent naming speakers. */ }
+        }
+
+        var rows = new List<SpeakerRow>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match match in LabelPattern.Matches(transcript ?? ""))
+        {
+            if (!seen.Add(match.Value)) continue;
+            var start = match.Index + match.Length + 2;
+            var end = transcript!.IndexOfAny(['\r', '\n'], start);
+            var firstLine = transcript[start..(end < 0 ? transcript.Length : end)];
+            var sentenceEnd = firstLine.IndexOfAny(['.', '?', '!', '…']);
+            if (sentenceEnd >= 0 && sentenceEnd < 140) firstLine = firstLine[..(sentenceEnd + 1)];
+            else if (firstLine.Length > 140) firstLine = firstLine[..140] + "…";
+
+            string? name = null;
+            string? reason = null;
+            if (suggestions != null && suggestions.TryGetValue(match.Value, out var suggestion)
+                && TryNormalizeName(suggestion?.Ad, out var normalized))
+            {
+                name = normalized;
+                reason = suggestion!.Gerekce?.Trim();
+                reason = string.IsNullOrEmpty(reason) ? null : reason[..Math.Min(reason.Length, 200)];
+            }
+            rows.Add(new SpeakerRow(match.Value, firstLine, name, reason));
+        }
+        return rows;
+    }
+
+    private static bool TryNormalizeName(string? input, out string name)
+    {
+        name = input?.Trim() ?? "";
+        // Check before collapsing whitespace so embedded tabs/newlines cannot hide control characters.
+        if (string.IsNullOrWhiteSpace(name) || name.Contains(':') || name.Any(char.IsControl)) return false;
+        name = WhitespacePattern.Replace(name, " ");
+        return name.Length <= MaxNameLength;
+    }
+
     public async Task<SpeakerNamingResult> RenameAsync(string? userId, int meetingId, IReadOnlyList<string> labels, IReadOnlyList<string> names)
     {
         if (!await _access.CanAccessMeetingAsync(userId, meetingId)) return SpeakerNamingResult.NotFound;
@@ -42,12 +89,8 @@ public class SpeakerNamingService : ISpeakerNamingService
         var replacements = new Dictionary<string, string>(StringComparer.Ordinal);
         for (var i = 0; i < Math.Min(labels.Count, names.Count); i++)
         {
-            var name = names[i]?.Trim();
-            if (string.IsNullOrWhiteSpace(name) || !available.Contains(labels[i])) continue;
-            // Check before collapsing whitespace so embedded tabs/newlines cannot hide control characters.
-            if (name.Contains(':') || name.Any(char.IsControl)) return SpeakerNamingResult.InvalidName;
-            name = WhitespacePattern.Replace(name, " ");
-            if (name.Length > MaxNameLength) return SpeakerNamingResult.InvalidName;
+            if (string.IsNullOrWhiteSpace(names[i]) || !available.Contains(labels[i])) continue;
+            if (!TryNormalizeName(names[i], out var name)) return SpeakerNamingResult.InvalidName;
             replacements[labels[i]] = name;
         }
         if (replacements.Count == 0) return SpeakerNamingResult.NothingToRename;
@@ -66,6 +109,12 @@ public class SpeakerNamingService : ISpeakerNamingService
         {
             meeting.Transcript!.Text = LabelPattern.Replace(meeting.Transcript.Text,
                 match => replacements.TryGetValue(match.Value, out var name) ? name : match.Value);
+            var appliedNames = string.Join("|", replacements.Values.Distinct(StringComparer.Ordinal).Select(Regex.Escape));
+            meeting.Transcript.Text = Regex.Replace(meeting.Transcript.Text,
+                @"^(?<name>" + appliedNames + @"): [^\r\n]*(?:\r?\n\k<name>: [^\r\n]*)+",
+                match => match.Value.Replace("\r\n" + match.Groups["name"].Value + ": ", " ", StringComparison.Ordinal)
+                    .Replace("\n" + match.Groups["name"].Value + ": ", " ", StringComparison.Ordinal),
+                RegexOptions.Multiline);
             await _db.SaveChangesAsync();
         }
         catch

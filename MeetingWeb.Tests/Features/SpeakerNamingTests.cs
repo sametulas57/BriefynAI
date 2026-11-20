@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
@@ -25,7 +26,7 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
 
     public SpeakerNamingTests(SpeakerNamingFixture fixture) => _app = fixture.Factory;
 
-    private int NewMeeting(MeetingStatus status = MeetingStatus.Completed, string? transcript = Transcript) => _app.WithDb(db =>
+    private int NewMeeting(MeetingStatus status = MeetingStatus.Completed, string? transcript = Transcript, string? suggestions = null) => _app.WithDb(db =>
     {
         var meeting = new Meeting
         {
@@ -33,7 +34,7 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
             Title = "konuşmacı adları testi",
             Status = status,
             FailureReason = status == MeetingStatus.Failed ? MeetingFailureReason.NoSpeech : null,
-            Transcript = transcript == null ? null : new MeetingTranscript { Text = transcript }
+            Transcript = transcript == null ? null : new MeetingTranscript { Text = transcript, SpeakerSuggestions = suggestions }
         };
         db.Meetings.Add(meeting);
         db.SaveChanges();
@@ -74,6 +75,180 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
             "Konuşmacı 2: Merhaba.\r\nKonuşmacı 1: Cümlede Konuşmacı 3: geçiyor.\nKonuşmacı 2: Yine ben.\n Konuşmacı 4: girintili\nKonuşmacı 5:boşluksuz"));
         Assert.Empty(SpeakerNamingService.Labels("Herkese günaydın."));
         Assert.Empty(SpeakerNamingService.Labels(null));
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData("?")]
+    [InlineData("!")]
+    [InlineData("…")]
+    public void Rows_use_first_turn_and_stop_at_the_first_sentence(string punctuation)
+    {
+        var rows = SpeakerNamingService.Rows($"Konuşmacı 2: İlk cümle{punctuation} İkinci cümle.\r\nKonuşmacı 1: Merhaba\nKonuşmacı 2: Sonraki tur.", null);
+
+        Assert.Equal(new[] { "Konuşmacı 2", "Konuşmacı 1" }, rows.Select(r => r.Label));
+        Assert.Equal("İlk cümle" + punctuation, rows[0].FirstLine);
+        Assert.Equal("Merhaba", rows[1].FirstLine);
+        Assert.Null(rows[0].SuggestedName);
+    }
+
+    [Fact]
+    public void Rows_truncate_a_long_first_turn_at_140_characters()
+    {
+        var row = Assert.Single(SpeakerNamingService.Rows("Konuşmacı 1: " + new string('a', 150) + ".", null));
+
+        Assert.Equal(new string('a', 140) + "…", row.FirstLine);
+    }
+
+    [Fact]
+    public void Rows_normalize_suggestions_and_limit_trimmed_reasons()
+    {
+        var json = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["Konuşmacı 1"] = new { ad = "  Murat   Yılmaz  ", gerekce = "  " + new string('a', 210) + "  " },
+            ["Konuşmacı 2"] = new { ad = new string('b', SpeakerNamingService.MaxNameLength), gerekce = "  " }
+        });
+
+        var rows = SpeakerNamingService.Rows(Transcript, json);
+
+        Assert.Equal("Murat Yılmaz", rows[0].SuggestedName);
+        Assert.Equal(new string('a', 200), rows[0].Reason);
+        Assert.Equal(new string('b', SpeakerNamingService.MaxNameLength), rows[1].SuggestedName);
+        Assert.Null(rows[1].Reason);
+    }
+
+    [Theory]
+    [InlineData("Murat: Bey")]
+    [InlineData("Murat\u0001")]
+    [InlineData("Murat\nYılmaz")]
+    [InlineData("Murat\tYılmaz")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    [InlineData("  ")]
+    public void Rows_ignore_suggestions_with_invalid_names(string name)
+    {
+        var json = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["Konuşmacı 1"] = new { ad = name, gerekce = "Bir gerekçe" }
+        });
+
+        var row = Assert.Single(SpeakerNamingService.Rows("Konuşmacı 1: Merhaba.", json));
+
+        Assert.Null(row.SuggestedName);
+        Assert.Null(row.Reason);
+    }
+
+    [Fact]
+    public void Rows_ignore_suggestions_for_labels_no_longer_present()
+    {
+        var rows = SpeakerNamingService.Rows("Murat: Merhaba.\nKonuşmacı 2: Selam.",
+            """{"Konuşmacı 1":{"ad":"Murat","gerekce":"Adıyla hitap ediliyor."}}""");
+
+        var row = Assert.Single(rows);
+        Assert.Equal("Konuşmacı 2", row.Label);
+        Assert.Null(row.SuggestedName);
+        Assert.Empty(SpeakerNamingService.Rows(null, "{}"));
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("[]")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"Konuşmacı 1\":null}")]
+    [InlineData("{\"Konuşmacı 1\":{\"ad\":123}}")]
+    public void Rows_ignore_invalid_or_empty_suggestion_json(string json)
+    {
+        var rows = SpeakerNamingService.Rows(Transcript, json);
+
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.Null(row.SuggestedName));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Processing_upload_stores_suggestions_alongside_the_transcript(bool summarySucceeds)
+    {
+        var audio = Guid.NewGuid().ToString("N") + ".m4a";
+        await File.WriteAllBytesAsync(Path.Combine(_app.AudioRoot, audio), new byte[] { 1 });
+        var id = NewMeeting(MeetingStatus.Processing, transcript: null);
+        _app.WithDb(db => { db.Meetings.Single(m => m.Id == id).AudioFileName = audio; return db.SaveChanges(); });
+        var previousBody = _app.PythonApi.Body;
+        _app.PythonApi.Body = JsonSerializer.Serialize(new
+        {
+            success = summarySucceeds,
+            transkript = Transcript,
+            summary = summarySucceeds ? new { toplanti_konusu = "Konu" } : null,
+            konusmaci_onerileri = new Dictionary<string, object>
+            {
+                ["Konuşmacı 1"] = new { ad = "Murat", gerekce = "Ayşe adıyla hitap ediyor." }
+            }
+        });
+        try
+        {
+            using var scope = _app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
+        }
+        finally { _app.PythonApi.Body = previousBody; }
+
+        var transcript = Load(id).Transcript!;
+        Assert.Equal(Transcript, transcript.Text);
+        Assert.Equal("Murat", SpeakerNamingService.Rows(transcript.Text, transcript.SpeakerSuggestions)[0].SuggestedName);
+        Assert.Equal(summarySucceeds ? MeetingStatus.Completed : MeetingStatus.Failed, Load(id).Status);
+        var raw = _app.WithDb(db => db.Database.SqlQueryRaw<string>(
+            "SELECT \"SpeakerSuggestions\" AS \"Value\" FROM \"MeetingTranscripts\" WHERE \"MeetingId\" = {0}", id).AsEnumerable().Single());
+        Assert.StartsWith("v3:1:", raw);
+        Assert.DoesNotContain("Murat", raw);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(",\"konusmaci_onerileri\":null")]
+    [InlineData(",\"konusmaci_onerileri\":{}")]
+    public async Task Processing_upload_without_suggestions_stores_null(string field)
+    {
+        var audio = Guid.NewGuid().ToString("N") + ".m4a";
+        await File.WriteAllBytesAsync(Path.Combine(_app.AudioRoot, audio), new byte[] { 1 });
+        var id = NewMeeting(MeetingStatus.Processing, suggestions: """{"Konuşmacı 1":{"ad":"Eski ad"}}""");
+        _app.WithDb(db => { db.Meetings.Single(m => m.Id == id).AudioFileName = audio; return db.SaveChanges(); });
+        var previousBody = _app.PythonApi.Body;
+        _app.PythonApi.Body = "{\"success\":true,\"transkript\":\"Konuşmacı 1: Merhaba.\",\"summary\":{}" + field + "}";
+        try
+        {
+            using var scope = _app.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
+        }
+        finally { _app.PythonApi.Body = previousBody; }
+
+        Assert.Equal(MeetingStatus.Completed, Load(id).Status);
+        Assert.Null(Load(id).Transcript!.SpeakerSuggestions);
+    }
+
+    [Theory]
+    [InlineData("Adıyla hitap ediliyor.")]
+    [InlineData(null)]
+    public async Task Page_prefills_suggested_name_and_shows_first_line_and_guess(string? reason)
+    {
+        var json = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            ["Konuşmacı 1"] = new { ad = "Murat", gerekce = reason }
+        });
+        var id = NewMeeting(suggestions: json);
+        using var client = _app.ClientFor(S.CarolId);
+
+        var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/Details?id={id}"));
+
+        var suggestedInput = Regex.Match(page, "<input[^>]*id=\"speaker-name-0\"[^>]*>").Value;
+        Assert.Contains("value=\"Murat\"", suggestedInput);
+        Assert.Contains("data-suggested=\"true\"", suggestedInput);
+        Assert.Contains("class=\"speaker-first-line small text-muted\">Herkese günaydın.</div>", page);
+        Assert.Contains("class=\"speaker-suggestion small\">Tahmin" + (reason == null ? "" : ": " + reason) + "</div>", page);
+        // Found in the app (2026-11-20): Razor wrote data-reasonless="False", and the CSS hid every reason.
+        var suggestionLine = Regex.Match(page, "<div id=\"speaker-suggestion-0\"[^>]*>").Value;
+        Assert.Equal(reason == null, suggestionLine.Contains("data-reasonless"));
+        var emptyInput = Regex.Match(page, "<input[^>]*id=\"speaker-name-1\"[^>]*>").Value;
+        Assert.Contains("value=\"\"", emptyInput);
+        Assert.DoesNotContain("data-suggested", emptyInput);
     }
 
     [Fact]
@@ -223,8 +398,30 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
         using var response = await RenameAsync(id, "Murat", "Murat");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("Murat: Herkese günaydın.\r\nMurat: Merhaba.\nMurat: Başlayalım. Cümlede Konuşmacı 1: aynı kalır.", Load(id).Transcript!.Text);
+        Assert.Equal("Murat: Herkese günaydın. Merhaba. Başlayalım. Cümlede Konuşmacı 1: aynı kalır.", Load(id).Transcript!.Text);
         Assert.Equal(1, Jobs(id));
+    }
+
+    [Fact]
+    public async Task Non_adjacent_repeats_and_other_speakers_lines_are_not_merged()
+    {
+        var id = NewMeeting(transcript: "Konuşmacı 1: a\r\nKonuşmacı 2: b\nElif: c\r\nElif: d\nKonuşmacı 1: e");
+
+        using var response = await RenameAsync(id, "Murat", "Murat");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("Murat: a b\nElif: c\r\nElif: d\nMurat: e", Load(id).Transcript!.Text);
+    }
+
+    [Fact]
+    public async Task Blank_line_separates_turns_with_the_same_applied_name()
+    {
+        var id = NewMeeting(transcript: "Konuşmacı 1: a\n\nKonuşmacı 2: b\n");
+
+        using var response = await RenameAsync(id, "Murat", "Murat");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("Murat: a\n\nMurat: b\n", Load(id).Transcript!.Text);
     }
 
     [Theory]

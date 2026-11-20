@@ -109,6 +109,7 @@ namespace MeetingWeb.Data
             {
                 t.HasKey(x => x.MeetingId);
                 t.Property(x => x.Text).HasConversion(new EncryptedConverter("MeetingTranscripts.Text"));
+                t.Property(x => x.SpeakerSuggestions!).HasConversion(new EncryptedConverter("MeetingTranscripts.SpeakerSuggestions"));
                 t.HasOne(x => x.Meeting).WithOne(m => m.Transcript).HasForeignKey<MeetingTranscript>(x => x.MeetingId).OnDelete(DeleteBehavior.Cascade);
             });
 

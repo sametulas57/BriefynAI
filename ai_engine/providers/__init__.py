@@ -51,6 +51,13 @@ def build_summarizer():
     return Summarizer(build_llm("summary"))
 
 
+def build_speaker_suggester():
+    from .llm import build_llm
+    from .speaker_suggester import SpeakerSuggester
+
+    return SpeakerSuggester(build_llm("speakers"))
+
+
 def build_answerer():
     from .answerer import Answerer
     from .llm import build_llm

@@ -399,6 +399,9 @@ namespace MeetingWeb.Migrations
                     b.Property<int>("MeetingId")
                         .HasColumnType("int");
 
+                    b.Property<string>("SpeakerSuggestions")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
