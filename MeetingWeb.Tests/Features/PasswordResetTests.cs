@@ -26,6 +26,193 @@ public class PasswordResetTests
             AllowAutoRedirect = false
         });
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Valid_reset_link_shows_form_and_hidden_inputs_even_when_signed_in(bool signedIn)
+    {
+        using var app = await ReadyAsync();
+        using var client = signedIn ? app.ClientFor(app.Seed.BobId) : AnonymousClient(app);
+        var (code, url) = await ResetLinkAsync(app);
+
+        var response = await client.GetAsync(url);
+        var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Şifremi Kaydet", body);
+        Assert.Contains($"name=\"Input.UserId\" value=\"{app.Seed.AliceId}\"", body);
+        Assert.Contains($"name=\"Input.Code\" value=\"{code}\"", body);
+    }
+
+    internal const string OldPassword = "Eski-Parola-123!";
+    internal const string NewPassword = "Yeni-Parola-123!";
+
+    [Fact]
+    public async Task Reset_redirects_with_confirmation_and_only_new_password_can_sign_in()
+    {
+        using var app = await PasswordAppAsync();
+        using var client = CookieClient(app);
+        var (code, _) = await ResetLinkAsync(app);
+
+        var reset = await PostResetAsync(client, app.Seed.AliceId, code);
+
+        Assert.Equal(HttpStatusCode.Redirect, reset.StatusCode);
+        Assert.Equal("/Auth/Login", reset.Headers.Location!.OriginalString);
+        Assert.Contains("Şifreniz değişti. Yeni şifrenizle giriş yapın.",
+            WebUtility.HtmlDecode(await client.GetStringAsync(reset.Headers.Location)));
+        Assert.Equal(HttpStatusCode.OK, (await LoginAsync(client, OldPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, NewPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/History")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("abcdef", "abcdef", "Passwords must have")]
+    [InlineData(NewPassword, "Different-Password-123!", "Şifreler birbiriyle eşleşmiyor")]
+    [InlineData("", "", "Şifre alanı zorunludur.")]
+    [InlineData("abc", "abc", "Şifreniz en az 6 karakter uzunluğunda olmalıdır.")]
+    public async Task Rejected_password_or_confirmation_preserves_password_and_valid_link(string password, string confirm, string error)
+    {
+        using var app = await PasswordAppAsync();
+        using var client = CookieClient(app);
+        var (code, url) = await ResetLinkAsync(app);
+
+        var response = await PostResetAsync(client, app.Seed.AliceId, code, password, confirm);
+        var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(error, body);
+        Assert.Contains("Şifremi Kaydet", body);
+        await AssertPasswordAsync(app, OldPassword);
+        using var scope = app.Services.CreateScope();
+        Assert.True(await scope.ServiceProvider.GetRequiredService<IPasswordResetService>().IsLinkValidAsync(app.Seed.AliceId, code));
+        Assert.Contains("Şifremi Kaydet", WebUtility.HtmlDecode(await client.GetStringAsync(url)));
+        Assert.Empty(app.Jobs.Created);
+    }
+
+    [Fact]
+    public async Task Reset_unlocks_account_and_clears_failed_attempts_before_new_login()
+    {
+        using var app = await PasswordAppAsync();
+        using (var scope = app.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await users.FindByIdAsync(app.Seed.AliceId))!;
+            user.AccessFailedCount = 3;
+            Assert.True((await users.UpdateAsync(user)).Succeeded);
+            Assert.True((await users.SetLockoutEnabledAsync(user, true)).Succeeded);
+            Assert.True((await users.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(1))).Succeeded);
+        }
+        using var client = CookieClient(app);
+        Assert.Equal(HttpStatusCode.OK, (await LoginAsync(client, OldPassword)).StatusCode);
+        var (code, _) = await ResetLinkAsync(app);
+
+        Assert.Equal(HttpStatusCode.Redirect, (await PostResetAsync(client, app.Seed.AliceId, code)).StatusCode);
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = (await users.FindByIdAsync(app.Seed.AliceId))!;
+            Assert.False(await users.IsLockedOutAsync(user));
+            Assert.Null(user.LockoutEnd);
+            Assert.Equal(0, user.AccessFailedCount);
+        }
+        Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(client, NewPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/History")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Successful_reset_queues_one_notification_with_only_user_id_and_job_sends_email()
+    {
+        var mail = new RecordingEmail();
+        using var app = await PasswordAppAsync(new BriefynFactory { EmailServiceOverride = mail, UseCookieAuthentication = true });
+        app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.AliceId).FullName = "Alice Example"; return db.SaveChanges(); });
+        using var client = CookieClient(app);
+        var (code, _) = await ResetLinkAsync(app);
+
+        Assert.Equal(HttpStatusCode.Redirect, (await PostResetAsync(client, app.Seed.AliceId, code)).StatusCode);
+
+        var job = Assert.Single(app.Jobs.Created);
+        Assert.Equal("SendPasswordChangedEmailAsync", job.Method.Name);
+        Assert.Equal(typeof(IPasswordResetService), job.Type);
+        Assert.Equal("eposta", job.Queue);
+        Assert.IsType<EnqueuedState>(app.Jobs.States[job]);
+        Assert.Equal(new object[] { app.Seed.AliceId }, job.Args);
+        Assert.Empty(mail.Changed);
+        using var scope = app.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IPasswordResetService>();
+        await (Task)job.Method.Invoke(service, job.Args.ToArray())!;
+        Assert.Equal((SeedData.AliceEmail, "Alice Example"), Assert.Single(mail.Changed));
+    }
+
+    [Fact]
+    public async Task Notification_enqueue_failure_logs_event_but_reset_still_succeeds()
+    {
+        var logs = new CapturingLoggerProvider();
+        using var app = await PasswordAppAsync(new ProductionLoggingFactory { LogCapture = logs, UseCookieAuthentication = true });
+        using var client = CookieClient(app);
+        var (code, _) = await ResetLinkAsync(app);
+        app.Jobs.FailNext = true;
+
+        var response = await PostResetAsync(client, app.Seed.AliceId, code);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        await AssertPasswordAsync(app, NewPassword);
+        Assert.Empty(app.Jobs.Created);
+        var log = string.Join("\n", logs.Lines);
+        Assert.Contains("Password changed email could not be queued.", log);
+        Assert.DoesNotContain(SeedData.AliceEmail, log);
+        Assert.DoesNotContain(code, log);
+    }
+
+    internal static async Task<BriefynFactory> PasswordAppAsync(BriefynFactory? app = null)
+    {
+        app ??= new BriefynFactory { UseCookieAuthentication = true };
+        await app.InitializeAsync();
+        using var scope = app.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        Assert.True((await users.AddPasswordAsync((await users.FindByIdAsync(app.Seed.AliceId))!, OldPassword)).Succeeded);
+        return app;
+    }
+
+    internal static HttpClient CookieClient(BriefynFactory app) => app.CreateClient(new WebApplicationFactoryClientOptions
+    {
+        BaseAddress = new Uri("https://localhost"),
+        AllowAutoRedirect = false
+    });
+
+    internal static async Task<HttpResponseMessage> PostResetAsync(HttpClient client, string userId, string code,
+        string password = NewPassword, string? confirm = null)
+    {
+        var antiforgery = await GetAntiforgeryTokenAsync(client, "/Auth/Login");
+        return await PostFormAsync(client, "/Auth/ResetPassword", antiforgery,
+            ("Input.UserId", userId), ("Input.Code", code),
+            ("Input.Password", password), ("Input.ConfirmPassword", confirm ?? password));
+    }
+
+    internal static async Task<HttpResponseMessage> LoginAsync(HttpClient client, string password)
+    {
+        var antiforgery = await GetAntiforgeryTokenAsync(client, "/Auth/Login");
+        return await PostFormAsync(client, "/Auth/Login", antiforgery,
+            ("Input.Email", SeedData.AliceEmail), ("Input.Password", password));
+    }
+
+    internal static async Task AssertPasswordAsync(BriefynFactory app, string password)
+    {
+        using var scope = app.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        Assert.True(await users.CheckPasswordAsync((await users.FindByIdAsync(app.Seed.AliceId))!, password));
+    }
+
+    internal static async Task<(string Code, string Url)> ResetLinkAsync(BriefynFactory app)
+    {
+        using var scope = app.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await users.FindByIdAsync(app.Seed.AliceId))!;
+        var token = await users.GeneratePasswordResetTokenAsync(user);
+        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        return (code, PasswordResetLink.ResetUrl("https://localhost", user.Id, code));
+    }
+
     [Fact]
     public async Task Known_and_unknown_email_receive_identical_response_and_only_known_email_enqueues()
     {
@@ -176,22 +363,27 @@ public class PasswordResetTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Job_ignores_missing_user_or_email(bool missingEmail)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Job_ignores_missing_user_or_email(bool missingEmail, bool changedEmail)
     {
         var mail = new RecordingEmail();
         using var app = await ReadyAsync(new BriefynFactory { EmailServiceOverride = mail });
         if (missingEmail) app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.AliceId).Email = ""; return db.SaveChanges(); });
         using var scope = app.Services.CreateScope();
 
-        await scope.ServiceProvider.GetRequiredService<IPasswordResetService>()
-            .SendResetEmailAsync(missingEmail ? app.Seed.AliceId : "missing-user", "http://localhost");
+        var service = scope.ServiceProvider.GetRequiredService<IPasswordResetService>();
+        var userId = missingEmail ? app.Seed.AliceId : "missing-user";
+        if (changedEmail) await service.SendPasswordChangedEmailAsync(userId);
+        else await service.SendResetEmailAsync(userId, "http://localhost");
 
         Assert.Empty(mail.Sent);
+        Assert.Empty(mail.Changed);
     }
 
-    private sealed class RecordingEmail : IEmailService
+    internal sealed class RecordingEmail : IEmailService
     {
         public List<(string Address, string Name, string Url, string Lifetime)> Sent { get; } = [];
         public Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText)
@@ -199,7 +391,12 @@ public class PasswordResetTests
             Sent.Add((toEmail, fullName, resetUrl, lifetimeText));
             return Task.CompletedTask;
         }
-        public Task SendPasswordChangedAsync(string toEmail, string fullName) => Task.CompletedTask;
+        public List<(string Address, string Name)> Changed { get; } = [];
+        public Task SendPasswordChangedAsync(string toEmail, string fullName)
+        {
+            Changed.Add((toEmail, fullName));
+            return Task.CompletedTask;
+        }
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
         public Task SendOverdueReminderAsync(string toEmail, string fullName, IReadOnlyList<OverdueTask> tasks) => Task.CompletedTask;
@@ -264,7 +461,7 @@ public class PasswordResetTests
         return app;
     }
 
-    private sealed class ProductionLoggingFactory : BriefynFactory
+    internal sealed class ProductionLoggingFactory : BriefynFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

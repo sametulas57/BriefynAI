@@ -62,6 +62,8 @@ public class WorkspaceBoundaryTests : IClassFixture<MeetingAccessFixture>
         ["Auth/Login:Get"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
         ["Auth/Login:Post"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
         ["Auth/Register:Post"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
+        ["Auth/ResetPassword:Get"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
+        ["Auth/ResetPassword:Post"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
         ["Details:Get"] = new Covered((typeof(MeetingAccessTests), nameof(MeetingAccessTests.Outsider_is_sent_to_own_history_without_seeing_the_meeting))),
         ["Details:PostAddActionItem"] = new Covered((typeof(MeetingAccessTests), nameof(MeetingAccessTests.Outsider_cannot_add_topic_decision_or_action_item))),
         ["Details:PostAddComment"] = new Covered((typeof(MeetingAccessTests), nameof(MeetingAccessTests.Outsider_cannot_comment_or_react_on_another_workspaces_meeting)), (typeof(MeetingAccessTests), nameof(MeetingAccessTests.Reply_cannot_point_at_a_comment_from_another_meeting))),
