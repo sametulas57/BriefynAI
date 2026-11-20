@@ -1,64 +1,72 @@
-# Uygulama planı: Görevleri takvime aktarma
+# Uygulama planı: Şifremi unuttum
 
-Spec: `SPEC.md` (onaylı, 2026-11-20) · Görev listesi: `tasks/todo.md` · Durum: onaylandı (Ulaş, 2026-11-20)
+Spec: `SPEC.md` (onaylı, 2026-11-21) · Görev listesi: `tasks/todo.md` · Durum: onaylandı (Ulaş, 2026-11-21)
 
 ## Özet
 
-Atanmış ve son tarihli görev için görevli kişiye e-postayla takvim daveti gider. Görev değişince aynı kayıt güncellenir ya da iptal edilir; "Bana Atananlar"da yeniden gönderme düğmesi ve takvim dosyası indirme olur. İş dokuz göreve bölündü. En riskli kısım, Outlook'un daveti gerçekten tanıyıp tanımadığı; bu yüzden ilk dilim (görev 1-4) atamadan Outlook'taki kayda kadar uçtan uca çalışır ve hemen gerçek Outlook'ta denenir. Gerisi o deneme geçerse yapılır.
+Giriş sayfasından e-postayla süreli, tek kullanımlık şifre yenileme bağlantısı. İş altı göreve bölündü. En riskli kısım uçtan uca zincir: istek → ayrı kuyruktaki iş → gerçek e-posta → bağlantı → yeni şifre. Bu yüzden ilk iki dilim (görev 1-3) bu zinciri kurar ve hemen yerel Docker yığınında gerçek e-postayla denenir. Sınırlar, Türkçe hatalar ve belgeler o deneme geçerse yapılır.
 
-## Başlangıç koşulu
-
-`deneme/azure-konusmaci` dalındaki konuşmacı işi main'e girer, iş main'den başlar (spec kararı). Proje aşaması "yayında değil": main'e PR'sız push, CI push'tan sonra koşar.
+Önceki iş (takvime aktarma) bu dosyalarda yürüyordu. Açık kalan dört maddesi elle deneme ve inceleme: Gmail, Outlook web ve yeni Outlook denemesi, gereksiz klasörü kontrolü, takvim için `/agent-skills:review`. İlk üçü `docs/raporlar/2026-11-20-takvim-daveti-deneme.md`'de ve Backlog 5'te duruyor; eski plan git geçmişinde (`617d900` ve sonrası).
 
 ## Kodda baktıklarım (planın dayanağı)
 
-- Görevin değiştiği yerler: `Details:PostAssignAction` (atama, son tarih, atama kaldırma), `Details:PostToggleTask` (bitti/açık), `MyActions:PostComplete` ve `PostReopen`.
-- Görevin kaybolduğu yerler: `History:PostDelete` (toplantı silinince görevleri de silinir), `Workspace/Members:PostRemoveMember`, `PostLeaveWorkspace` (görev kalır ama kişi ekipte değildir), `PostDeleteWorkspace`, hesap silme (`AccountDeletionService` görevlinin kimliğini toplu sorguyla boşaltır, sayfa işleyicisinden geçmez).
-- Yapay zekânın yeniden özetlemesi yalnız takip edilmeyen görevleri siler (`MeetingProcessor.IsTracked`: atanmış ya da tarihli görev kalır). Davetli görev bu yoldan kaybolmaz.
-- E-posta: `EmailService` her gönderimde kendi `SmtpClient`'ını kurar. Testlerde `BriefynFactory.EmailServiceOverride` ve `FakeBackgroundJobClient.CountFor` var.
-- Zamanlanmış işler `Program.cs`'te `RecurringJob` ile Türkiye saatine göre kurulu (`overdue-reminders` örneği).
-- `WorkspaceBoundaryTests` her sayfa işleyicisini listede arar; yeni işleyici listeye girmezse test kırılır.
+- Identity: `AddDefaultIdentity<ApplicationUser>`, varsayılan token sağlayıcıları kayıtlı, uygulamada `Generate*TokenAsync` çağrısı yok. Giriş `lockoutOnFailure: true`.
+- Oturumlar her istekte güvenlik damgasıyla kontrol ediliyor (`ValidationInterval = TimeSpan.Zero`).
+- `Microsoft.AspNetCore.Identity.dll` (10.0.8) içinde `TimeProvider` adı geçiyor. Sıfırlama kodunun süresini kontrol eden sağlayıcının onu kullanıp kullanmadığını bilmiyorum; görev 1'de bakılır.
+- Hangfire: tek sunucu, `WorkerCount = 1`, kuyruk adı verilmemiş (yalnız `default`). Testlerde Hangfire kurulmuyor; `FakeBackgroundJobClient` işleri ve durumlarını (kuyruk dahil) kaydediyor.
+- Hız sınırı: `Program.cs`'teki `GlobalLimiter` eşleşen sayfaya (`RouteValues["page"]`) ve handler'a bakıyor. `OnRejected` mesajı TempData'ya yazıp `Referer`'a ya da `/History`'ye yönlendiriyor; anonim sayfalar için dal yok.
+- Bellek içi sayaç örneği: `AskRateLimiter` (singleton, `TimeProvider`, kilitli `Dictionary<string, Queue<DateTimeOffset>>`, içerik değil yalnız kimlik ve zaman tutuyor).
+- `ForwardedHeaders` kurulu değil. Uygulama bir tünelin ya da vekil sunucunun arkasına geçerse istek adresi hep aynı görünür (Zoom ucundaki sınır da aynı durumda).
+- Test altyapısı: `BriefynFactory` (`EmailServiceOverride`, `Jobs`, `ExtraSettings`), `CapturingLoggerProvider`, `FormHelpers`, `TestAuthHandler`.
+- `WorkspaceBoundaryTests` her sayfa handler'ını listede arıyor; `Auth/Login:Get`, `Auth/Login:Post`, `Auth/Register:Post` `NotWorkspaceScoped`.
 
 ## Mimari kararlar
 
-1. **Tek eşitleme işi.** Her değişiklik yalnız `ICalendarSyncService.SyncAsync(actionItemId)`'yi kuyruğa atar. İş, olması gerekeni (görev var mı, atanmış mı, tarihli mi, bitmemiş mi, kişi hâlâ ekipte mi, hesabı duruyor mu) gönderilmiş davet kaydıyla karşılaştırır; davet, güncelleme ya da iptal gönderir. Aynı iş iki kez koşarsa ikincisi fark bulmaz. Sayfalara takvim mantığı girmez.
-2. **Davet kaydı görevden bağımsız yaşar.** `CalendarInvites` tablosu: görev kimliği (yabancı anahtar yok), kişi kimliği, UID, sıra no, gönderilen tarih, durum (etkin / iptal), `RowVersion`. (görev, kişi) için tek satır. Toplantı silinse de satır kalır, iptal gidince silinir. İptal edilmiş satır görev yeniden açılırsa aynı UID ile yeniden kullanılır.
-3. **Önce kayıt, sonra gönderim.** İş önce satırı "gönderilecek" işaretiyle ve yeni sıra noyla kaydeder, sonra e-postayı gönderir, sonra işareti kaldırır. Gönderim başarısız olursa Hangfire'ın yeniden denemesi işareti görür ve tekrar gönderir. Aynı anda koşan iki iş `RowVersion` çakışmasıyla ayrılır; kaybeden iş yeniden okur, fark kalmadıysa çıkar.
-4. **Tercih yalnız yeni otomatik daveti durdurur.** Profil'de anahtarı kapatan kişiye yeni otomatik davet gitmez. Takviminde zaten duran kayıtlar güncellenmeye ve iptal edilmeye devam eder; yoksa takvimde eski tarih kalır. Spec'te açık yazmıyordu; planla birlikte onaylandı (Ulaş, 2026-11-20).
-5. **Düğme zorla gönderir.** "Takvimime gönder" fark olmasa da daveti sıra noyu artırarak yeniden yollar (silinen davet geri gelsin diye). Kişi başı sınır var; sayı paylaş düğmesine bakılarak görev 5'te belirlenir.
-6. **Günlük süpürme güvenlik ağıdır.** Ekip silme ve ekip sahibinin hesap silmesi gibi seyrek yollar ayrı ayrı bağlanmaz. Her gün etkin davet kayıtları için eşitleme koşar, kaçan iptali yakalar. Sık yollar (atama, bitti, toplantı silme, ekipten çıkma) anında tetiklenir.
-7. **Hesabı silinen kişiye e-posta gitmez.** Hesap silmede o kişinin davet kayıtları sessizce silinir.
+1. **`IPasswordResetService` tek giriş noktası.** Üç metot:
+   - `RequestAsync(email, baseUrl)`: kullanıcıyı bulur; yoksa hiçbir şey yapmaz. Varsa ve hesap sınırı aşılmadıysa `SendResetEmailAsync(userId, baseUrl)` işini `eposta` kuyruğuna atar. Dönen değer sayfaya hesap hakkında bilgi vermez.
+   - `SendResetEmailAsync(userId, baseUrl)`: Hangfire işi. Kodu o anda üretir, bağlantıyı kurar, `IEmailService.SendPasswordResetAsync`'i çağırır. Kullanıcı silinmişse çıkar.
+   - `ResetAsync(userId, code, newPassword)`: kodu doğrular, şifreyi değiştirir, kilidi ve yanlış deneme sayacını sıfırlar, "şifreniz değişti" e-postasını kuyruğa atar. Sonuç: başarılı / bağlantı geçersiz / şifre kurala uymuyor (Türkçe hatalarla).
+   - `IsLinkValidAsync(userId, code)`: sayfa açılınca bağlantı geçerli mi; geçersizse form hiç gösterilmez.
+2. **Bağlantı kökü saf bir kuralla seçilir** (`PasswordResetLink.BaseUrl`): `App:PublicUrl` doluysa o; boşsa yalnız yerel adres (`localhost`, `127.0.0.1`, `[::1]`) için istekteki adres; yoksa `null` → e-posta gitmez, uyarı günlüğe yazılır (adres ve kod yazılmadan). Kök sayfada seçilir ve işe argüman olarak gider; iş istek görmez.
+3. **Ayrı sağlayıcı, ayrı ömür.** `DataProtectorTokenProvider<ApplicationUser>`'dan türeyen `PasswordResetTokenProvider`, kendi seçenek sınıfıyla (`TokenLifespan` = `PasswordReset:LinkLifetimeMinutes`, varsayılan 60). `IdentityOptions.Tokens.PasswordResetTokenProvider` buna bağlanır. Varsayılan sağlayıcının ömrü değişmez.
+4. **Kod URL'de base64url** (`WebEncoders.Base64UrlEncode`). Sayfa GET'te kodu okur, gizli alana koyar; sayfa `Referrer-Policy: no-referrer` ve `Cache-Control: no-store` gönderir.
+5. **E-posta kuyruğu.** Sıfırlama ve bildirim işleri `eposta` kuyruğuna, `IBackgroundJobClient.Enqueue("eposta", ...)` ile. `Program.cs`'e yalnız bu kuyruğu dinleyen, tek işçili ikinci bir `AddHangfireServer` eklenir; mevcut sunucu `default` kuyruğunda kalır. Mevcut e-postalar (özet, gündem, takvim) bu işte taşınmaz.
+6. **İki katman sınır.**
+   - İstek adresine göre, `GlobalLimiter`'a iki dal: `Auth/ForgotPassword` POST (`PasswordReset:RequestsPerIpPer15Minutes`, 5) ve `Auth/ResetPassword` POST (`PasswordReset:ResetsPerIpPer15Minutes`, 10). `OnRejected` bu iki sayfa için "Çok fazla deneme yaptınız. Lütfen biraz sonra tekrar deneyin." mesajıyla `/Auth/ForgotPassword`'a döner (yeni şifre sayfasında `Referer` yok, kod da formda; dönülecek güvenli tek yer burası).
+   - Hesaba göre: `AskRateLimiter` gibi bellek içi `PasswordResetRateLimiter`, `PasswordReset:EmailsPerAccountPerHour` (3). Aşılınca iş kuyruğa girmez, sayfa aynı cevabı verir.
+7. **Türkçe şifre hataları.** `IdentityErrorDescriber`'dan türeyen sınıf, yalnız şifre kuralı ve geçersiz kod metinlerini Türkçeleştirir; `AddErrorDescriber` ile bağlanır. Kayıt sayfası da bunu kullanır (onaylandı).
+8. **Sayfa mantığı servis içinde.** Sayfa modelleri yalnız formu doğrular, servisi çağırır, sonucu gösterir. Sayfaların görünümü mevcut `Login.cshtml` kartının kopyası (Bootstrap); tasarım yenilemesi ayrı iş.
 
 ## Bağımlılık sırası
 
 ```
-1 .ics üretici ──┐
-2 tablo + ayarlar ┴─ 3 eşitleme + e-posta ── 4 toplantı sayfası tetikleri ── [Kontrol A: gerçek Outlook]
-                                                   │
-                       5 Bana Atananlar (tetik, düğme, indirme) ── 6 Profil anahtarı ── [Kontrol B]
-                                                   │
-                       7 toplantı silme + ekipten çıkma ── 8 günlük süpürme + hesap silme ── 9 belgeler ── [Kontrol C]
+1 bağlantı kökü + sağlayıcı ── 2 istek dilimi (sayfa, servis, kuyruk, e-posta) ── 3 yenileme dilimi (sayfa, servis, bildirim)
+                                                                                         │
+                                                                              [Kontrol A: Docker'da gerçek e-posta]
+                                                                                         │
+                                                       4 hız sınırları ── 5 Türkçe hatalar ── [Kontrol B]
+                                                                                         │
+                                                                              6 belgeler ── [Kontrol C: push, CI]
 ```
 
-Görev 1 ile 2 birbirinden bağımsız; aynı anda yapılabilir. Görev 3'ten sonrası sırayla, çünkü hepsi eşitleme servisini ve aynı test dosyasını kullanıyor.
+Görev 4 ile 5 birbirinden bağımsız ama ikisi de `Program.cs`'e dokunduğu için sırayla yapılır.
 
-## Kim yapar (CLAUDE.md iş dağıtımı)
+## İş dağılımı
 
-- Uygulama Codex'e (`gpt-6.1-sol`), adım adım brifle. Brifte Addy skill'lerinin adı yazılır ve önce okunması istenir: `incremental-implementation`, `test-driven-development`; görev 5 ve 7'de ayrıca `security-and-hardening`.
-- Görev 5 ve 6'daki görünen parçalar (düğme, anahtar, metin) Claude Opus alt ajanında; sayfanın mevcut görünüşüne uyar, yeni görünüm getirmez.
-- Her görevden sonra diff'i ben okurum; kontrol noktalarında `scripts/verify.sh`.
+Ulaş'ın kuralına göre uygulama Codex'e (`gpt-6.1-sol`), sayfaların görünüm kodu (iki `.cshtml`) Claude Opus alt ajanına gider. Brife o adımın Addy skill'leri yazılır: `test-driven-development`, `incremental-implementation`, `security-and-hardening`; işçiden önce onları okuması istenir. Her görevden sonra ben diff'i okur, odak testleri ve `scripts/verify.sh`'yi koşar, commit'lerim. Kontrol A'daki ekranda deneme bende.
 
 ## Riskler
 
 | Risk | Etki | Önlem |
 |---|---|---|
-| Outlook daveti takvim daveti olarak tanımıyor (`System.Net.Mail` parçaları yanlış sırada ya da yanlış başlıkla) | Yüksek | Görev 3'te e-posta biçimi testle sabitlenir; Kontrol A'da gerçek Outlook web'de hemen denenir. Geçmezse durulur, sonraki görevlere geçilmez. |
-| Güncelleme yeni kayıt açıyor, iptal kaydı kaldırmıyor | Yüksek | Aynı UID, artan sıra no ve aynı düzenleyen adresi testle zorunlu; Kontrol A'da üç adım da denenir. |
-| Kişisel posta sunucusu (gönderici adresi) davetleri gereksiz klasörüne atıyor | Orta | Kontrol A'da gelen kutusu kontrol edilir; düşerse sağlayıcı değişikliği "önce sor" maddesi. |
-| Aynı görev için iki iş aynı anda koşup iki e-posta gönderiyor | Orta | Karar 3 (`RowVersion` + "gönderilecek" işareti); eşzamanlılık testi. |
-| Klasik masaüstü Outlook ve iş hesabı denenemiyor | Orta | Spec'teki gibi raporda bilinen risk; yayından sonra ilk kurumsal kullanıcıdan geri bildirim. |
-| Kişi gün içinde tarihi çok kez değiştirip çok e-posta alıyor | Düşük | Kabul edildi. Her değişiklik bir güncelleme; gerekirse sonra birleştirme eklenir. |
+| Sıfırlama kodunun süresi `TimeProvider`'ı kullanmıyor, süre dolumu testte zaman ilerletilerek denenemiyor | Düşük | Görev 1'de bakılır. Kullanmıyorsa test ömrü ayardan çok kısa (negatif) vererek süre dolumunu dener. |
+| İkinci Hangfire sunucusu `eposta` kuyruğunu dinlemezse e-postalar hiç gitmez; testler bunu yakalamaz (testte Hangfire yok) | Yüksek | Kontrol A'da gerçek e-postayla denenir; Hangfire panelinde iş ve kuyruk görülür. |
+| Hangfire yeniden denemesi işi başka kuyruğa düşürür | Orta | Kontrol A'da SMTP bilerek bozulmaz; Hangfire 1.8'de kuyruk işle birlikte saklanıyor (belgeden, görev 2'de kaynağa bakılır). |
+| Tünel ya da vekil sunucu arkasında istek adresi hep aynı → adres sınırı herkesi birlikte kilitler | Orta (yayında) | Bu işte değişmez; ADR-0016'ya ve Backlog 1'e (yayın hazırlığı) `ForwardedHeaders` notu yazılır. |
+| Bellek içi hesap sayacı birden çok kopyada işlemez, yeniden başlatmada sıfırlanır | Düşük | Tek kopya çalışıyoruz; ADR-0016'da yazılır. Adres sınırı yine çalışır. |
+| Gerçek gönderici adresinden giden sıfırlama e-postası gereksiz klasörüne düşer | Orta | Kontrol A'da hangi klasöre düştüğüne bakılır; düz metin + HTML iki parça gönderilir (mevcut e-postalar gibi). |
+| Kayıt sayfasında Identity hatası metni değişiyor | Düşük | Kayıt testleri koşar; metni kontrol eden test varsa güncellenir. |
 
 ## Açık sorular
 
-Yok. Karar 4 (anahtarı kapatanın takvimindeki kayıtlar güncellenmeye devam eder) planla onaylandı.
+1. **Elle deneme için gelen kutusu** (spec açık soru 3, cevabı gelmedi). Önerim: Kontrol A'da yerel yığında senin seçeceğin bir test hesabı açarım. E-posta o adrese gider; e-postadaki bağlantıyı sen açarsın ya da gelen kutusunu yerleşik tarayıcıda açarsın, girişini sen yaparsın. Mailpit eklemem.

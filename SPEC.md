@@ -1,173 +1,165 @@
-# Spec: Görevleri takvime aktarma (Backlog 5, ilk adım)
+# Spec: Şifremi unuttum
 
-Durum: onaylandı (Ulaş, 2026-11-20) · plan `tasks/plan.md`, görevler `tasks/todo.md`
+Durum: onaylandı (Ulaş, 2026-11-21) · plan `tasks/plan.md`, görevler `tasks/todo.md`
 
 ## Amaç
 
-Toplantıdan çıkan, bir kişiye atanmış ve son tarihi olan görev, o kişinin takvimine girsin. Kişi son tarihi gününü planladığı yerde, gecikmeden önce görsün. Bugün Briefyn son tarihten önce hiçbir şey göndermiyor; tek hatırlatma tarih geçince giden "Geciken görevlerin var" e-postası.
-
-- Ana hedef Outlook / Microsoft 365 (Ulaş, 2026-11-20). Google ve öteki takvimler `.ics` dosyasıyla, ikinci planda.
-- Hesap bağlama yok (Microsoft Graph yayından sonra). Her şey mevcut e-posta (SMTP) altyapısıyla gidiyor.
-- Kapsam yalnız takvim. Slack/Teams'e özet ve Trello/Jira'ya aksiyon, Backlog 5'in sonraki adımları; her biri ayrı spec olacak.
+Şifresini unutan kullanıcı bugün hesabına dönemiyor: giriş sayfasındaki "Şifremi Unuttum?" bağlantısı yorum satırında (`Pages/Auth/Login.cshtml` 47-48), uygulamada şifre sıfırlama kodu yok. Yayın öncesi kapatılması gereken bir eksik; arayüz yenilemesinden (Backlog 4) önce yapılıyor ki yeni sayfa tasarıma baştan girsin.
 
 ### Kullanıcı hikâyeleri
 
-1. Ayşe'ye toplantı sayfasında "28 Kasım" son tarihli bir görev atanıyor. Ayşe'ye bir takvim daveti geliyor; Outlook'ta Kabul et dediğinde görev 28 Kasım'a tüm gün olarak yerleşiyor.
-2. Son tarih 2 Aralık'a çekiliyor. Ayşe'nin takvimindeki kayıt yeni bir kayıt açmadan 2 Aralık'a taşınıyor.
-3. Görev bitti işaretleniyor, ataması kaldırılıyor, son tarihi siliniyor ya da toplantı siliniyor. Ayşe'ye iptal geliyor; kayıt takviminden kalkıyor.
-4. Görev Ayşe'den Mehmet'e geçiyor. Ayşe'ye iptal, Mehmet'e yeni davet gidiyor.
-5. Ayşe daveti silmiş ya da başka bir takvim kullanıyor. "Bana Atananlar" sayfasında görevin yanındaki "Takvimime gönder" düğmesiyle daveti yeniden alıyor ya da "Takvim dosyasını indir" ile `.ics` dosyasını indiriyor.
-6. Ayşe otomatik davet istemiyor. Profil sayfasındaki anahtarı kapatıyor; artık kendiliğinden davet gitmiyor, düğme yine çalışıyor.
+1. Ayşe şifresini unutmuş. Giriş sayfasında "Şifremi unuttum"a tıklıyor, e-postasını yazıyor. Ekranda "Bu adrese kayıtlı bir hesap varsa şifre yenileme bağlantısı gönderdik" yazıyor.
+2. Ayşe'ye bir e-posta geliyor; içindeki bağlantı 1 saat geçerli. Bağlantıyı açıyor, yeni şifresini iki kez yazıyor, kaydediyor. Giriş sayfasına dönüyor, "Şifreniz değişti, yeni şifrenizle giriş yapın" yazıyor; yeni şifreyle giriyor.
+3. Ayşe aynı bağlantıyı ikinci kez açıyor. "Bu bağlantı artık geçerli değil" yazıyor, yeni bağlantı isteme sayfasına yönlendiriliyor.
+4. Ayşe'nin telefonunda Briefyn açık kalmış. Şifre değişince o oturum da kapanıyor; telefonda yeni şifreyle girmesi gerekiyor.
+5. Biri Briefyn'de kayıtlı olmayan bir adres yazıyor. Ayşe'ninkiyle aynı ekranı görüyor, e-posta gitmiyor. Adresin kayıtlı olup olmadığını cevaptan anlayamıyor.
+6. Biri Ayşe'nin adresi için art arda bağlantı istiyor. Birkaç istekten sonra Ayşe'ye yeni e-posta gitmiyor; isteyen kişi yine aynı ekranı görüyor.
 
-### Alınan kararlar (Ulaş, 2026-11-20)
+### Bakılan durum (2026-11-20)
 
-- Yol: e-postayla takvim daveti (`METHOD:REQUEST`) + `.ics` indirme yedek. Outlook web bağlantısı yok (resmi belgesi yok).
-- Tetik: ikisi birden. Atanınca otomatik gider, düğmeyle yeniden gönderilebilir.
-- Değişiklik: takvimdeki kayıt güncellenir ya da iptal edilir. Bunun için gönderilen davetler küçük bir tabloda tutulur (şema değişikliği onaylandı).
-- Briefyn'e bağlantı: yeni bir ayar (`App:PublicUrl`) eklenir. Ayar boşsa davette bağlantı olmaz. Site herkese açık adrese çıkınca doldurulur (Backlog 1'e eklendi).
-- Ekipten çıkan ya da çıkarılan kişiye, o ekipteki görevleri için iptal gider.
-- Davet, kim hangi Outlook'u kullanırsa kullansın çalışmalı: klasik masaüstü, yeni Outlook, web, mobil; kişisel ve iş hesabı.
+- Kimlik doğrulama ASP.NET Core Identity: `AddDefaultIdentity<ApplicationUser>` (`Program.cs`), giriş `SignInManager.PasswordSignInAsync`, `lockoutOnFailure: true`. Varsayılan token sağlayıcıları kayıtlı geliyor; uygulamada hiçbir `Generate*TokenAsync` çağrısı yok.
+- Oturum çerezleri her istekte güvenlik damgasıyla kontrol ediliyor (`SecurityStampValidatorOptions.ValidationInterval = TimeSpan.Zero`); hesap silme isteği bunu zaten kullanıyor.
+- Data Protection anahtarları kalıcı (`App_Data/keys`, ADR-0007), uygulama adı `Briefyn`.
+- E-posta: `EmailService` (SMTP, `EmailSettings`). E-postalar Hangfire işiyle gidiyor; kuyruğa adres düz yazılmıyor (ADR-0009).
+- Hangfire'da tek işçi var (`WorkerCount = 1`); toplantı analizi de aynı işçide koşuyor ve dakikalar sürebiliyor.
+- `AllowedHosts: "*"`: istekteki Host başlığı süzülmüyor.
+- `App:PublicUrl` yerelde ve `appsettings.json`'da boş; yerel Docker yığını `Development` ortamında, `localhost:8080`'de çalışıyor.
+- Hız sınırı: `Program.cs`'teki `GlobalLimiter`, eşleşen sayfaya ve handler'a bakıyor (paylaşım, takvim, Zoom). Reddedilince `OnRejected` kullanıcıyı mesajla geri gönderiyor.
+- `MeetingWeb.Tests/Security/WorkspaceBoundaryTests.cs` her sayfa handler'ının listede olmasını istiyor; `Auth/Login` ve `Auth/Register` orada `NotWorkspaceScoped`.
+- Uygulamada Türkçe Identity hata metni (`IdentityErrorDescriber`) yok; kayıt sayfası Identity'nin şifre kuralı hatalarını olduğu gibi (İngilizce) gösteriyor.
 
-### Varsayımlar (onayda düzeltilebilir)
+### Önerilen kararlar (onayda düzeltilebilir)
 
-1. Takvim kaydı son tarih gününe **tüm gün** olarak yerleşir; `ActionItem.DueDate` saat tutmuyor (`DateOnly`).
-2. Davette bir hatırlatma olur: bir gün önce saat 09:00 (Türkiye saati).
-3. Otomatik davet varsayılan olarak **açık**, geciken görev hatırlatması gibi. Profil'de ayrı bir anahtarla kapatılır.
-4. Son tarihi bugünden önce olan görev için otomatik davet gitmez; onu geciken görev hatırlatması karşılar. Düğme yine çalışır.
-5. Davet yalnız görevin atandığı kişiye gider. Düğme ve `.ics` indirme yalnız o kişiye görünür ve yalnız onun için çalışır.
-6. Düzenleyen (ORGANIZER) Briefyn'in gönderici adresi, katılımcı görevli kişi. Yanıt istenmez (`RSVP=FALSE`); tahminim, Outlook yine de "yanıt gönder" sorabilir. Elle denemede bakılacak.
-7. Davetin başlığı görev metni, açıklaması toplantı adı ve tarihi; `App:PublicUrl` doluysa "Bana Atananlar" sayfasının bağlantısı.
-8. Ekipten çıkan kişiye giden iptal görev metnini taşımaz, yalnız kaydı kaldırır. ADR-0005'e göre ayrılan kişiye o ekibin görev içeriği ulaşmamalı.
+1. **Token: Identity'nin kendi sıfırlama kodu, şema değişikliği yok.** `UserManager.GeneratePasswordResetTokenAsync` / `ResetPasswordAsync`. Kod veritabanına hiç yazılmaz; Data Protection ile imzalı ve şifreli, içinde kullanıcı kimliği, amaç, zaman ve güvenlik damgası var.
+   - **Süreli:** yalnız sıfırlama için ayrı bir sağlayıcı kaydedilir, ömrü **1 saat**. Varsayılan sağlayıcının ömrüne (1 gün) dokunulmaz.
+   - **Tek kullanımlık:** şifre değişince güvenlik damgası değişir; aynı kod (ve o ana kadar gönderilmiş öteki kodlar) geçersiz olur.
+   - **Açık oturumlar:** damga değiştiği için öteki cihazlardaki çerezler bir sonraki istekte reddedilir (mevcut ayar).
+   - Sonuç: tablo ya da migration gerekmiyor.
+2. **Bağlantının adresi: `App:PublicUrl`; boşsa yalnız yerel adres.**
+   - `App:PublicUrl` doluysa bağlantı her zaman ondan kurulur; istekteki Host başlığına bakılmaz.
+   - Boşsa ve istek yerel bir adrese geldiyse (`localhost`, `127.0.0.1`, `::1`) bağlantı istekteki adresle kurulur. Yerel Docker denemesi bununla çalışır.
+   - Boşsa ve istek başka bir adrese geldiyse e-posta gönderilmez, uyarı günlüğe yazılır (adres ve kod yazılmadan); kullanıcı yine aynı ekranı görür.
+   - Gerekçe: `AllowedHosts` `*` olduğu için istekteki adrese güvenmek, saldırganın sahte Host başlığıyla kurbana kendi sitesine giden bir bağlantı göndermesine (bağlantı zehirlenmesi) yol açar. En kötü ihtimalle bağlantı kurbanın kendi bilgisayarını gösterir, kod dışarı sızmaz. Ortam adına (`Development`) bağlamıyorum, çünkü yerel yığın da `Development` ve prod compose henüz yok; yanlış ortamla yayına çıkmak koruma açığı olmamalı.
+3. **E-posta arka planda ve ayrı kuyrukta gider.**
+   - İstek yalnız kullanıcıyı arar ve bulursa iş kuyruğa atar; kayıtlı olan ve olmayan adres için cevap süresi yakın kalır (zamanlamadan hesap varlığı anlaşılmaz).
+   - Kuyruğa yalnız kullanıcı kimliği ve bağlantının adres kökü gider; e-posta adresi ve sıfırlama kodu Hangfire'a yazılmaz. Kod, iş koşarken üretilir.
+   - Tek işçi analizle meşgulken sıfırlama e-postası dakikalarca beklemesin diye e-postalar için ayrı bir kuyruk ve tek işçili ikinci bir Hangfire sunucusu açılır (yeni paket yok).
+4. **Hız sınırı iki katman.**
+   - İstek adresine göre: "Şifremi unuttum" gönderimi 15 dakikada 5, yeni şifre kaydı 15 dakikada 10. Aşılınca kullanıcı "Çok fazla deneme yaptınız, biraz sonra tekrar deneyin" mesajıyla aynı sayfaya döner.
+   - Hesaba göre: bir hesaba saatte en çok 3 sıfırlama e-postası. Aşılırsa e-posta sessizce gitmez, cevap değişmez. Sayaç bellekte tutulur (uygulama tek kopya çalışıyor; birden çok kopyaya geçilirse ortak depoya taşınmalı, ADR'ye yazılır).
+   - Sayılar `appsettings.json`'dan değiştirilebilir.
+5. **Kod adres çubuğundan sayfaya, oradan dışarı sızmaz.**
+   - Yeni şifre sayfası `Referrer-Policy: no-referrer` ve `Cache-Control: no-store` gönderir; kod formda gizli alanla taşınır.
+   - Kod ve bağlantı hiçbir günlüğe yazılmaz; testte günlükler yakalanıp kodun geçmediği kontrol edilir.
+6. **Sıfırlamadan sonra:** kullanıcı otomatik giriş yapmaz, giriş sayfasına yönlenir. Hesap çok fazla yanlış denemeden kilitliyse kilit kalkar ve yanlış deneme sayacı sıfırlanır (bağlantıya ulaşan kişi e-postanın sahibi).
+7. **Şifre değişti bildirimi:** sıfırlamadan sonra kullanıcıya kısa bir "Şifreniz değiştirildi; bunu siz yapmadıysanız bize yazın" e-postası gider. Hesabı ele geçirilen kişi fark etsin diye.
+8. **Türkçe şifre hataları:** Identity'nin şifre kuralı hataları (rakam, büyük harf, uzunluk...) için Türkçe metin eklenir. Kayıt sayfası da bundan yararlanır; bugün oradaki bu hatalar İngilizce.
+9. **Oturum açıkken:** "Şifremi unuttum" sayfası giriş sayfası gibi ana sayfaya yönlendirir. Yeni şifre sayfası oturumdan bağımsız çalışır (bağlantıdaki koda bakar).
+10. **Silme isteği bekleyen hesap:** özel işlem yok. Sıfırlama çalışır; kullanıcı sonra giriş yapınca mevcut kural silme isteğini iptal eder.
 
 ## Teknoloji
 
-Mevcut yığın, yeni paket yok:
-
-- ASP.NET Core Razor Pages, `net10.0`, EF Core 10 + SQL Server, Hangfire 1.8.
-- E-posta: `System.Net.Mail` + `EmailSettings` (mevcut `EmailService` ile aynı SMTP).
-- `.ics` metni elle üretilir (RFC 5545'in gereken küçük alt kümesi). Bunun için bir kütüphane eklenmez.
+Mevcut yığın, yeni paket yok: ASP.NET Core Razor Pages (`net10.0`), ASP.NET Core Identity, EF Core 10 + SQL Server, Hangfire 1.8, `System.Net.Mail` (`EmailService`), `Microsoft.AspNetCore.RateLimiting`, `IMemoryCache`.
 
 ## Komutlar
 
 ```
 Doğrulama (lint, biçim, tip, build, testler):  scripts/verify.sh
-Yalnız bu işin testleri:                       dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~Calendar"
-Migration:                                     dotnet ef migrations add AddCalendarInvites --project MeetingWeb
+Yalnız bu işin testleri:                       dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~PasswordReset"
 Yerelde çalıştırma:                            docker compose up -d --build
 ```
 
-Commit öncesi hook ve CI `scripts/verify.sh`'yi koşar.
+Commit öncesi hook ve CI `scripts/verify.sh`'yi koşar. Migration yok.
 
 ## Proje yapısı
 
 ```
-MeetingWeb/Models/CalendarInvite.cs                 → gönderilen davetin kaydı (görev, kişi, UID, sıra no, gönderilen tarih, durum)
-MeetingWeb/Services/CalendarInviteBuilder.cs        → .ics metnini üretir (saf, statik, test edilir)
-MeetingWeb/Services/CalendarSyncService.cs          → görevin şimdiki hâliyle gönderilmiş daveti karşılaştırır, davet/güncelleme/iptal kararını verir
-MeetingWeb/Services/IEmailService.cs, EmailService.cs → yeni SendCalendarInviteAsync (text/calendar parçalı e-posta)
-MeetingWeb/Pages/Details.cshtml.cs                  → atama, son tarih, bitti/açık değişince eşitleme işi kuyruğa
-MeetingWeb/Pages/MyActions.cshtml(.cs)              → "Takvimime gönder" ve "Takvim dosyasını indir"
-MeetingWeb/Pages/History.cshtml.cs                  → toplantı silinmeden önce iptaller kuyruğa
-MeetingWeb/Pages/Workspace/Members.cshtml.cs        → üye çıkınca/çıkarılınca iptaller kuyruğa
-MeetingWeb/Pages/Profile/Index.cshtml(.cs)          → "Bana atanan görevleri takvim daveti olarak gönder" anahtarı
-MeetingWeb/Models/ApplicationUser.cs                → CalendarInvitesEnabled (varsayılan açık)
-MeetingWeb/appsettings.json                         → App:PublicUrl (boş; site herkese açık adrese çıkınca doldurulur)
-MeetingWeb/Migrations/                              → AddCalendarInvites
-MeetingWeb.Tests/Features/CalendarInviteTests.cs    → davranış testleri
-MeetingWeb.Tests/Security/WorkspaceBoundaryTests.cs → yeni uç noktalar listeye eklenir
-docs/decisions/0015-takvim-daveti.md                → karar kaydı (ADR-0008'deki "Takvime ekleme (.ics) ayrı iş" notunu kapatır)
+MeetingWeb/Services/PasswordResetService.cs        → istek (kullanıcıyı bul, hesap sınırı, kuyruğa at), e-posta işi (kod üret, gönder), sıfırlama (kodu doğrula, şifreyi değiştir, kilidi kaldır, bildirim)
+MeetingWeb/Services/PasswordResetLink.cs           → bağlantı kökünü seçen saf kural (PublicUrl / yerel adres / yok); birim test edilir
+MeetingWeb/Services/PasswordResetTokenProvider.cs  → 1 saatlik ayrı sağlayıcı
+MeetingWeb/Services/TurkishIdentityErrorDescriber.cs → şifre kuralı hataları Türkçe
+MeetingWeb/Services/IEmailService.cs, EmailService.cs → SendPasswordResetAsync, SendPasswordChangedAsync (düz metin + HTML)
+MeetingWeb/Pages/Auth/ForgotPassword.cshtml(.cs)   → e-posta formu ve "gönderdik" ekranı
+MeetingWeb/Pages/Auth/ResetPassword.cshtml(.cs)    → yeni şifre formu; geçersiz bağlantı ekranı
+MeetingWeb/Pages/Auth/Login.cshtml                 → "Şifremi unuttum" bağlantısı açılır
+MeetingWeb/Program.cs                              → sağlayıcı, Türkçe hatalar, e-posta kuyruğu sunucusu, iki hız sınırı
+MeetingWeb/appsettings.json                        → PasswordReset: sınır sayıları
+MeetingWeb.Tests/Features/PasswordResetTests.cs    → akış testleri
+MeetingWeb.Tests/Security/PasswordResetSecurityTests.cs → sızma, sınır, zehirlenme testleri
+MeetingWeb.Tests/Security/WorkspaceBoundaryTests.cs → dört yeni handler NotWorkspaceScoped olarak eklenir
+docs/decisions/0016-sifre-sifirlama.md             → karar kaydı (bağlantı adresi, token, kuyruk, bellek sayacının sınırı)
 ```
 
-Dosya adları plana göre değişebilir; ilke değişmez: mantık `Services/`'te, sayfalar yalnız kuyruğa iş atar.
-
-## Tasarım ilkeleri
-
-- **Tek giriş noktası, eşitleme mantığı.** Görevle ilgili her değişiklikte aynı Hangfire işi kuyruğa girer: `SyncAsync(actionItemId)`. İş, görevin şimdiki hâlini (atanan, son tarih, bitti mi, kişinin tercihi, ekip üyeliği) gönderilmiş davetle karşılaştırır ve gerekeni yapar: hiçbir şey, davet, güncelleme (aynı UID, `SEQUENCE` bir artar) ya da iptal (`METHOD:CANCEL`). Aynı iş iki kez koşarsa ikincisi fark bulmaz, e-posta gitmez.
-- **Kuyruğa yalnız kimlik gider.** Hangfire'a e-posta adresi ya da görev metni yazılmaz (ADR-0009). Metin, iş koşarken veritabanından okunur.
-- **Toplantı silinmesi.** Görev satırı silinince eşitleme işi görevi bulamaz. Davet kaydı görev satırına bağlı silinmez (yabancı anahtar silme zinciri yok), iptal için gereken UID ve sıra no orada kalır; iptal gidince kayıt silinir.
-- **Kaçış.** Görev metni yapay zekâdan ya da kullanıcıdan gelir. `.ics` içinde `\`, `;`, `,` ve satır sonları kaçırılır; satırlar 75 baytta katlanır, satır sonu CRLF. E-posta başlığına satır sonu girmez (S8 kuralı).
-- **Düğme sınırı.** "Takvimime gönder" e-posta gönderdiği için kişi başı sınır var (paylaş düğmesindeki gibi; sayı planda).
+Dosya adları plana göre değişebilir; ilke değişmez: mantık `Services/`'te, sayfalar yalnız servisi çağırır.
 
 ### Kod biçimi
 
-Mevcut `EmailService.BuildSummaryHtml` gibi, metni üreten kısım saf ve statik; testler doğrudan çağırır:
+Mevcut düzen: sayfa modeli ince, kural servis içinde; saf karar ayrı ve statik, testler doğrudan çağırır.
 
 ```csharp
-public static class CalendarInviteBuilder
+public static class PasswordResetLink
 {
-    // METHOD:REQUEST davet ve güncelleme, METHOD:CANCEL iptal. Tüm gün: DTSTART;VALUE=DATE, DTEND ertesi gün.
-    public static string Build(CalendarInviteData invite, CalendarMethod method)
+    // ADR-0016: the request's Host header is never trusted for a public link; it is only used when it is loopback.
+    public static string? BaseUrl(string? publicUrl, HttpRequest request)
     {
-        var ics = new IcsWriter();
-        ics.Line("BEGIN:VCALENDAR").Line("VERSION:2.0").Line("PRODID:-//Briefyn AI//Görevler//TR")
-           .Line("METHOD:" + (method == CalendarMethod.Cancel ? "CANCEL" : "REQUEST"))
-           .Line("BEGIN:VEVENT")
-           .Line("UID:" + invite.Uid)
-           .Line("SEQUENCE:" + invite.Sequence)
-           .Line("DTSTART;VALUE=DATE:" + invite.DueDate.ToString("yyyyMMdd"))
-           .Line("DTEND;VALUE=DATE:" + invite.DueDate.AddDays(1).ToString("yyyyMMdd"))
-           .Text("SUMMARY", invite.TaskText);   // Text() kaçırır ve katlar
-        // ...
+        if (!string.IsNullOrWhiteSpace(publicUrl)) return publicUrl.TrimEnd('/');
+        return IsLoopback(request.Host.Host) ? $"{request.Scheme}://{request.Host}" : null;
     }
 }
 ```
 
-Kod ve yorumlar İngilizce; kullanıcıya görünen her metin sade Türkçe, teknik terim yok ("davet", "takvim dosyası"; "ICS", "UID" değil).
+Kod ve yorumlar İngilizce; kullanıcıya görünen her metin sade Türkçe, teknik terim yok ("bağlantı", "şifre"; "token", "link" değil).
 
 ## Test stratejisi
 
-xUnit, `MeetingWeb.Tests` (mevcut `BriefynFactory`, `EmailServiceOverride` ile e-posta yakalanır).
+xUnit, `MeetingWeb.Tests`, mevcut `BriefynFactory` (`EmailServiceOverride` ile e-posta yakalanır, `FakeBackgroundJobClient` ile kuyruk görülür, `CapturingLoggerProvider` ile günlükler okunur). Önce kötüye kullanım testi, sonra kod.
 
-**Birim (`CalendarInviteBuilder`):**
-- Tüm gün tarih alanları, `METHOD`, `UID`, `SEQUENCE` doğru.
-- Görev metnindeki `;`, `,`, `\`, satır sonu kaçırılıyor; uzun Türkçe metin UTF-8 bayt sınırında, harf ortasından bölünmeden katlanıyor.
-- İptal aynı UID'yi ve daha büyük `SEQUENCE`'ı taşıyor.
+**Birim:**
+- `PasswordResetLink.BaseUrl`: PublicUrl dolu → o, sondaki `/` silinmiş; boş + `localhost` / `127.0.0.1` / `[::1]` → istek adresi; boş + `saldirgan.example` → yok.
 
-**Davranış (`CalendarSyncService` + sayfalar):**
-- Tarihli atama → bir davet; aynı iş ikinci kez → e-posta yok.
-- Tarih değişti → güncelleme, sıra no arttı. Atama kaldırıldı / tarih silindi / bitti → iptal. Yeniden açıldı → yeni davet.
-- Başkasına geçti → eskiye iptal, yeniye davet.
-- Toplantı silindi → iptal. Ekipten çıktı → iptal, yeni davet yok.
-- Tercih kapalı → otomatik davet yok, düğme çalışıyor. Son tarih geçmiş → otomatik davet yok.
-- Hangfire'a giden iş argümanlarında e-posta adresi ya da görev metni yok.
+**Akış:**
+- Kayıtlı adres → aynı ekran, bir e-posta işi kuyrukta; iş koşunca e-posta gidiyor, bağlantı kurulabilir.
+- Bağlantıyla yeni şifre → kaydediliyor; yeni şifreyle giriş oluyor, eski şifreyle olmuyor.
+- Aynı bağlantı ikinci kez → reddediliyor. Aynı kullanıcıya önceden gönderilmiş ikinci bağlantı da reddediliyor.
+- 1 saatten eski kod reddediliyor. Zamanın testte nasıl ilerletileceği planda seçilir (Identity'nin sağlayıcısı `TimeProvider` kullanıyor mu, bakmadım).
+- Şifre değişmeden önce açılmış oturum, değiştikten sonra giriş sayfasına düşüyor.
+- Kilitli hesap sıfırlamadan sonra giriş yapabiliyor.
+- Sıfırlamadan sonra "şifreniz değişti" e-postası gidiyor.
+- Kurala uymayan yeni şifre → Türkçe hata, şifre değişmiyor, kod hâlâ geçerli.
 
 **Güvenlik:**
-- Düğme ve `.ics` indirme, başkasına atanmış görevde ve başka ekibin görevinde çalışmıyor; yeni uç noktalar `WorkspaceBoundaryTests` listesinde (yoksa test kırılır).
-- Düğme sınırı aşılınca e-posta gitmiyor.
+- Kayıtlı olmayan adres → kayıtlı adresle aynı sayfa metni ve durum kodu; kuyrukta iş yok.
+- Hangfire'a giden iş argümanlarında e-posta adresi ve kod yok.
+- Akış boyunca yakalanan hiçbir günlük satırında kod geçmiyor.
+- Host başlığı `saldirgan.example` ve PublicUrl boş → e-posta gitmiyor. PublicUrl dolu → bağlantı PublicUrl'le başlıyor, Host başlığından bağımsız.
+- Adres başına sınır aşılınca istek reddediliyor; hesap başına sınır aşılınca e-posta gitmiyor ama cevap aynı.
+- Yeni şifre sayfası `Referrer-Policy: no-referrer` ve `Cache-Control: no-store` gönderiyor.
+- Bozuk, başka kullanıcının kimliğiyle eşleştirilmiş ya da boş kod reddediliyor.
+- Dört yeni handler `WorkspaceBoundaryTests` listesinde (yoksa test kırılır).
 
-**Elle (otomatik test edilemez, iş bitmeden yapılır):** gerçek e-postayla her Outlook'ta üç adım denenir: davet Kabul et ile takvime giriyor mu, güncelleme aynı kaydı taşıyor mu, iptal kaydı kaldırıyor mu. Ayrıca Gmail'de davet ve `.ics` dosyası. Sonuç `docs/raporlar/`'a kısa not olarak yazılır. Backlog'daki araştırma bunları belgeden söylüyor, bu projede henüz denenmedi.
-
-| Outlook | Hesap | Kim dener |
-|---|---|---|
-| Outlook web | kişisel (Ulaş) | Claude, yerleşik tarayıcıda; giriş ve Kabul et onayı Ulaş'tan |
-| Yeni Outlook (Mac) | kişisel (Ulaş) | Claude, bilgisayar kontrolüyle açılabilirse; açılamazsa Ulaş |
-| Outlook mobil | kişisel (Ulaş) | Ulaş (telefona Claude erişemez) |
-| Gmail (web) | herhangi | Claude ya da Ulaş |
-| Klasik masaüstü Outlook (Windows) | — | denenemiyor, cihaz yok |
-| İş hesabı (Microsoft 365, kurumsal) | — | denenemiyor, hesap yok |
-
-Denenemeyen iki satır bilinen risk olarak rapora yazılır. Davet standart biçime (RFC 5545 / iTIP) uyduğu için çalışması beklenir; tahminim, kontrol edilmedi. İş hesabında kuruluşun dış davetleri süzmesi ayrı risk. Yayından sonra ilk kurumsal kullanıcıdan geri bildirim istenir.
+**Elle (yerel Docker yığını, ekranda):** giriş sayfasından bağlantı istenir; e-posta gelir; bağlantı açılır, yeni şifre kaydedilir, yeni şifreyle girilir; aynı bağlantı ikinci kez açılınca reddedilir. Kısa not `docs/raporlar/`'a.
 
 ## Sınırlar
 
-- **Her zaman:** `scripts/verify.sh` geçmeden commit yok; yeni uç nokta `WorkspaceBoundaryTests`'e eklenir; e-posta adresi ve görev metni Hangfire'a, loglara yazılmaz; kullanıcıya görünen metin sade Türkçe.
-- **Önce sor:** onaylanan `CalendarInvites` tablosu ve `ApplicationUser.CalendarInvitesEnabled` dışında şema değişikliği; yeni paket; e-posta sağlayıcısını ya da gönderici adresini değiştirmek; Microsoft Graph ya da hesap bağlama.
-- **Asla:** kişiye haber vermeden başka adrese davet (yalnız görevli kişi); Outlook web bağlantısı (bu adımda reddedildi); yapay zekâ sağlayıcısına yeni veri göndermek (bu işin yapay zekâyla ilgisi yok).
+- **Her zaman:** `scripts/verify.sh` geçmeden commit yok; yeni handler `WorkspaceBoundaryTests`'e eklenir; e-posta adresi ve kod Hangfire'a ve günlüğe yazılmaz; kayıtlı olmayan adres için cevap aynı; kullanıcıya görünen metin sade Türkçe.
+- **Önce sor:** şema değişikliği (bu planda yok); yeni paket ya da ücretli servis (e-posta yakalayıcı dahil); e-posta sağlayıcısını ya da gönderici adresini değiştirmek; `AllowedHosts`'u değiştirmek; giriş ya da kayıt akışının sıfırlama dışındaki davranışını değiştirmek.
+- **Asla:** sıfırlama kodunu veritabanına, Hangfire'a ya da günlüğe yazmak; istekteki Host başlığına yerel olmayan bir adreste güvenmek; cevapla ya da hata metniyle hesabın var olup olmadığını belli etmek; Identity'nin kapalı `/Identity/Account/ForgotPassword` sayfalarını açmak.
 
 ## Başarı ölçütleri
 
-1. Tarihli atanan görev için görevli kişiye tek bir davet e-postası gidiyor. Elle denenebilen her Outlook'ta (web, yeni Outlook, mobil) Kabul et ile son tarih gününe tüm gün kayıt oluşuyor; denenemeyenler raporda risk olarak yazılı.
-2. Son tarih değişince aynı kayıt yeni tarihe taşınıyor; ikinci bir kayıt oluşmuyor.
-3. Bitti, atama kaldırma, tarih silme, toplantı silme ve ekipten çıkmada kayıt iptal ediliyor.
-4. Başkasına geçen görevde eski kişiye iptal, yeni kişiye davet gidiyor.
-5. Profil'de kapatan kişiye otomatik davet gitmiyor; "Takvimime gönder" düğmesi çalışıyor.
-6. "Takvim dosyasını indir" ile inen dosya Outlook ve Google Takvim'de açılıyor.
-7. Başka kişinin ya da başka ekibin görevi için düğme ve indirme reddediliyor.
-8. `scripts/verify.sh` GEÇTİ; elle deneme notu `docs/raporlar/`'da; ADR-0015 yazıldı; Backlog 5'te takvim adımı çıkarıldı, Slack/Teams ve Trello/Jira kaldı.
+1. Giriş sayfasında "Şifremi unuttum" bağlantısı var; e-posta formu çalışıyor.
+2. Kayıtlı adrese 1 saat geçerli bir bağlantı e-postayla gidiyor; kayıtlı olmayan adres için ekran ve durum kodu aynı, e-posta gitmiyor.
+3. Bağlantıyla yeni şifre kaydediliyor; yeni şifreyle giriş oluyor, eskisiyle olmuyor.
+4. Aynı bağlantı ikinci kez, süresi dolmuşsa ya da bozuksa reddediliyor; şifre değişince eski bağlantılar ve açık oturumlar geçersiz.
+5. Adres başına ve hesap başına sınır çalışıyor.
+6. Sıfırlama kodu veritabanında, Hangfire'da ve günlüklerde yok (testle).
+7. Sahte Host başlığı bağlantıyı başka adrese çeviremiyor (testle).
+8. Yerel Docker yığınında ekranda denendi: e-posta geldi, bağlantı çalıştı, ikinci kullanımda reddedildi; not `docs/raporlar/`'da.
+9. `scripts/verify.sh` GEÇTİ; commit'ler main'de, CI yeşil; ADR-0016 yazıldı.
 
 ## Açık sorular
 
-Yok. Onayla kapananlar:
-
-1. Elle denemenin paylaşımı, test stratejisindeki tablodaki gibi.
-2. Bu iş, `deneme/azure-konusmaci` dalındaki konuşmacı işi main'e girdikten sonra main'den başlar.
+1. **Önerilen kararlar 1-10** (yukarıda) uygun mu? Özellikle: bağlantı ömrü 1 saat, sınır sayıları (adres başına 15 dakikada 5 / 10, hesap başına saatte 3), şifre değişti bildirimi (7) ve kayıt sayfasını da etkileyen Türkçe hata metinleri (8).
+2. **E-postalar için ikinci Hangfire sunucusu (karar 3)** kabul mü? Alternatif: mevcut sunucunun işçi sayısını 2'ye çıkarmak; ama o zaman iki toplantı analizi aynı anda koşabilir, maliyet ve bellek artar.
+3. **Elle deneme hangi gelen kutusuyla?** `.env`'deki gerçek gönderici adresinden, senin bir test adresine e-posta gidecek. Bağlantıyı açmak için ya o kutuyu yerleşik tarayıcıda açabileceğim bir adres söylersin (girişi sen yaparsın), ya da e-postadaki bağlantıyı sen açarsın. Yerel bir e-posta yakalayıcı (ör. Mailpit konteyneri) ücretsiz ama compose'a yeni bir servis demek; istemezsen eklemem.
+4. **`SPEC.md` değişimi:** takvim spec'inin açık kalan maddeleri (Gmail/Google Takvim denemesi, takvim için `/agent-skills:review`) Backlog 5'te ve git geçmişinde duruyor; bu spec onu `SPEC.md`'de yerinden ediyor. `tasks/plan.md` ve `tasks/todo.md` plan aşamasında bu işe göre yeniden yazılır.
