@@ -47,8 +47,8 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
 - [x] **Ek: yeni şifre eskisiyle aynı olamaz** (spec karar 11, Kontrol A'da bulundu): bağlantı doğrulandıktan sonra kontrol ediliyor; testte.
 
 ### Kontrol B
-- [ ] `scripts/verify.sh` GEÇTİ.
-- [ ] Yerel yığında sınır mesajı ve Türkçe hata ekranda görüldü.
+- [x] `scripts/verify.sh` GEÇTİ (`e00c352`'nin commit öncesi kontrolü, .NET 638/638).
+- [x] Yerel yığında (web yeniden başlatıldı) kayıtlı olmayan adresle: 6. "Şifremi unuttum" isteği "gönderdik" ekranına değil forma döndü, sayfada "Çok fazla deneme yaptınız"; kayıt sayfasında `abcdef` için üç Türkçe hata (işaret, rakam, büyük harf). Sayfanın HTML'inden bakıldı, ekran görüntüsü alınmadı.
 
 ## Aşama 3: Belgeler ve yayın
 
@@ -59,6 +59,15 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - Dosyalar: `docs/decisions/0016-sifre-sifirlama.md`, `docs/decisions/README.md`, `docs/raporlar/2026-11-21-sifre-sifirlama-deneme.md`, `Backlog.md`.
 
 ### Kontrol C: bitti
-- [ ] Spec başarı ölçütleri 1-9 tek tek işaretlendi.
+- [x] Spec başarı ölçütleri:
+  - [x] 1. Girişte "Şifremi unuttum" bağlantısı, form çalışıyor: testte ve yerelde.
+  - [x] 2. Kayıtlı adrese 1 saatlik bağlantı, kayıtlı olmayana aynı ekran ve e-posta yok: testte; gerçek e-posta Kontrol A'da.
+  - [x] 3. Yeni şifre kaydediliyor, eskisiyle giriş yok, eskisiyle aynı şifre kabul edilmiyor: testte; ilk ikisi Kontrol A'da Ulaş.
+  - [x] 4. Kullanılmış, süresi dolmuş, bozuk bağlantı reddediliyor; şifre değişince eski bağlantılar ve açık oturumlar geçersiz: testte; ikinci kullanım Kontrol A'da Ulaş.
+  - [x] 5. Adres ve hesap başına sınır: testte; adres sınırı yerelde.
+  - [x] 6. Kod veritabanında yok (saklanmıyor), Hangfire argümanında ve günlükte yok: testte.
+  - [x] 7. Sahte Host başlığı bağlantıyı çeviremiyor: testte.
+  - [ ] 8. Yerel deneme: e-posta, bağlantı, ikinci kullanım geçti; e-postanın düştüğü klasör yazılmadı.
+  - [ ] 9. verify GEÇTİ, ADR-0016 yazıldı; push ve CI aşağıda.
 - [ ] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi; CI yeşil.
 - [ ] Ulaş'a `/agent-skills:review` hatırlatıldı.
