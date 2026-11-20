@@ -46,8 +46,12 @@ try
 
     // --- 2. Identity & Security ---
     builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-        options.SignIn.RequireConfirmedAccount = false)
+        {
+            options.SignIn.RequireConfirmedAccount = false;
+            options.Tokens.PasswordResetTokenProvider = PasswordResetTokenProvider.ProviderName;
+        })
         .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddTokenProvider<PasswordResetTokenProvider>(PasswordResetTokenProvider.ProviderName)
         .AddClaimsPrincipalFactory<AppClaimsPrincipalFactory>();
     // A deletion request changes the security stamp; reject existing cookies on their next request.
     builder.Services.Configure<SecurityStampValidatorOptions>(options =>
@@ -73,6 +77,9 @@ try
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection("Reminders"));
     builder.Services.Configure<AppOptions>(builder.Configuration.GetSection("App"));
+    builder.Services.Configure<PasswordResetOptions>(builder.Configuration.GetSection("PasswordReset"));
+    builder.Services.AddOptions<PasswordResetTokenProviderOptions>().Configure<IConfiguration>((options, configuration) =>
+        options.TokenLifespan = TimeSpan.FromMinutes(configuration.GetValue("PasswordReset:LinkLifetimeMinutes", 60)));
     builder.Services.Configure<AskOptions>(builder.Configuration.GetSection("Ask"));
     builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
