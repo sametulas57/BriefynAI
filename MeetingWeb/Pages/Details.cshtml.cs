@@ -20,6 +20,7 @@ namespace MeetingWeb.Pages
         private readonly IAudioStorage _audioStorage;
         private readonly IMeetingAccessService _access;
         private readonly IMeetingSeriesService _series;
+        private readonly ISpeakerNamingService _speakerNaming;
 
         // Constructor injection for required services and physical path resolution.
         public DetailsModel(
@@ -27,8 +28,9 @@ namespace MeetingWeb.Pages
             UserManager<ApplicationUser> userManager,
             IBackgroundJobClient backgroundJobClient,
             IAudioStorage audioStorage,
-            IMeetingAccessService access, IMeetingSeriesService series)
+            IMeetingAccessService access, IMeetingSeriesService series, ISpeakerNamingService speakerNaming)
         {
+            _speakerNaming = speakerNaming;
             _series = series;
             _context = context;
             _userManager = userManager;
@@ -53,6 +55,7 @@ namespace MeetingWeb.Pages
         public List<SeriesSummary> AvailableSeries { get; private set; } = new();
         public MeetingSeries? CurrentSeries { get; private set; }
         public List<WorkspaceMember> WorkspaceMembers { get; set; } = new();
+        public IReadOnlyList<string> SpeakerLabels { get; private set; } = Array.Empty<string>();
         public List<Comment> Comments { get; set; } = new();
 
         // Data Transfer Object (DTO) to hold cached user metadata for UI rendering.
@@ -81,6 +84,7 @@ namespace MeetingWeb.Pages
 
             if (meeting == null) return MeetingUnavailable();
             Meeting = meeting;
+            SpeakerLabels = SpeakerNamingService.Labels(meeting.Transcript?.Text);
             AvailableSeries = await _series.ListAsync(_userManager.GetUserId(User), meeting.WorkspaceId);
             if (meeting.SeriesId != null) CurrentSeries = await _series.FindAsync(_userManager.GetUserId(User), meeting.SeriesId.Value);
 
@@ -147,6 +151,29 @@ namespace MeetingWeb.Pages
 
             var result = await _series.SetMeetingSeriesAsync(userId, meetingId, seriesId);
             if (result == SeriesResult.NotFound) return MeetingUnavailable();
+            return RedirectToPage(new { id = meetingId });
+        }
+
+        public async Task<IActionResult> OnPostNameSpeakersAsync(int meetingId, List<string> labels, List<string> names)
+        {
+            var result = await _speakerNaming.RenameAsync(_userManager.GetUserId(User), meetingId, labels, names);
+            switch (result)
+            {
+                case SpeakerNamingResult.NotFound:
+                    return MeetingUnavailable();
+                case SpeakerNamingResult.Renamed:
+                    TempData["StatusMessage"] = "Adlar kaydedildi. Özet bu adlarla yeniden hazırlanıyor; bittiğinde bu sayfa kendiliğinden yenilenir.";
+                    break;
+                case SpeakerNamingResult.NothingToRename:
+                    TempData["ErrorMessage"] = "En az bir konuşmacıya ad yazın.";
+                    break;
+                case SpeakerNamingResult.InvalidName:
+                    TempData["ErrorMessage"] = "Ad en çok 60 karakter olabilir ve iki nokta (:) içeremez.";
+                    break;
+                case SpeakerNamingResult.Busy:
+                    TempData["StatusMessage"] = "Bu toplantı şu anda işleniyor. Bittikten sonra adları yeniden kaydedin.";
+                    break;
+            }
             return RedirectToPage(new { id = meetingId });
         }
 

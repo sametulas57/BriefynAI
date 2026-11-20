@@ -129,6 +129,7 @@ try
     builder.Services.AddScoped<IOverdueReminderService, OverdueReminderService>();
     builder.Services.AddScoped<IMeetingProcessor, MeetingProcessor>();
     builder.Services.AddScoped<IMeetingSeriesService, MeetingSeriesService>();
+    builder.Services.AddScoped<ISpeakerNamingService, SpeakerNamingService>();
     builder.Services.AddScoped<ISeriesAgendaService, SeriesAgendaService>();
     builder.Services.AddScoped<ZoomApiClient>();
     builder.Services.AddScoped<IZoomService, ZoomService>();
