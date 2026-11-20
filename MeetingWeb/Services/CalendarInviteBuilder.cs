@@ -16,7 +16,9 @@ namespace MeetingWeb.Services
         string OrganizerEmail,
         string AttendeeName,
         string AttendeeEmail,
-        DateTime StampUtc);
+        DateTime StampUtc,
+        // Sent again by the person's own request ("Takvimime gönder"); only the e-mail subject differs.
+        bool Resent = false);
 
     public static class CalendarInviteBuilder
     {

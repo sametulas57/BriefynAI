@@ -174,7 +174,9 @@ namespace MeetingWeb.Services
             var message = new MailMessage
             {
                 From = new MailAddress(senderEmail, senderName),
-                Subject = cancel ? "Takviminizden kaldırılan görev" : "Görev: " + taskSubject,
+                // A resent invite gets its own subject: Outlook files a same-subject message into a conversation the
+                // person deleted, which is exactly the case the button is for.
+                Subject = cancel ? "Takviminizden kaldırılan görev" : (invite.Resent ? "Takviminiz için yeniden: " : "Görev: ") + taskSubject,
                 SubjectEncoding = Encoding.UTF8,
                 HeadersEncoding = Encoding.UTF8,
                 BodyEncoding = Encoding.UTF8,
