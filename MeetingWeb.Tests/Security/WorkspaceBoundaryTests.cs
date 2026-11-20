@@ -57,6 +57,8 @@ public class WorkspaceBoundaryTests : IClassFixture<MeetingAccessFixture>
     {
         ["Ask:Get"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_select_another_workspaces_ask_target))),
         ["Ask:Post"] = new Covered((typeof(AskPageTests), nameof(AskPageTests.Other_teams_meeting_cannot_be_asked)), (typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_ask_another_workspaces_series))),
+        ["Auth/ForgotPassword:Get"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
+        ["Auth/ForgotPassword:Post"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
         ["Auth/Login:Get"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
         ["Auth/Login:Post"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),
         ["Auth/Register:Post"] = new NotWorkspaceScoped("Authentication or registration operates on account credentials and does not select existing workspace data."),

@@ -44,8 +44,7 @@
                                 <input asp-for="Input.RememberMe" class="form-check-input border-secondary shadow-sm" style="cursor: pointer;" />
                                 <label asp-for="Input.RememberMe" class="form-check-label text-muted" style="font-size: 0.95rem; cursor: pointer;">Oturumu açık tut</label>
                             </div>
-                            <!-- TODO: Enable Forgot Password functionality in future iterations -->
-                            <!-- <a href="#" class="text-primary text-decoration-none fw-medium small hover-primary transition-all">Şifremi Unuttum?</a> -->
+                            <a asp-page="/Auth/ForgotPassword" class="text-primary text-decoration-none fw-medium small hover-primary transition-all">Şifremi unuttum</a>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill shadow-sm fw-bold hover-scale transition-all d-flex align-items-center justify-content-center">

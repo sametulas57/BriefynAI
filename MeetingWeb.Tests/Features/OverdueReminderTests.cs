@@ -175,6 +175,8 @@ public class OverdueReminderTests
     private sealed class RecordingEmail(string? failAddress = null, Action<string>? onSend = null) : IEmailService
     {
         public List<(string Address, string Name, IReadOnlyList<OverdueTask> Tasks)> Sent { get; } = [];
+        public Task SendPasswordResetAsync(string toEmail, string fullName, string resetUrl, string lifetimeText) => Task.CompletedTask;
+        public Task SendPasswordChangedAsync(string toEmail, string fullName) => Task.CompletedTask;
         public Task SendMeetingSummaryAsync(int meetingId, string protectedRecipient) => Task.CompletedTask;
         public Task SendSeriesAgendaAsync(int seriesId, string protectedRecipient) => Task.CompletedTask;
         public Task SendCalendarInviteAsync(CalendarInviteData invite, CalendarMethod method) => Task.CompletedTask;
