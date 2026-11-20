@@ -4,7 +4,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
 
 ## Aşama 1: Atamadan Outlook'a ilk dilim
 
-- [ ] **Görev 1: Takvim metnini üreten parça** (S)
+- [x] **Görev 1: Takvim metnini üreten parça** (S)
   - Kabul: davet ve iptal metni üretiliyor; tüm gün tarih, UID, sıra no, düzenleyen, katılımcı (`RSVP=FALSE`), bir gün önce 09:00 hatırlatma var. `\ ; ,` ve satır sonu kaçırılıyor; satırlar 75 baytta, Türkçe harfin ortasından bölünmeden katlanıyor; satır sonu CRLF. İptal metni görev metnini taşımıyor (spec varsayım 8).
   - Doğrula: odaklı test.
   - Bağımlılık: yok.
