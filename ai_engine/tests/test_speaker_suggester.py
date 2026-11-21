@@ -90,6 +90,17 @@ def test_invalid_names_are_dropped(name):
     assert SpeakerSuggester(llm).suggest(TRANSCRIPT) == {}
 
 
+def test_existing_speaker_label_is_not_a_name_proposal():
+    llm = FakeLlm(
+        {
+            "oneriler": [
+                {"konusmaci": "Konuşmacı 1", "ad": "Konuşmacı 2", "gerekce": "ipucu"}
+            ]
+        }
+    )
+    assert SpeakerSuggester(llm).suggest(TRANSCRIPT) == {}
+
+
 def test_unknown_speaker_label_is_dropped():
     llm = FakeLlm(
         {"oneriler": [{"konusmaci": "Konuşmacı 9", "ad": "Murat", "gerekce": "ipucu"}]}
