@@ -31,8 +31,8 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Dosyalar: `MeetingWeb/Pages/Public/Home.cshtml(.cs)`, `MeetingWeb/Pages/Index.cshtml(.cs)`, `MeetingWeb/Pages/Shared/_PublicLayout.cshtml`, `MeetingWeb/Pages/Auth/Login.cshtml`, `MeetingWeb/Pages/Auth/Register.cshtml(.cs)`, `MeetingWeb.Tests/Features/PublicSiteTests.cs`, `MeetingWeb.Tests/Security/WorkspaceBoundaryTests.cs`.
 
 ### Kontrol A: temel ve onay
-- [ ] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi, CI yeşil (Node adımıyla).
-- [ ] Yerel yığında `/`, `/tr`, iki "yakında" sayfası ve 404 tarayıcıda açıldı.
+- [x] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi, CI yeşil (Node adımıyla). · 2026-11-21: `224b51e`, Tests koşusu başarılı.
+- [x] Yerel yığında `/`, `/tr`, iki "yakında" sayfası ve 404 tarayıcıda açıldı. · `/` ve `/Index` 302 → `/tr`; `/tr`, `/tr/product/ask-archive`, `/tr/pricing` 200; `/tr/olmayan`, `/tr/product` 404.
 - [ ] **Ulaş önizlemeyi onayladı** (palet, yazı tipi, logo). Onaylanmadan Görev 5'e geçilmez.
 
 ## Aşama 2: Çerçevenin görünümü
