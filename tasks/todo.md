@@ -76,7 +76,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 6, 8. İşçi: Opus alt ajanı (`scroll-craft`).
   - Dosyalar: `MeetingWeb/Pages/Public/Home.cshtml`, `MeetingWeb/wwwroot/js/home.js`, `MeetingWeb/wwwroot/lib/scrollcraft/*`, `MeetingWeb/Styles/app.css`, `MeetingWeb.Tests/Features/PublicSiteTests.cs`.
 
-- [ ] **Görev 10: Kimler için, güven, sık sorulanlar, kapanış** (S)
+- [x] **Görev 10: Kimler için, güven, sık sorulanlar, kapanış** (S) · bitti 2026-11-21: roller katalogdan; güven yalnız iki izinli cümle; SSS beş soru (dosya türleri ve MB sınırı `UploadRules` → `Upload:MaxMegabytes`'tan, Zoom "tek tıkla aktarın"); kapanışta işaret çizilerek "Kayıt yükle". shoot.mjs üç hâl: ölü kaydırma yok, taşma yok, ağ yalnız yerel; kontrast en düşük 5,75. FINGERPRINTS.md satırı eklendi. Odaklı testler 112/112. Görev 11'de bakılacak: telefonda yolculuktan çıkarken yalnız başlığın kaldığı kısa an ve kapanış girişindeki boş koyu levha; Zoom cümlesi üretimde Zoom açıksa doğru (`Zoom/Recordings` kapalıyken 404); uzantı listesi `Upload.cshtml.cs` ile `UploadRules`'ta iki yerde (eski sayfaya dokunmak Ulaş'ın onayıyla).
   - Kabul: beş rol birer cümleyle (katalogdaki Çözümler'den); güven bölümünde yalnız "Toplantılarınız yapay zekâ eğitiminde kullanılmaz." ve "Ses analizden sonra silinir, döküm şifreli saklanır.", "hiç saklanmaz" ve sertifika adı yok; SSS cevapları koddan doğrulanmış (ücretsiz; `.mp3`, `.wav`, `.m4a`, 300 MB `Upload:MaxMegabytes`'tan; Zoom bağlanınca otomatik); kapanışta "Kayıt yükle". Telefonda dizilim kendi düzeninde.
   - Doğrula: odaklı test (iki güven cümlesi birebir var, "hiç saklanmaz" yok, SSS'teki dosya türleri ve sınır ayarla aynı); `shoot.mjs` üç hâl.
   - Bağımlılık: 9. İşçi: Opus alt ajanı.

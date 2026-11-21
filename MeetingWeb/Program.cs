@@ -268,6 +268,7 @@ try
 
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<MeetingWeb.Services.PublicSite.SiteCatalog>();
+    builder.Services.AddSingleton<MeetingWeb.Services.PublicSite.UploadRules>();
     builder.Services.AddRazorPages();
 
     var app = builder.Build();

@@ -133,6 +133,114 @@
     </div>
 </section>
 
+<section class="ha" data-home-audience data-sc-act="flow" aria-labelledby="ha-title">
+    <div class="ha-grid">
+        <div class="ha-lead">
+            <h2 id="ha-title" class="ha-title">Toplantısı çok olan her ekip için</h2>
+            <picture>
+                <source media="(max-width: 860px)" srcset="/img/home/masa-ustten-780.webp" width="780" height="520" />
+                <img class="ha-photo" src="/img/home/masa-ustten-960.webp" width="960" height="1200" loading="lazy" decoding="async"
+                     alt="Üstten bakış: toplantı masasında eller, kapalı dizüstü bilgisayarlar, kahve fincanları ve not tutulan boş bir defter." />
+            </picture>
+        </div>
+        @* Roller katalogdan (SiteCatalog, Çözümler). "Yakında" sayfaları boş olduğu için bağlantı değiller (BRIEF 5. bölüm). *@
+        <ul class="ha-roles" data-sc-in data-sc-stagger="60">
+            @foreach (var solution in Model.Solutions)
+            {
+                <li class="ha-role">
+                    <h3 class="ha-role-name">@solution.Title</h3>
+                    <p class="ha-role-text">@solution.Summary</p>
+                </li>
+            }
+        </ul>
+    </div>
+</section>
+
+@* Güven: yalnız iki izinli cümle (SPEC "Ana sayfa içeriği" 5). Şeritte ses çubukları soldan sağa silinir, altındaki satırlar kalır. *@
+<section class="ht" data-home-trust data-sc-act="flow" aria-labelledby="ht-title">
+    <div class="ht-inner">
+        <div class="ht-band" aria-hidden="true">
+            <svg class="ht-bars" viewBox="0 0 960 112" preserveAspectRatio="none" focusable="false">
+                <g fill="none" stroke="#0697B4" stroke-width="7" stroke-linecap="round">
+                    @for (var i = 0; i < 48; i++)
+                    {
+                        var x = 8 + i * (944 / 47.0);
+                        var half = heroBars[i % heroBars.Length] * 0.46;
+                        <path class="@(i % 2 == 1 ? "ht-bar-odd" : null)" d="M@(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) @((56 - half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))V@((56 + half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))" vector-effect="non-scaling-stroke" />
+                    }
+                </g>
+            </svg>
+            <div class="ht-lines" data-sc-reveal="left" data-sc-reveal-at="0.25 0.6">
+                <span class="ht-line ht-line-1"></span>
+                <span class="ht-line ht-line-2"></span>
+                <span class="ht-line-end"><span class="ht-line ht-line-3"></span><span class="ht-lock">@await Html.PartialAsync("_Icons", "lock")</span></span>
+            </div>
+        </div>
+        <h2 id="ht-title" class="ht-title">Verileriniz ne oluyor?</h2>
+        <p class="ht-claim">Toplantılarınız yapay zekâ eğitiminde kullanılmaz.</p>
+        <p class="ht-claim">Ses analizden sonra silinir, döküm şifreli saklanır.</p>
+        <a href="/Privacy" class="ht-link">Gizlilik</a>
+    </div>
+</section>
+
+@* Sık sorulanlar: cevaplar koddan ve ayardan (BRIEF 9. bölüm, satır 20-24). Açılıp kapanma tarayıcının kendi <details> davranışı. *@
+<section class="hf" data-home-faq aria-labelledby="hf-title">
+    <div class="hf-inner">
+        <h2 id="hf-title" class="hf-title">Sık sorulanlar</h2>
+        <div class="hf-list" data-sc-in data-sc-stagger="50">
+            <details class="hf-item">
+                <summary class="hf-q">Briefyn ücretli mi?@await Html.PartialAsync("_Icons", "chevron-down")</summary>
+                <div class="hf-a"><p>Şimdilik her şey ücretsiz.</p></div>
+            </details>
+            <details class="hf-item">
+                <summary class="hf-q">Hangi dosyaları yükleyebilirim?@await Html.PartialAsync("_Icons", "chevron-down")</summary>
+                <div class="hf-a"><p>@Model.FileTypes; bir dosya en fazla @Model.MaxMegabytes MB.</p></div>
+            </details>
+            <details class="hf-item">
+                <summary class="hf-q">Zoom kayıtlarımı alabilir miyim?@await Html.PartialAsync("_Icons", "chevron-down")</summary>
+                <div class="hf-a"><p>Evet. Zoom hesabınızı bağlayın, bulut kayıtlarınızı listeden seçip tek tıkla aktarın.</p></div>
+            </details>
+            <details class="hf-item">
+                <summary class="hf-q">Verilerim ne oluyor?@await Html.PartialAsync("_Icons", "chevron-down")</summary>
+                <div class="hf-a"><p>Toplantılarınız yapay zekâ eğitiminde kullanılmaz.</p><p>Ses analizden sonra silinir, döküm şifreli saklanır.</p></div>
+            </details>
+            <details class="hf-item">
+                <summary class="hf-q">Hesap açmam gerekiyor mu?@await Html.PartialAsync("_Icons", "chevron-down")</summary>
+                <div class="hf-a"><p>Evet, ücretsiz bir hesap açarsınız; kayıttan sonra doğrudan yükleme ekranına dönersiniz.</p></div>
+            </details>
+        </div>
+    </div>
+</section>
+
+@* Kapanış: aynı çizgiler son kez toplanıp Briefyn işaretinde durur; çağrı işaretin not satırının yanında. Son bölüm: ipucu tek değerli ve tutulur. *@
+<section class="hc" data-home-closing data-sc-act="flow" data-sc-span="1.3" aria-labelledby="hc-title">
+    <div class="hc-stage" data-sc-stage>
+        <div class="hc-grid">
+            @* İşaret, logo A'nın yolları (docs/brand/logo-a.svg): dört ses çubuğu, sonuncusu iki not satırına dönüşür, altta kısa üçüncü satır. *@
+            <svg class="hc-mark" viewBox="0 2 90 49" aria-hidden="true" focusable="false" data-hc-mark>
+                <defs>
+                    <linearGradient id="hc-mark-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="90" y2="0">
+                        <stop offset="0" stop-color="#00D3E6" />
+                        <stop offset="1" stop-color="#1E9BFF" />
+                    </linearGradient>
+                </defs>
+                <g fill="none" stroke="url(#hc-mark-ink)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path pathLength="1" style="--d: -1" d="M3.5 23V31" />
+                    <path pathLength="1" style="--d: -1" d="M13.75 16V38" />
+                    <path pathLength="1" style="--d: -1" d="M24 7V45" />
+                    <path pathLength="1" style="--d: 0.05" d="M34.25 16V33Q34.25 37 38.25 37C44 37 46 27 52 27H86" />
+                    <path pathLength="1" style="--d: 0.25" d="M34.25 26H38.25C44 26 46 16 52 16H86" />
+                    <path pathLength="1" style="--d: 0.45" d="M58 38H74" />
+                </g>
+            </svg>
+            <div class="hc-copy" data-sc-cue="0.12">
+                <h2 id="hc-title" class="hc-title">Sıradaki toplantının notlarını Briefyn çıkarsın.</h2>
+                <a href="/Upload" class="btn btn-grad mt-7 h-13 px-7 text-lg font-bold focus-visible:outline-hero-title" data-hc-cta>Kayıt yükle</a>
+            </div>
+        </div>
+    </div>
+</section>
+
 @section Scripts {
     <script src="/lib/scrollcraft/scrollcraft.js" defer></script>
     <script src="~/js/home.js" asp-append-version="true" defer></script>
