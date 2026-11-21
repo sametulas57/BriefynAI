@@ -8,29 +8,125 @@
   themes: false;
 }
 
-/* Geçici tema: yalnız derlemenin çalıştığını göstermek için. Onaylı palet Görev 5'te girer. */
+/* Yazı tipleri kendi sunucumuzdan (wwwroot/fonts, SIL Open Font License). İkisi de değişken yazı tipi;
+   aralıklar dosyaların kendi eksenlerinden: Bricolage wght 200-800, wdth 75-100, opsz 12-96; Atkinson wght 200-800. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-grotesque/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Onaylı tema: önizleme 2, Yön C "Derin su" (docs/brand/onizleme-2.html). */
 @plugin "daisyui/theme" {
   name: "briefyn";
   default: true;
+  prefersdark: false;
   color-scheme: light;
-  --color-base-100: #F4F8F8;
-  --color-base-200: #E3F0F1;
-  --color-base-300: #D5E0E1;
-  --color-base-content: #0F2427;
-  --color-primary: #0D5C63;
-  --color-primary-content: #FFFFFF;
-  --color-secondary: #5A4E9E;
-  --color-secondary-content: #FFFFFF;
-  --color-accent: #5A4E9E;
-  --color-accent-content: #FFFFFF;
-  --color-neutral: #465A5D;
-  --color-neutral-content: #FFFFFF;
-  --color-info: #0D5C63;
-  --color-info-content: #FFFFFF;
-  --color-success: #2B6E2F;
-  --color-success-content: #FFFFFF;
-  --color-warning: #8F5300;
-  --color-warning-content: #FFFFFF;
-  --color-error: #B42318;
-  --color-error-content: #FFFFFF;
+  --color-base-100: #E8FBFD;
+  --color-base-200: #BDF0F6;
+  --color-base-300: #86DDEA;
+  --color-base-content: #03202B;
+  --color-primary: #12B6EE;
+  --color-primary-content: #03202B;
+  --color-secondary: #005E86;
+  --color-secondary-content: #F0FBFF;
+  --color-accent: #DA5CF0;
+  --color-accent-content: #2E0636;
+  --color-neutral: #04121F;
+  --color-neutral-content: #D8F4FF;
+  --color-info: #3EA6FF;
+  --color-info-content: #03202B;
+  --color-success: #2BCB8E;
+  --color-success-content: #03202B;
+  --color-warning: #FFB224;
+  --color-warning-content: #03202B;
+  --color-error: #FF5C5C;
+  --color-error-content: #03202B;
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* daisyUI dışında: yazı tipleri, ikincil metin ve koyu açılışın yazı renkleri. */
+@theme {
+  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --color-muted: #0E4458;
+  --color-hero-title: #FFFFFF;
+  --color-hero-text: #CFE8FF;
+}
+
+/* Degradeler tema dışında. Degrade yalnız yüzeyde ve logo işaretinde; yazıda degrade yok. */
+:root {
+  --grad-cta: linear-gradient(90deg, #00D3E6 0%, #1E9BFF 100%);
+  --grad-hero: linear-gradient(160deg, #04121F 0%, #06224A 55%, #0B3A8C 100%);
+  --grad-stage: linear-gradient(135deg, #2EE6F0 0%, #1EA0FF 55%, #3A6BFF 100%);
+  --grad-foot: linear-gradient(100deg, #04121F 0%, #06224A 100%);
+  --grad-mark: linear-gradient(90deg, #00D3E6 0%, #1E9BFF 100%);
+}
+
+@layer base {
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-stretch: 92%;
+    letter-spacing: -0.01em;
+    line-height: 1.12;
+  }
+
+  :where(a, button, summary):focus-visible {
+    outline: 3px solid var(--color-secondary);
+    outline-offset: 2px;
+  }
+}
+
+/* Birincil düğme: btn ile birlikte kullanılır ("btn btn-grad"). Üzerine gelince degrade kayar;
+   görünen renkler hep aynı degradenin içinde kalır, yazının en kötü kontrastı değişmez. */
+@utility btn-grad {
+  --btn-fg: var(--color-primary-content);
+  --btn-color: var(--color-primary);
+  color: var(--color-primary-content);
+  border-color: transparent;
+  /* daisyUI odağı ana renkle (#12B6EE) çizer; açık zeminde 3:1 tutmuyor, odak koyu deniz mavisi. */
+  outline-color: var(--color-secondary);
+  background-image: var(--grad-cta);
+  background-size: 160% 100%;
+  background-position: 0 0;
+  transition: background-position 0.25s ease;
+
+  &:hover {
+    border-color: transparent;
+    background-position: 100% 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+@utility bg-grad-hero {
+  background-image: var(--grad-hero);
+}
+
+@utility bg-grad-stage {
+  background-image: var(--grad-stage);
+}
+
+@utility bg-grad-foot {
+  background-image: var(--grad-foot);
 }

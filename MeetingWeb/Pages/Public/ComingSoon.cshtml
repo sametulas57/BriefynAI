@@ -5,8 +5,20 @@
     ViewData["Robots"] = "noindex";
 }
 
-<h1>@Model.Entry.Title</h1>
-<p>@Model.Entry.Summary</p>
-<p>Bu sayfa hazırlanıyor.</p>
-<a href="/Upload">Kayıt yükle</a>
-<a href="/tr">Ana sayfaya dön</a>
+<div class="mx-auto w-full max-w-6xl px-4 py-9 sm:px-7 sm:py-14">
+    <article class="max-w-2xl rounded-box border border-base-300 bg-base-100 px-5 pt-6 pb-5 sm:px-7 sm:pt-7 sm:pb-6">
+        @if (!Model.Entry.Available)
+        {
+            <p class="mb-3"><span class="badge badge-accent font-bold">Yakında</span></p>
+        }
+        <h1 class="text-3xl font-bold sm:text-4xl">@Model.Entry.Title</h1>
+        <p class="mt-2.5 max-w-prose text-muted">@Model.Entry.Summary</p>
+        <p class="mt-5 inline-flex items-center gap-2 rounded-selector bg-base-200 px-3 py-1.5 text-sm font-bold">
+            <span class="size-2 rounded-full bg-secondary" aria-hidden="true"></span>Bu sayfa hazırlanıyor.
+        </p>
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <a href="/Upload" class="btn btn-grad h-12 px-6 text-base font-bold sm:h-11">Kayıt yükle</a>
+            <a href="/tr" class="btn btn-outline btn-secondary h-12 px-5 text-base sm:h-11">Ana sayfaya dön</a>
+        </div>
+    </article>
+</div>
