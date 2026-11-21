@@ -37,7 +37,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 2: Çerçevenin görünümü
 
-- [ ] **Görev 5: Tema, yazı tipleri ve logo** (M)
+- [x] **Görev 5: Tema, yazı tipleri ve logo** (M) · bitti 2026-11-21: C (derin su) teması, `--grad-*` degradeleri ve `btn-grad`/`bg-grad-*` yardımcıları; yazı tipleri (Ulaş'ın onayıyla tam değişken set, resmî depoların sabit commit'lerinden) `wwwroot/fonts/`'ta; logo, koyu zemin logosu, favicon `wwwroot/img/brand/`'da. Tarayıcıda: yalnız 127.0.0.1:8080 istekleri, iki yazı tipi yüklü, 12 Türkçe harf çiziliyor, 390'da taşma yok, kontrast hepsi eşik üstü (en düşük 5,38). Odaklı testler 88/88.
   - İlk adım (plan karar 10): yazı tipinin `.woff2` dosyaları ve `OFL.txt` resmî depodan bir kez indirilir; indirmeden önce Ulaş'a kaynak adres, dosya adları ve boyutları söylenir, onay beklenir. npm paketi eklenmez.
   - Kabul: onaylı değerler `briefyn` temasında; yazı tipi dosyaları ve lisansı `wwwroot/fonts/`'ta, `app.css`'ten yükleniyor; logo SVG'leri ve favicon `wwwroot/img/brand/`'da, `_PublicLayout`'ta kullanılıyor; kaynak PNG'ler `docs/brand/`'da duruyor. Herkese açık sayfalarda dış adrese istek yok (test + tarayıcı ağ listesi).
   - Doğrula: odaklı test (dış adres yok); "yakında" sayfasının 1440 ve 390 genişlikte ekran görüntüsü.

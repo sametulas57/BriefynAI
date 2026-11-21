@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 2 252 49" width="252" height="49" role="img" aria-labelledby="t">
+  <!-- Yön C (derin su), koyu zemin (açılış, alt bilgi): işaret degradeli #00D3E6 > #1E9BFF, yazı düz #D8F4FF. Kaynak: docs/brand/logo-a.svg, yollar aynı. -->
+  <defs>
+    <linearGradient id="isaret" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="88" y2="0">
+      <stop offset="0" stop-color="#00D3E6"/>
+      <stop offset="1" stop-color="#1E9BFF"/>
+    </linearGradient>
+  </defs>
+  <title id="t">Briefyn</title>
+  <!-- İşaret: dört ses çubuğu; sonuncusu iki not satırına dönüşüyor, altta kısa üçüncü satır. Çizgi kalınlığı 6,5, uçlar yuvarlak. -->
+  <g fill="none" stroke="url(#isaret)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.5 23V31"/>
+    <path d="M13.75 16V38"/>
+    <path d="M24 7V45"/>
+    <path d="M34.25 16V33Q34.25 37 38.25 37C44 37 46 27 52 27H86"/>
+    <path d="M34.25 26H38.25C44 26 46 16 52 16H86"/>
+    <path d="M58 38H74"/>
+  </g>
+  <!-- Yazı: "briefyn", işaretle aynı 6,5 kalınlıkta tek çizgiyle çizildi; x yüksekliği 24, taban çizgisi y=40. -->
+  <g fill="none" stroke="#D8F4FF" stroke-width="6.5" stroke-linecap="butt" stroke-linejoin="round">
+    <path d="M99.25 6V40"/>
+    <circle cx="108" cy="28" r="8.75"/>
+    <path d="M127.75 16V40"/>
+    <path d="M127.75 27A7.75 7.75 0 0 1 135.5 19.25H138.5"/>
+    <path d="M145.25 16V40"/>
+    <path d="M156 28H176.5"/>
+    <path d="M173.25 28A8.75 8.75 0 1 0 170.69 34.19"/>
+    <path d="M186 40V15.5A6.25 6.25 0 0 1 192.25 9.25H195.5"/>
+    <path d="M179.5 19.25H193"/>
+    <path d="M228.25 16V40"/>
+    <path d="M228.25 28A8.75 8.75 0 0 1 245.75 28V40"/>
+  </g>
+  <g fill="#D8F4FF">
+    <circle cx="145.25" cy="9.4" r="3.4"/>
+    <path d="M197.5 16H204.5L209.25 28.06L214 16H221L208 49H201L205.75 36.94Z"/>
+  </g>
+</svg>

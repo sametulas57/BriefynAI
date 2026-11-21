@@ -250,6 +250,61 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
     }
 
     [Theory]
+    [InlineData("/tr")]
+    [InlineData("/tr/product/ask-archive")]
+    [InlineData("/tr/integrations/teams")]
+    public async Task Public_pages_show_the_logo_and_tab_icon(string path)
+    {
+        using var client = AnonymousClient();
+
+        var html = await client.GetStringAsync(path);
+
+        Assert.Contains("<link rel=\"icon\" type=\"image/svg+xml\" href=\"/img/brand/favicon.svg\"", html);
+        Assert.Matches(new Regex("<a href=\"/tr\"[^>]*>\\s*<img src=\"/img/brand/logo-a\\.svg\"[^>]*alt=\"Briefyn\""), html);
+    }
+
+    // Test sunucusu geçici bir wwwroot kullanıyor; dosyalar projenin kendi wwwroot'unda aranır.
+    [Theory]
+    [InlineData("img/brand/favicon.svg")]
+    [InlineData("img/brand/logo-a.svg")]
+    [InlineData("img/brand/logo-a-acik.svg")]
+    [InlineData("fonts/bricolage-grotesque/BricolageGrotesque.woff2")]
+    [InlineData("fonts/bricolage-grotesque/OFL.txt")]
+    [InlineData("fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext.woff2")]
+    [InlineData("fonts/atkinson-hyperlegible-next/OFL.txt")]
+    public void Brand_files_live_in_our_own_web_root(string relativePath)
+    {
+        var file = new FileInfo(Path.Combine(ProjectWebRoot(), relativePath));
+
+        Assert.True(file.Exists, relativePath + " yok");
+        Assert.True(file.Length > 0, relativePath + " boş");
+        if (file.Extension == ".svg")
+            Assert.DoesNotMatch(new Regex("(href|src)\\s*=\\s*\"(https?:)?//"), File.ReadAllText(file.FullName));
+    }
+
+    private static string ProjectWebRoot()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "MeetingWeb", "wwwroot");
+            if (Directory.Exists(candidate)) return candidate;
+        }
+        throw new DirectoryNotFoundException("MeetingWeb/wwwroot bulunamadı");
+    }
+
+    [Fact]
+    public async Task Coming_soon_page_marks_only_unavailable_features_as_soon()
+    {
+        using var client = AnonymousClient();
+
+        var unavailable = WebUtility.HtmlDecode(await client.GetStringAsync("/tr/integrations/teams"));
+        var available = WebUtility.HtmlDecode(await client.GetStringAsync("/tr/product/ask-archive"));
+
+        Assert.Contains(">Yakında<", unavailable);
+        Assert.DoesNotContain(">Yakında<", available);
+    }
+
+    [Theory]
     [MemberData(nameof(CatalogPages))]
     public async Task Public_pages_use_no_long_dash(string path)
     {

@@ -8,24 +8,33 @@
         <meta name="robots" content="@robots" />
     }
     <title>@ViewData["Title"] | Briefyn</title>
+    <link rel="icon" type="image/svg+xml" href="/img/brand/favicon.svg" />
+    <link rel="preload" href="/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <a href="/tr">Briefyn</a>
-        <nav aria-label="Ana menü"></nav>
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-            <a href="/History">Toplantılarım</a>
-        }
-        else
-        {
-            <a href="/Auth/Login">Giriş yap</a>
-        }
+<body class="flex min-h-screen flex-col bg-base-200 font-sans text-base-content antialiased">
+    <header class="border-b border-base-300 bg-base-100">
+        <div class="mx-auto flex h-16 w-full max-w-6xl items-center gap-5 px-4 sm:h-17 sm:px-7">
+            <a href="/tr" class="inline-flex min-h-11 shrink-0 items-center rounded-field">
+                <img src="/img/brand/logo-a.svg" alt="Briefyn" width="134" height="26" class="h-5.5 w-auto sm:h-6.5" />
+            </a>
+            <nav aria-label="Ana menü" class="flex-1"></nav>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <a href="/History" class="btn btn-outline btn-secondary min-h-11 px-4 text-base">Toplantılarım</a>
+            }
+            else
+            {
+                <a href="/Auth/Login" class="btn btn-outline btn-secondary min-h-11 px-4 text-base">Giriş yap</a>
+            }
+        </div>
     </header>
-    <main>@RenderBody()</main>
-    <footer>
-        <a href="/Privacy">Gizlilik</a>
+    <main class="flex-1">@RenderBody()</main>
+    <footer class="bg-grad-foot text-neutral-content [&_:focus-visible]:outline-neutral-content">
+        <div class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-7 gap-y-3 px-4 py-6 sm:px-7">
+            <img src="/img/brand/logo-a-acik.svg" alt="Briefyn" width="113" height="22" class="h-5.5 w-auto" />
+            <a href="/Privacy" class="inline-flex min-h-11 items-center underline-offset-4 hover:underline">Gizlilik</a>
+        </div>
     </footer>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
