@@ -5,6 +5,14 @@ public sealed record SiteEntry(string Section, string? Group, string? Slug, stri
     public string Path => Slug is null ? $"/tr/{Section}" : $"/tr/{Section}/{Slug}";
 }
 
+// Menünün bir başlığı. Altında adres adı olan sayfalar varsa açılır menüdür; yoksa tek sayfaya giden bağlantıdır.
+public sealed record SiteSection(string Key, string Title, IReadOnlyList<SiteEntry> Entries)
+{
+    public bool IsMenu => Entries.Any(entry => entry.Slug is not null);
+    public string Path => Entries[0].Path;
+    public IEnumerable<IGrouping<string?, SiteEntry>> Groups => Entries.GroupBy(entry => entry.Group);
+}
+
 // Herkese açık sitenin sayfa haritası (SPEC.md): menü ve "yakında" sayfaları buradan üretilir.
 public sealed class SiteCatalog
 {
@@ -39,6 +47,24 @@ public sealed class SiteCatalog
         new("enterprise", null, null, "Kurumsal", "Büyük ekipler ve kurumlar için Briefyn seçeneklerini hazırlıyoruz.", true),
         new("pricing", null, null, "Fiyatlandırma", "Şimdilik her şey ücretsiz.", true)
     ];
+
+    private static readonly (string Key, string Title)[] SectionTitles =
+    [
+        ("product", "Ürün"),
+        ("solutions", "Çözümler"),
+        ("integrations", "Entegrasyonlar"),
+        ("resources", "Kaynaklar"),
+        ("enterprise", "Kurumsal"),
+        ("pricing", "Fiyatlandırma")
+    ];
+
+    // Menü ve alt bilgi bu sırayla dizilir.
+    public IReadOnlyList<SiteSection> Sections { get; }
+
+    public SiteCatalog() => Sections = SectionTitles
+        .Select(section => new SiteSection(section.Key, section.Title,
+            Entries.Where(entry => entry.Section == section.Key).ToList()))
+        .ToList();
 
     public SiteEntry? Find(string section, string? slug) => Entries.FirstOrDefault(entry =>
         string.Equals(entry.Section, section, StringComparison.Ordinal) &&

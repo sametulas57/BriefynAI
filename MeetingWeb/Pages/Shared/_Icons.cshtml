@@ -1,0 +1,15 @@
+@model string
+@* Herkese açık sitenin simgeleri: elle çizilmiş, kütüphanesiz. Kullanım: @await Html.PartialAsync("_Icons", "chevron-down")
+   Renk yazının renginden gelir (currentColor); simgeler yalnız süs, ekran okuyucuya gösterilmez. *@
+@switch (Model)
+{
+    case "chevron-down":
+        <svg class="size-3.5 shrink-0" viewBox="0 0 14 14" aria-hidden="true" focusable="false"><path d="M3 5.25 7 9.25l4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        break;
+    case "menu":
+        <svg class="size-5 shrink-0" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M3 5.5h14M3 10h14M3 14.5h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+        break;
+    case "close":
+        <svg class="size-5 shrink-0" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M5 5l10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+        break;
+}

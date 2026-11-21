@@ -130,3 +130,145 @@
 @utility bg-grad-foot {
   background-image: var(--grad-foot);
 }
+
+/* Üst menü (_PublicNav.cshtml, wwwroot/js/public-nav.js). Telefonda (lg altı) liste alt alta dizilir;
+   betik çalışıyorsa ("js" sınıfı) düğmeyle açılan panele dönüşür, çalışmıyorsa sayfanın akışında açık durur. */
+@layer components {
+  .pn-summary {
+    list-style: none;
+  }
+
+  .pn-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Başlık: telefonda satır boyu, masaüstünde şeritte kısa düğme. */
+  .pn-trigger {
+    position: relative;
+    display: flex;
+    min-height: 3.25rem;
+    width: 100%;
+    cursor: pointer;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.375rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--color-base-content);
+    border-radius: var(--radius-field);
+  }
+
+  .pn-link {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-inline: 0.625rem;
+    border-radius: var(--radius-field);
+    color: var(--color-base-content);
+    line-height: 1.3;
+
+    &:hover {
+      background-color: var(--color-base-200);
+    }
+
+    &[aria-current="page"] {
+      font-weight: 700;
+      background-color: var(--color-base-200);
+    }
+  }
+
+  .pn-panel {
+    padding-bottom: 0.75rem;
+  }
+
+  .pn-icon-open,
+  .pn-icon-close {
+    display: inline-flex;
+  }
+
+  [data-nav-toggle][aria-expanded="true"] .pn-icon-open,
+  [data-nav-toggle][aria-expanded="false"] .pn-icon-close {
+    display: none;
+  }
+
+  .js .pn-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .pn-locked {
+    overflow: hidden;
+  }
+
+  @media (width < 64rem) {
+    .js .pn-menu {
+      position: fixed;
+      inset: calc(4rem + 1px) 0 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0.25rem 1rem 1.5rem;
+      background-color: var(--color-base-100);
+    }
+
+    .js .pn-menu:not(.is-open) {
+      display: none;
+    }
+  }
+
+  @media (40rem <= width < 64rem) {
+    .js .pn-menu {
+      top: calc(4.25rem + 1px);
+      padding-inline: 1.75rem;
+    }
+  }
+
+  @media (width >= 64rem) {
+    .pn-trigger {
+      min-height: 2.75rem;
+      width: auto;
+      justify-content: flex-start;
+      padding-inline: 0.75rem;
+      font-size: 1rem;
+      font-weight: 500;
+
+      &:hover {
+        background-color: var(--color-base-200);
+      }
+    }
+
+    details[open] > .pn-trigger {
+      background-color: var(--color-base-200);
+    }
+
+    /* Bulunulan sayfanın başlığının altında logonun degradesiyle ince bir çizgi. */
+    .pn-trigger.is-current::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0.75rem;
+      bottom: 0.3125rem;
+      height: 3px;
+      border-radius: 2px;
+      background-image: var(--grad-mark);
+    }
+
+    .pn-panel {
+      position: absolute;
+      top: calc(100% + 0.75rem);
+      left: 0;
+      z-index: 10;
+      padding: 0.75rem;
+      border: 1px solid var(--color-base-300);
+      border-radius: var(--radius-box);
+      background-color: var(--color-base-100);
+      box-shadow: 0 18px 40px -24px rgb(3 32 43 / 0.45);
+    }
+  }
+}
+
+/* Betik yokken menü düğmesi işe yaramaz, gizlenir. Katmansız: daisyUI'nin "btn" sınıfı yardımcı katmanda, onu geçmesi gerekiyor. */
+html:not(.js) [data-nav-toggle] {
+  display: none;
+}

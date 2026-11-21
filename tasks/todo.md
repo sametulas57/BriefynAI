@@ -44,7 +44,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: Kontrol A. İşçi: Opus alt ajanı.
   - Dosyalar: `MeetingWeb/Styles/app.css`, `MeetingWeb/wwwroot/fonts/*`, `MeetingWeb/wwwroot/img/brand/*`, `MeetingWeb/Pages/Shared/_PublicLayout.cshtml`.
 
-- [ ] **Görev 6: Üst menü ve alt bilgi** (M)
+- [x] **Görev 6: Üst menü ve alt bilgi** (M) · bitti 2026-11-21: altı başlık katalogdan (`SiteCatalog.Sections`), `<details>` tabanlı açılır menüler + `public-nav.js` (Esc, dışarı tıklama, Tab ile çıkış, telefonda kilitli panel); betik yokken de bağlantılara ulaşılıyor. 1440/1024/768/390'da taşma yok, telefon dokunma alanları ≥ 44, ağ yalnız 127.0.0.1:8080, kontrast en düşük 5,66. Menü şeridi yapışkan (Görev 9'da açılışla birlikte kontrol edilecek). Odaklı testler 94/94.
   - Kabul: masaüstünde altı başlık (Ürün, Çözümler, Entegrasyonlar, Kaynaklar, Kurumsal, Fiyatlandırma); ilk dördü açılır menü, Ürün dört gruplu; bugün olmayan özellikler "yakında" işaretli; hepsi katalogdan. Klavyeyle açılıp kapanıyor (Esc, Tab sırası). Telefonda menü düğmeyle açılan panel, bütün bağlantılara ulaşılıyor, dokunma alanları ≥ 44 × 44. Alt bilgide menü bağlantıları, Gizlilik (`/Privacy`), İletişim. Giriş yapmışsa "Toplantılarım", yapmamışsa "Giriş yap". Menüdeki her bağlantı 200.
   - Doğrula: odaklı test (menüdeki her `href` 200, katalogla aynı sayı); tarayıcıda 1440 ve 390 genişlikte açma-kapama.
   - Bağımlılık: 5. İşçi: Opus alt ajanı.
