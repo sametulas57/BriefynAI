@@ -83,8 +83,8 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Dosyalar: `MeetingWeb/Pages/Public/Home.cshtml`, `MeetingWeb/Pages/Public/Home.cshtml.cs`, `MeetingWeb.Tests/Features/PublicSiteTests.cs`.
 
 ### Kontrol C: ana sayfa çalışıyor
-- [ ] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
-- [ ] `sheet.png` (masaüstü, telefon, hareket azaltılmış) okundu; his kontrolü `BRIEF.md`'deki eğriyle karşılaştırıldı.
+- [x] `scripts/verify.sh` GEÇTİ; push, CI yeşil. · 2026-11-21, `6307783`.
+- [x] `sheet.png` (masaüstü, telefon, hareket azaltılmış) okundu; his kontrolü `BRIEF.md`'deki eğriyle karşılaştırıldı. · Görev 9 ve 10 raporlarında; iki geçiş anı Görev 11'e not edildi.
 
 ## Aşama 4: Doğrulama ve kapanış
 
