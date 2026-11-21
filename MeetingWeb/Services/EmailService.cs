@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -218,7 +219,8 @@ namespace MeetingWeb.Services
         {
             var cancel = method == CalendarMethod.Cancel;
             var taskSubject = Regex.Replace(invite.TaskText, @"[\r\n\t]+", " ").Trim();
-            if (taskSubject.Length > 80) taskSubject = taskSubject[..80] + "…";
+            var elements = StringInfo.ParseCombiningCharacters(taskSubject);
+            if (elements.Length > 80) taskSubject = taskSubject[..elements[80]] + "…";
             var message = new MailMessage
             {
                 From = new MailAddress(senderEmail, senderName),

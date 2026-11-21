@@ -77,7 +77,7 @@ namespace MeetingWeb.Pages
             if (userId == null || !await _calendar.IsOwnDatedTaskAsync(taskId, userId)) return CalendarTaskUnavailable();
             try
             {
-                _backgroundJobClient.Enqueue<ICalendarSyncService>(s => s.ResendAsync(taskId));
+                _backgroundJobClient.Enqueue<ICalendarSyncService>(JobQueues.Email, s => s.ResendAsync(taskId));
                 TempData["StatusMessage"] = "Takvim daveti e-postanıza gönderiliyor. Birkaç dakika içinde gelen kutunuzda olur.";
             }
             catch (Exception ex)

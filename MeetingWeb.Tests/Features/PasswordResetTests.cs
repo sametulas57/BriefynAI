@@ -6,6 +6,7 @@ using MeetingWeb.Services;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -13,6 +14,10 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using Serilog.Extensions.Logging;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
 namespace MeetingWeb.Tests.Features;
@@ -46,6 +51,116 @@ public class PasswordResetTests
 
     internal const string OldPassword = "Eski-Parola-123!";
     internal const string NewPassword = "Yeni-Parola-123!";
+
+    [Fact]
+    public async Task Six_parallel_resets_do_not_show_English_errors_and_queue_one_notification()
+    {
+        using var app = await PasswordAppAsync();
+        var (code, _) = await ResetLinkAsync(app);
+        var clients = Enumerable.Range(0, 6).Select(_ => CookieClient(app)).ToArray();
+        try
+        {
+            var tokens = await Task.WhenAll(clients.Select(client => GetAntiforgeryTokenAsync(client, "/Auth/Login")));
+            var responses = await Task.WhenAll(clients.Select((client, i) => PostFormAsync(client, "/Auth/ResetPassword", tokens[i],
+                ("Input.UserId", app.Seed.AliceId), ("Input.Code", code),
+                ("Input.Password", NewPassword), ("Input.ConfirmPassword", NewPassword))));
+
+            foreach (var response in responses)
+            {
+                using (response)
+                {
+                    var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+                    Assert.DoesNotContain("concurrency", body, StringComparison.OrdinalIgnoreCase);
+                    Assert.DoesNotContain("Optimistic", body, StringComparison.OrdinalIgnoreCase);
+                    Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.Redirect);
+                }
+            }
+            Assert.Equal(1, app.Jobs.CountFor(nameof(IPasswordResetService.SendPasswordChangedEmailAsync)));
+            Assert.Equal(HttpStatusCode.Redirect, (await LoginAsync(clients[0], NewPassword)).StatusCode);
+        }
+        finally
+        {
+            foreach (var client in clients) client.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Link_expiring_between_precheck_and_reset_shows_invalid_link_without_form()
+    {
+        using var app = await PasswordAppAsync(new ExpiringLinkFactory { UseCookieAuthentication = true });
+        using var client = CookieClient(app);
+        var (code, _) = await ResetLinkAsync(app);
+
+        var response = await PostResetAsync(client, app.Seed.AliceId, code);
+        var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Bu bağlantı artık geçerli değil", body);
+        Assert.DoesNotContain("<form", body);
+        await AssertPasswordAsync(app, OldPassword);
+        Assert.Empty(app.Jobs.Created);
+    }
+
+    private sealed class ExpiringLinkFactory : BriefynFactory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.ConfigureTestServices(services => services.AddTransient<PasswordResetTokenProvider, ExpiringLinkProvider>());
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Concurrency_loser_checks_saved_password_without_repeating_side_effects(bool samePassword)
+    {
+        using var app = await PasswordAppAsync();
+        var (code, _) = await ResetLinkAsync(app);
+        using var loser = app.Services.CreateScope();
+        var loserUsers = loser.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        // Keep the old stamp tracked, as in an overlapping request that read before the winning update.
+        Assert.NotNull(await loserUsers.FindByIdAsync(app.Seed.AliceId));
+        using (var winner = app.Services.CreateScope())
+        {
+            var result = await winner.ServiceProvider.GetRequiredService<IPasswordResetService>()
+                .ResetAsync(app.Seed.AliceId, code, NewPassword);
+            Assert.Equal(PasswordResetOutcome.Succeeded, result.Outcome);
+        }
+        var lockout = DateTimeOffset.UtcNow.AddHours(1);
+        app.WithDb(db =>
+        {
+            var user = db.Users.Single(u => u.Id == app.Seed.AliceId);
+            user.LockoutEnd = lockout;
+            user.AccessFailedCount = 2;
+            return db.SaveChanges();
+        });
+
+        var reset = await loser.ServiceProvider.GetRequiredService<IPasswordResetService>()
+            .ResetAsync(app.Seed.AliceId, code, samePassword ? NewPassword : "Different-Parola-123!");
+
+        Assert.Equal(samePassword ? PasswordResetOutcome.Succeeded : PasswordResetOutcome.InvalidLink, reset.Outcome);
+        Assert.Empty(reset.Errors);
+        Assert.Equal(1, app.Jobs.CountFor(nameof(IPasswordResetService.SendPasswordChangedEmailAsync)));
+        using var fresh = app.Services.CreateScope();
+        var saved = await fresh.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>().FindByIdAsync(app.Seed.AliceId);
+        Assert.Equal(lockout, saved!.LockoutEnd);
+        Assert.Equal(2, saved.AccessFailedCount);
+        await AssertPasswordAsync(app, NewPassword);
+    }
+
+    private sealed class ExpiringLinkProvider(IDataProtectionProvider protection,
+        IOptions<PasswordResetTokenProviderOptions> options, ILogger<DataProtectorTokenProvider<ApplicationUser>> logger)
+        : PasswordResetTokenProvider(protection, options, logger)
+    {
+        private int _validations;
+
+        public override async Task<bool> ValidateAsync(string purpose, string token, UserManager<ApplicationUser> manager, ApplicationUser user)
+        {
+            // Simulate expiry after the service precheck, at Identity's own token validation.
+            return await base.ValidateAsync(purpose, token, manager, user) && ++_validations == 1;
+        }
+    }
 
     [Fact]
     public async Task Reset_redirects_with_confirmation_and_only_new_password_can_sign_in()
@@ -117,6 +232,25 @@ public class PasswordResetTests
             .FindByEmailAsync("register-weak@example.test"));
     }
 
+    [Fact]
+    public async Task Register_with_existing_email_shows_Turkish_account_error()
+    {
+        using var app = await PasswordAppAsync();
+        using var client = CookieClient(app);
+        var antiforgery = await GetAntiforgeryTokenAsync(client, "/Auth/Register");
+
+        var response = await PostFormAsync(client, "/Auth/Register", antiforgery,
+            ("Input.FullName", "Deneme Kullanıcısı"), ("Input.Email", SeedData.AliceEmail),
+            ("Input.Password", NewPassword), ("Input.ConfirmPassword", NewPassword), ("Input.IsKvkkAccepted", "true"));
+        var body = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Bu e-posta adresiyle zaten bir hesap var. Giriş yapabilir ya da şifrenizi yenileyebilirsiniz.", body);
+        Assert.DoesNotContain("already taken", body);
+        Assert.DoesNotContain("already associated", body);
+        await AssertPasswordAsync(app, OldPassword);
+    }
+
     [Theory]
     [InlineData("PasswordTooShort", "Şifreniz en az 8 karakter olmalı.")]
     [InlineData("PasswordRequiresNonAlphanumeric", "Şifrenizde en az bir işaret (ör. ! ya da *) olmalı.")]
@@ -125,6 +259,12 @@ public class PasswordResetTests
     [InlineData("PasswordRequiresUpper", "Şifrenizde en az bir büyük harf olmalı.")]
     [InlineData("PasswordRequiresUniqueChars", "Şifrenizde en az 4 farklı karakter olmalı.")]
     [InlineData("InvalidToken", "Bu bağlantı artık geçerli değil.")]
+    [InlineData("ConcurrencyFailure", "Bu işlem aynı anda başka bir yerden yapıldı. Sayfayı yenileyip tekrar deneyin.")]
+    [InlineData("DefaultError", "Bir şeyler ters gitti. Lütfen tekrar deneyin.")]
+    [InlineData("DuplicateUserName", "Bu e-posta adresiyle zaten bir hesap var. Giriş yapabilir ya da şifrenizi yenileyebilirsiniz.")]
+    [InlineData("DuplicateEmail", "Bu e-posta adresiyle zaten bir hesap var. Giriş yapabilir ya da şifrenizi yenileyebilirsiniz.")]
+    [InlineData("InvalidUserName", "Geçerli bir e-posta adresi yazın.")]
+    [InlineData("InvalidEmail", "Geçerli bir e-posta adresi yazın.")]
     public async Task Identity_errors_keep_codes_and_use_exact_Turkish_descriptions(string code, string description)
     {
         using var app = await ReadyAsync();
@@ -139,6 +279,12 @@ public class PasswordResetTests
             "PasswordRequiresLower" => describer.PasswordRequiresLower(),
             "PasswordRequiresUpper" => describer.PasswordRequiresUpper(),
             "PasswordRequiresUniqueChars" => describer.PasswordRequiresUniqueChars(4),
+            "ConcurrencyFailure" => describer.ConcurrencyFailure(),
+            "DefaultError" => describer.DefaultError(),
+            "DuplicateUserName" => describer.DuplicateUserName(SeedData.AliceEmail),
+            "DuplicateEmail" => describer.DuplicateEmail(SeedData.AliceEmail),
+            "InvalidUserName" => describer.InvalidUserName("invalid"),
+            "InvalidEmail" => describer.InvalidEmail("invalid"),
             _ => describer.InvalidToken()
         };
 
@@ -366,6 +512,32 @@ public class PasswordResetTests
         Assert.Equal(new object[] { app.Seed.AliceId, "https://briefyn.example" }, Assert.Single(app.Jobs.Created).Args);
     }
 
+    [Theory]
+    [InlineData("briefyn.example")]
+    [InlineData("ftp://x.y")]
+    [InlineData("/relative")]
+    public async Task Invalid_public_url_prevents_application_start(string publicUrl)
+    {
+        using var app = new BriefynFactory { ExtraSettings = { ["App:PublicUrl"] = publicUrl } };
+
+        var error = await Assert.ThrowsAsync<OptionsValidationException>(() => app.InitializeAsync());
+
+        Assert.Equal(typeof(AppOptions), error.OptionsType);
+        Assert.Contains("App:PublicUrl must be an absolute http or https address.", error.Failures);
+    }
+
+    [Theory]
+    [InlineData("https://briefyn.example")]
+    [InlineData("http://localhost:8080")]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task Valid_or_empty_public_url_allows_application_start(string publicUrl)
+    {
+        using var app = await ReadyAsync(new BriefynFactory { ExtraSettings = { ["App:PublicUrl"] = publicUrl } });
+
+        Assert.Equal(publicUrl, app.Services.GetRequiredService<IOptions<AppOptions>>().Value.PublicUrl);
+    }
+
     [Fact]
     public async Task Enqueue_failure_preserves_generic_response_and_does_not_log_email()
     {
@@ -543,13 +715,17 @@ public class PasswordResetTests
             base.ConfigureWebHost(builder);
             builder.ConfigureTestServices(services =>
             {
-                // BriefynFactory's capture bypasses Serilog; mirror Program's production framework filters.
-                var filters = new LoggerFilterOptions();
-                filters.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
-                filters.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
-                services.AddSingleton<ILoggerFactory>(new LoggerFactory(new[] { LogCapture! }, filters));
+                // Use the same Serilog levels as production, capturing only the output destination here.
+                var logger = new LoggerConfiguration().ApplyLevels()
+                    .WriteTo.Sink(new CaptureSink(LogCapture!)).CreateLogger();
+                services.AddSingleton<ILoggerFactory>(new SerilogLoggerFactory(logger, dispose: true));
             });
         }
+    }
+
+    private sealed class CaptureSink(CapturingLoggerProvider capture) : ILogEventSink
+    {
+        public void Emit(LogEvent logEvent) => capture.Lines.Enqueue(logEvent.RenderMessage() + " " + logEvent.Exception);
     }
 
     [Theory]

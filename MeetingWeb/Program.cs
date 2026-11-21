@@ -6,6 +6,7 @@ using MeetingWeb.Services;
 using MeetingWeb.Services.ArchiveSearch;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
@@ -77,10 +78,13 @@ try
     // --- 3. Application Settings ---
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection("Reminders"));
-    builder.Services.Configure<AppOptions>(builder.Configuration.GetSection("App"));
+    builder.Services.AddOptions<AppOptions>().Bind(builder.Configuration.GetSection("App"))
+        .Validate(o => string.IsNullOrWhiteSpace(o.PublicUrl) || PasswordResetLink.IsValidPublicUrl(o.PublicUrl),
+            "App:PublicUrl must be an absolute http or https address.")
+        .ValidateOnStart();
     builder.Services.Configure<PasswordResetOptions>(builder.Configuration.GetSection("PasswordReset"));
-    builder.Services.AddOptions<PasswordResetTokenProviderOptions>().Configure<IConfiguration>((options, configuration) =>
-        options.TokenLifespan = TimeSpan.FromMinutes(configuration.GetValue("PasswordReset:LinkLifetimeMinutes", 60)));
+    builder.Services.AddOptions<PasswordResetTokenProviderOptions>().Configure<IOptions<PasswordResetOptions>>((options, reset) =>
+        options.TokenLifespan = TimeSpan.FromMinutes(reset.Value.LinkLifetimeMinutes));
     builder.Services.Configure<AskOptions>(builder.Configuration.GetSection("Ask"));
     builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
@@ -123,11 +127,11 @@ try
         {
             options.WorkerCount = 1;
         });
-        // Reset emails must not wait behind a long meeting analysis on the single default worker.
+        // Emails a person waits for must not wait behind a long meeting analysis on the default worker.
         builder.Services.AddHangfireServer(options =>
         {
-            options.ServerName = $"{Environment.MachineName}:{PasswordResetService.EmailQueue}";
-            options.Queues = new[] { PasswordResetService.EmailQueue };
+            options.ServerName = $"{Environment.MachineName}:{JobQueues.Email}";
+            options.Queues = new[] { JobQueues.Email };
             options.WorkerCount = 1;
         });
     }
@@ -217,7 +221,7 @@ try
             if (HttpMethods.IsPost(context.Request.Method) && MatchedPage(context) == "/Auth/ForgotPassword")
                 return RateLimitPartition.GetFixedWindowLimiter("forgot-password:" + context.Connection.RemoteIpAddress, _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("PasswordReset:RequestsPerIpPer15Minutes", 5),
+                    PermitLimit = context.RequestServices.GetRequiredService<IOptions<PasswordResetOptions>>().Value.RequestsPerIpPer15Minutes,
                     Window = TimeSpan.FromMinutes(15),
                     QueueLimit = 0
                 });
@@ -225,7 +229,7 @@ try
             if (HttpMethods.IsPost(context.Request.Method) && MatchedPage(context) == "/Auth/ResetPassword")
                 return RateLimitPartition.GetFixedWindowLimiter("reset-password:" + context.Connection.RemoteIpAddress, _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("PasswordReset:ResetsPerIpPer15Minutes", 10),
+                    PermitLimit = context.RequestServices.GetRequiredService<IOptions<PasswordResetOptions>>().Value.ResetsPerIpPer15Minutes,
                     Window = TimeSpan.FromMinutes(15),
                     QueueLimit = 0
                 });
@@ -301,9 +305,7 @@ try
         // ADR-0009: framework ayrıntısı (istek adresleri ve davet bağlantıları, SQL komutları) yalnız uyarıdan itibaren;
         // veritabanına yalnız uyarı ve hata yazılır (30 gün tutulur, LogCleanupService). Logs tablosu migration'da kurulur.
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+            .ApplyLevels()
             .WriteTo.Console() // Docker terminali için konsol AÇIK kalmalı
             .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // Dosya yedeği (senin talebin)
             .WriteTo.MSSqlServer(

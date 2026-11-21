@@ -65,6 +65,23 @@ public class CalendarSyncTests
         Assert.Equal("Görev: " + new string('a', 80) + "…", message.Subject);
     }
 
+    [Theory]
+    [InlineData("👍🏽", true)]
+    [InlineData("x\u0301", true)]
+    [InlineData("👍🏽", false)]
+    public void Message_subject_preserves_the_80th_text_element(string element, bool hasContinuation)
+    {
+        var text = new string('a', 79) + element;
+        using var message = EmailService.BuildCalendarMessage(Invite() with
+        {
+            TaskText = text + (hasContinuation ? "long continuation" : "")
+        }, CalendarMethod.Request, "sender@briefyn.test", "Briefyn AI");
+
+        var utf8 = new UTF8Encoding(false, true);
+        Assert.Equal(message.Subject, utf8.GetString(utf8.GetBytes(message.Subject)));
+        Assert.Equal("Görev: " + text + (hasContinuation ? "…" : ""), message.Subject);
+    }
+
     // The "Takvimime gönder" invite gets a subject of its own, so it reads apart from the first invite.
     [Fact]
     public void Message_subject_of_a_resent_invite_differs_from_the_first_invite()
@@ -1269,6 +1286,7 @@ public class CalendarSelfServiceTests
         var job = Assert.Single(app.Jobs.Created);
         Assert.Equal(typeof(ICalendarSyncService), job.Type);
         Assert.Equal(method, job.Method.Name);
+        Assert.Equal("eposta", job.Queue);
         Assert.Equal(app.Seed.TaskA, Assert.IsType<int>(Assert.Single(job.Args)));
     }
 
