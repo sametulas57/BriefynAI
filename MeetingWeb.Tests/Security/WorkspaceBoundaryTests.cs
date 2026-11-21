@@ -90,6 +90,7 @@ public class WorkspaceBoundaryTests : IClassFixture<MeetingAccessFixture>
         ["MyActions:PostCalendarFile"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_request_another_workspaces_calendar_task))),
         ["MyActions:PostComplete"] = new Covered((typeof(MyActionsTests), nameof(MyActionsTests.Outsider_cannot_complete_someone_elses_task))),
         ["MyActions:PostReopen"] = new Covered((typeof(WorkspaceBoundaryAttackTests), nameof(WorkspaceBoundaryAttackTests.Outsider_cannot_reopen_another_workspaces_task))),
+        ["Public/ComingSoon:Get"] = new NotWorkspaceScoped("Public coming-soon page; reads only the static site catalog, no workspace data."),
         ["Profile/Profile:Get"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostChangePassword"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),
         ["Profile/Profile:PostOverdueReminders"] = new NoForeignInput("Only reads or changes the signed-in caller's account and own memberships; bound profile fields cannot select foreign workspace data."),

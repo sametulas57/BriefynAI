@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="briefyn">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    @if (ViewData["Robots"] is string robots)
+    {
+        <meta name="robots" content="@robots" />
+    }
+    <title>@ViewData["Title"] | Briefyn</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <a href="/tr">Briefyn</a>
+        <nav aria-label="Ana menü"></nav>
+    </header>
+    <main>@RenderBody()</main>
+    <footer>
+        <a href="/Privacy">Gizlilik</a>
+    </footer>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

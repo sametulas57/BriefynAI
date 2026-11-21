@@ -1,0 +1,12 @@
+@page "/tr/{section}/{slug?}"
+@model MeetingWeb.Pages.Public.ComingSoonModel
+@{
+    ViewData["Title"] = Model.Entry.Title;
+    ViewData["Robots"] = "noindex";
+}
+
+<h1>@Model.Entry.Title</h1>
+<p>@Model.Entry.Summary</p>
+<p>Bu sayfa hazırlanıyor.</p>
+<a href="/Upload">Kayıt yükle</a>
+<a href="/tr">Ana sayfaya dön</a>
