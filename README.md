@@ -41,7 +41,22 @@ Requires Docker and a [Groq](https://groq.com) API key.
 cp .env.example .env
 ```
 
-Fill in `.env`, then start the stack:
+Fill in `.env`.
+
+Public pages use Tailwind CSS v4 and daisyUI 5, built with npm (Node 24+). Install once, and again whenever `package-lock.json` changes:
+
+```bash
+npm ci
+npm run css:build
+```
+
+While editing public pages, keep the watcher running so the container picks up changes:
+
+```bash
+npm run css:watch
+```
+
+Then start the stack:
 
 ```bash
 docker compose up -d --build
@@ -59,5 +74,7 @@ dotnet test MeetingWeb.Tests
 pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt
 python -m pytest ai_engine/tests
 ```
+
+`scripts/verify.sh` runs everything at once (CSS build, lint, types, .NET and Python tests); the pre-commit hook and CI run the same script.
 
 Tests run on every push with GitHub Actions.

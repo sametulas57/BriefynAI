@@ -406,3 +406,6 @@ olcum-sonuc/
 
 # Local test browser session (contains authentication cookies)
 .auth/
+
+# Derlenmiş Tailwind çıktısı (npm run css:build üretir)
+MeetingWeb/wwwroot/css/app.css
