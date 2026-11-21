@@ -87,7 +87,7 @@ namespace MeetingWeb.Pages
 
             if (meeting == null) return MeetingUnavailable();
             Meeting = meeting;
-            SpeakerRows = SpeakerNamingService.Rows(meeting.Transcript?.Text, meeting.Transcript?.SpeakerSuggestions);
+            SpeakerRows = SpeakerNamingService.Rows(meeting.Transcript);
             AvailableSeries = await _series.ListAsync(_userManager.GetUserId(User), meeting.WorkspaceId);
             if (meeting.SeriesId != null) CurrentSeries = await _series.FindAsync(_userManager.GetUserId(User), meeting.SeriesId.Value);
 
@@ -165,6 +165,9 @@ namespace MeetingWeb.Pages
                 case SpeakerNamingResult.NotFound:
                     return MeetingUnavailable();
                 case SpeakerNamingResult.Renamed:
+                    TempData["StatusMessage"] = "Adlar kaydedildi.";
+                    break;
+                case SpeakerNamingResult.RenamedAndResummarizing:
                     TempData["StatusMessage"] = "Adlar kaydedildi. Özet bu adlarla yeniden hazırlanıyor; bittiğinde bu sayfa kendiliğinden yenilenir.";
                     break;
                 case SpeakerNamingResult.NothingToRename:

@@ -7,6 +7,8 @@ namespace MeetingWeb.Models
         public Meeting? Meeting { get; set; }
 
         public string Text { get; set; } = string.Empty;
+        public string? OriginalText { get; set; }
+        public string? SpeakerNames { get; set; }
         public string? SpeakerSuggestions { get; set; }
     }
 }
