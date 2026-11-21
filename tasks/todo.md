@@ -33,7 +33,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 ### Kontrol A: temel ve onay
 - [x] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi, CI yeşil (Node adımıyla). · 2026-11-21: `224b51e`, Tests koşusu başarılı.
 - [x] Yerel yığında `/`, `/tr`, iki "yakında" sayfası ve 404 tarayıcıda açıldı. · `/` ve `/Index` 302 → `/tr`; `/tr`, `/tr/product/ask-archive`, `/tr/pricing` 200; `/tr/olmayan`, `/tr/product` 404.
-- [ ] **Ulaş önizlemeyi onayladı** (palet, yazı tipi, logo). Onaylanmadan Görev 5'e geçilmez.
+- [x] **Ulaş önizlemeyi onayladı** (palet, yazı tipi, logo). Onaylanmadan Görev 5'e geçilmez. · 2026-11-21: önizleme 1 (düz parlak camgöbeği) onaylanmadı, Ulaş geçişli renk istedi; önizleme 2'den **C, derin su** seçildi (düğme #00D3E6→#1E9BFF, açılış #04121F→#06224A→#0B3A8C, açık zemin #E8FBFD/#BDF0F6). Yazı tipleri Bricolage Grotesque + Atkinson Hyperlegible Next. Koyu zemin için açık renkli logo Görev 5'te.
 
 ## Aşama 2: Çerçevenin görünümü
 
