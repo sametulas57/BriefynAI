@@ -51,9 +51,9 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Dosyalar: `MeetingWeb/Pages/Shared/_PublicNav.cshtml`, `MeetingWeb/Pages/Shared/_PublicFooter.cshtml`, `MeetingWeb/Pages/Shared/_Icons.cshtml`, `MeetingWeb/Pages/Shared/_PublicLayout.cshtml`, `MeetingWeb.Tests/Features/PublicSiteTests.cs`.
 
 ### Kontrol B: çerçeve bitti
-- [ ] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
-- [ ] "Yakında" sayfası ve menü 1440 ve 390 genişlikte ekran görüntüsüyle Ulaş'a gösterildi.
-- [ ] `/History` ve `/Upload` Görev 1'deki görüntülerle aynı.
+- [x] `scripts/verify.sh` GEÇTİ; push, CI yeşil. · 2026-11-21, `d4dd9ac`.
+- [x] "Yakında" sayfası ve menü 1440 ve 390 genişlikte ekran görüntüsüyle Ulaş'a gösterildi.
+- [x] `/History` ve `/Upload` Görev 1'deki görüntülerle aynı. · 1440 ve 390'da dört tam sayfa görüntüsü piksel piksel karşılaştırıldı: farklı piksel 0.
 
 ## Aşama 3: Ana sayfa (scroll-craft)
 
