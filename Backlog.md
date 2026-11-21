@@ -5,7 +5,8 @@ Yapılacak her iş burada, tek listede, önem sırasıyla. Sıradaki iş en üst
 1. **Yayın hazırlığı:**
    - gizli anahtarların yenilenmesi;
    - alan adı (site ve mail). Alınınca yerel Zoom denemeleri ngrok'tan Cloudflare adlı tünele geçer; tarif `docs/raporlar/2026-10-22-sabit-tunel.md`;
-   - prod compose (bugün yalnız `docker-compose.yml` var);
+   - prod compose (bugün yalnız `docker-compose.yml` var). Üretim imajı Tailwind CSS'ini derlemeli: imajda Node yok, `wwwroot/css/app.css` git'te değil (ADR-0017);
+   - yayından sonra Lighthouse üretim adresinde yeniden ölçülür (yerelde masaüstü 99/100/96/100, mobil 84/100/96/100; geliştirme ortamında ölçüldü);
    - tünel ya da vekil sunucunun arkasında gerçek istek adresi için `ForwardedHeaders`; kurulmazsa bütün istekler aynı adresten gelir ve şifre sıfırlama ile Zoom bildirim ucundaki adres başına sınır herkesi birlikte kilitler (ADR-0016);
    - herkese açık adres belli olunca `App:PublicUrl` ayarı doldurulur; takvim davetindeki Briefyn bağlantısı ancak o zaman çıkar (takvime aktarma işi, `SPEC.md`; Ulaş, 2026-11-20);
    - KVKK aydınlatma metni ve kullanım sözleşmesi. `Privacy` sayfasındaki metin taslak, hukuken gözden geçirilmiş metinle değişmeli;
@@ -22,19 +23,11 @@ Yapılacak her iş burada, tek listede, önem sırasıyla. Sıradaki iş en üst
    - karar ADR'ye yazılır (ADR-0014 madde 6 Azure'u "ayrı iş" diye bırakmıştı); varsayılan değişirse `docker-compose.yml` ve `.env.example` güncellenir;
    - açılırsa arayüz yenileme konuşmacı adlarını hesaba katar.
 3. **Taze göz ve kırıcı ajan denemesi:** ikisi de yazıldı, Briefyn'de hiç denenmedi. Önce netleşecek: taze göz kayıt mı olur, test hesabıyla mı girer; hangi ses dosyasını yükler (`.taze-goz/` içine konur); AI motorunun bir koşudaki maliyeti; kırıcı ajan için Docker yığınında ayrı test veritabanı (yoksa ajan durur).
-4. **Arayüz yenileme** (`/spec` ile başlar). Kararlar (Ulaş, 2026-11-21):
-   - Tailwind v4 + daisyUI 5;
-   - renkli ve canlı görünüm: koyu tema yok, zemin bembeyaz değil, petrol/camgöbeği mavisi tonları;
-   - logo A (ses dalgası not satırına dönüşüyor);
-   - tanıtım adresleri `/tr/...` önekli, sayfa adları İngilizce;
-   - sırayla gidilir, önce ana sayfa (scroll-craft); menüdeki alt sayfalar "yakında" sayfası olarak açılır;
-   - her sayfa masaüstü ve mobil hâliyle birlikte biter;
-   - ana sayfadaki güven sözü belgelere dayanır:
-     - "toplantılarınız yapay zekâ eğitiminde kullanılmaz" denebilir. Groq'un sözleşmesi girdi ve çıktıyla eğitimi yasaklıyor (madde 4.2);
-     - "hiç saklanmaz" denmez, çünkü döküm bizde şifreli saklanıyor (ADR-0002) ve Groq 30 güne kadar kayıt tutabiliyor;
-     - doğru söz: ses analizden sonra silinir, döküm şifreli saklanır.
-   
-   İlk adım `SPEC.md`. Ana sayfadan sonra sıradakiler: arşive sor sohbet ekranı, ardından konuşmacı adlarıyla toplantı sayfası. Araştırma notu: Beyin `knowledge/concepts/briefyn-fireflies-arastirmasi.md`.
+4. **Arayüz yenileme, sıradakiler** (`/spec` ile başlar). İlk adım bitti (ana sayfa, herkese açık çerçeve, "yakında" sayfaları; ADR-0017, 2026-11-21). Sıradakiler:
+   - arşive sor sohbet ekranı;
+   - ardından konuşmacı adlarıyla toplantı sayfası;
+   - "yakında" sayfalarının içeriği ve İngilizce (`/en/`) daha sonra.
+   Görünüm kararları ve palet `docs/brand/onizleme-2.html` (Yön C) ile ADR-0017'de; araştırma notu Beyin `knowledge/concepts/briefyn-fireflies-arastirmasi.md`.
 5. **Dış araçlara aktarma** (`/spec` ile başlar): takvim adımı bitti (e-postayla takvim daveti, ADR-0015). Kalanlar: Slack/Teams'e özet; Trello/Jira'ya aksiyon kullanıcı isteyince; Microsoft Graph ile takvim hesabı bağlama yayından sonra (kurumsal hesapta yönetici onayı istiyor). Takvim için açık kalan: Gmail / Google Takvim'de davet ve takvim dosyası denenmedi (`docs/raporlar/2026-11-20-takvim-daveti-deneme.md`). Takvim spec'inin 6. ölçütü (indirilen dosyanın Outlook web ve Google Takvim'de açılması) de denenmedi.
 6. **Arşive soru sor doğruluğu:**
    - kararı sonradan değişen konuda arama eski kararı öne alabiliyor (altın soru Q06);

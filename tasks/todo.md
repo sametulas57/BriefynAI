@@ -94,7 +94,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: Kontrol C.
   - Dosyalar: bulunan sorunlara göre; rapor `docs/raporlar/2026-11-xx-arayuz-yenileme-1-dogrulama.md`.
 
-- [ ] **Görev 12: Belgeler ve Ulaş'ın son onayı** (S)
+- [x] **Görev 12: Belgeler ve Ulaş'ın son onayı** (S) · belgeler bitti 2026-11-21: ADR-0017, `docs/decisions/README.md`, Backlog 4 (sıradakiler) ve Backlog 1 (üretim imajı CSS'i derlemeli, Lighthouse üretimde yeniden). Belgedeki adlar kodda `git grep` ile doğrulandı. Ulaş'ın son ekran onayı Kontrol D'de.
   - Kabul: ADR-0017 (Tailwind + daisyUI npm ile, `_PublicLayout` ayrımı, `/tr` adresleri ve `Index` yönlendirmesi, katalog). `docs/decisions/README.md` güncel. Backlog 4'ten bu iş çıkarıldı, sıradakiler (arşive sor ekranı, konuşmacılı toplantı sayfası) duruyor; Backlog 1'e "üretim imajı CSS'i derlemeli" notu. Ulaş bitmiş sayfanın masaüstü ve telefon ekran görüntülerini onayladı.
   - Doğrula: belgeler koddaki adlarla tutarlı (`rg`).
   - Bağımlılık: 11.

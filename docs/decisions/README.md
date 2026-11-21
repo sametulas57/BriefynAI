@@ -18,3 +18,4 @@ Her dosya tek bir mimari karar: bağlam, karar, sonuçlar, kaynak. Karar değiş
 - [ADR-0014: Yapay zekâ sağlayıcı katmanı: göreve göre model, seçim ölçümle](0014-yapay-zeka-saglayici-katmani.md)
 - [ADR-0015: Görevleri takvime aktarma: e-postayla takvim daveti](0015-takvim-daveti.md)
 - [ADR-0016: Şifremi unuttum: Identity'nin sıfırlama kodu, güvenilir adresle bağlantı](0016-sifre-sifirlama.md)
+- [ADR-0017: Herkese açık sitenin temeli: Tailwind + daisyUI (npm), ayrı çerçeve, `/tr` adresleri, tek katalog](0017-arayuz-temeli.md)
