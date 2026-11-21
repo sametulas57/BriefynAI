@@ -4,12 +4,15 @@ namespace MeetingWeb.Services
 {
     public static class PasswordResetLink
     {
+        public static bool IsValidPublicUrl(string url) =>
+            Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
         public static string? BaseUrl(string? publicUrl, string scheme, HostString host)
         {
             if (!string.IsNullOrWhiteSpace(publicUrl))
             {
-                return Uri.TryCreate(publicUrl, UriKind.Absolute, out var uri) &&
-                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                return IsValidPublicUrl(publicUrl)
                     ? publicUrl.TrimEnd('/')
                     : null;
             }

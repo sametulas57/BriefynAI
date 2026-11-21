@@ -1,8 +1,10 @@
 using System.Text;
 using Hangfire;
+using MeetingWeb.Data;
 using MeetingWeb.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace MeetingWeb.Services
@@ -22,18 +24,17 @@ namespace MeetingWeb.Services
 
     public class PasswordResetService : IPasswordResetService
     {
-        public const string EmailQueue = "eposta";
-
         private readonly UserManager<ApplicationUser> _users;
         private readonly IBackgroundJobClient _jobs;
         private readonly IEmailService _email;
         private readonly PasswordResetOptions _options;
         private readonly PasswordResetRateLimiter _limiter;
         private readonly ILogger<PasswordResetService> _logger;
+        private readonly ApplicationDbContext _context;
 
         public PasswordResetService(UserManager<ApplicationUser> users, IBackgroundJobClient jobs,
             IEmailService email, IOptions<PasswordResetOptions> options, ILogger<PasswordResetService> logger,
-            PasswordResetRateLimiter limiter)
+            PasswordResetRateLimiter limiter, ApplicationDbContext context)
         {
             _users = users;
             _jobs = jobs;
@@ -41,6 +42,7 @@ namespace MeetingWeb.Services
             _options = options.Value;
             _logger = logger;
             _limiter = limiter;
+            _context = context;
         }
 
         public async Task RequestAsync(string email, string? baseUrl)
@@ -57,7 +59,7 @@ namespace MeetingWeb.Services
 
             try
             {
-                _jobs.Enqueue<IPasswordResetService>(EmailQueue, s => s.SendResetEmailAsync(user.Id, baseUrl));
+                _jobs.Enqueue<IPasswordResetService>(JobQueues.Email, s => s.SendResetEmailAsync(user.Id, baseUrl));
             }
             catch (Exception)
             {
@@ -103,15 +105,26 @@ namespace MeetingWeb.Services
 
             var result = await _users.ResetPasswordAsync(user, token, newPassword);
             if (!result.Succeeded)
+            {
+                if (result.Errors.Any(e => e.Code == "ConcurrencyFailure"))
+                {
+                    // FindByIdAsync uses EF's tracked instance; discard the losing write before reading the saved password.
+                    _context.Entry(user).State = EntityState.Detached;
+                    var fresh = await _users.FindByIdAsync(user.Id);
+                    return fresh != null && await _users.CheckPasswordAsync(fresh, newPassword)
+                        ? new(PasswordResetOutcome.Succeeded, [])
+                        : new(PasswordResetOutcome.InvalidLink, []);
+                }
                 return result.Errors.Any(e => e.Code == "InvalidToken")
                     ? new(PasswordResetOutcome.InvalidLink, [])
                     : new(PasswordResetOutcome.PasswordRejected, result.Errors.Select(e => e.Description).ToArray());
+            }
 
             await _users.SetLockoutEndDateAsync(user, null);
             await _users.ResetAccessFailedCountAsync(user);
             try
             {
-                _jobs.Enqueue<IPasswordResetService>(EmailQueue, s => s.SendPasswordChangedEmailAsync(user.Id));
+                _jobs.Enqueue<IPasswordResetService>(JobQueues.Email, s => s.SendPasswordChangedEmailAsync(user.Id));
             }
             catch (Exception)
             {

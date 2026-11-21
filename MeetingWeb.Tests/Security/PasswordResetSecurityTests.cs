@@ -78,7 +78,13 @@ public class PasswordResetSecurityTests
         }
         Assert.Equal(limit, app.Jobs.CountFor(nameof(IPasswordResetService.SendResetEmailAsync)));
 
-        clock.Advance(TimeSpan.FromMinutes(61));
+        clock.Advance(TimeSpan.FromMinutes(59));
+        var stillLimited = await PostFormAsync(client, "/Auth/ForgotPassword", antiforgery, ("Input.Email", SeedData.AliceEmail));
+        Assert.Equal(HttpStatusCode.Redirect, stillLimited.StatusCode);
+        Assert.Equal("/Auth/ForgotPassword?sent=True", stillLimited.Headers.Location!.OriginalString);
+        Assert.Equal(limit, app.Jobs.CountFor(nameof(IPasswordResetService.SendResetEmailAsync)));
+
+        clock.Advance(TimeSpan.FromMinutes(2));
         var renewed = await PostFormAsync(client, "/Auth/ForgotPassword", antiforgery, ("Input.Email", SeedData.AliceEmail));
         Assert.Equal(HttpStatusCode.Redirect, renewed.StatusCode);
         Assert.Equal("/Auth/ForgotPassword?sent=True", renewed.Headers.Location!.OriginalString);
@@ -244,8 +250,7 @@ public class PasswordResetSecurityTests
     {
         var logs = new CapturingLoggerProvider();
         var mail = new RecordingEmail();
-        // Framework request-start messages include URLs at Information. Production's Serilog override sets
-        // Microsoft.AspNetCore to Warning; ProductionLoggingFactory mirrors that and the EF Core filter.
+        // Framework request-start messages include URLs at Information; use production's shared Serilog levels.
         using var app = await PasswordAppAsync(new ProductionLoggingFactory
         {
             LogCapture = logs,

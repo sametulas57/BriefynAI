@@ -234,6 +234,17 @@ public class CalendarInviteBuilderTests
         }
     }
 
+    [Fact]
+    public void Uid_cannot_inject_an_attendee_line()
+    {
+        var invite = CreateInvite() with { Uid = "abc\r\nATTENDEE:mailto:x@y.z" };
+
+        var output = Unfold(CalendarInviteBuilder.Build(invite, CalendarMethod.Request));
+
+        Assert.DoesNotContain("\r\nATTENDEE:mailto:x@y.z", output);
+        Assert.Contains("\r\nUID:abcATTENDEE:mailto:x@y.z\r\n", output);
+    }
+
     private static CalendarInviteData CreateInvite() => new(
         "task-42@briefyn", 3, new DateOnly(2026, 11, 28), "Prepare report",
         "Meeting notes\r\nSecond line", "https://briefyn.example/MyActions",
