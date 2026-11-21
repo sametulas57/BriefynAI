@@ -88,7 +88,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 4: Doğrulama ve kapanış
 
-- [ ] **Görev 11: Doğrulama turu ve düzeltmeler** (M)
+- [x] **Görev 11: Doğrulama turu ve düzeltmeler** (M) · bitti 2026-11-21: rapor `docs/raporlar/2026-11-21-arayuz-yenileme-1-dogrulama.md` (yerel; `docs/raporlar/` git dışında). Lighthouse masaüstü 99/100/96/100, mobil 84/100/96/100 (96'nın nedeni dotnet watch betiği). iOS Simulator Safari'de iki hata bulunup düzeltildi (yolculuk levhası kısa kalıp üst üste biniyordu; çıkışta başlık yalnız kalıyordu). Eski sayfalar piksel piksel aynı. Lighthouse plana göre Codex'te değil ana döngüde koştu: Codex'in ağ izni yok, Lighthouse CLI repo dışına kuruldu.
   - Kabul: scroll-craft Adım 5 tam: ölü kaydırma yok, her ipucu tam görünüyor, her bölümde kontrast ≥ 4,5:1 (büyük başlık ≥ 3:1), Tab sırası doğru. iOS Simulator Safari'de `/tr` açılıp kaydırıldı: yana kayma yok, menü paneli çalışıyor, yolculuk okunuyor. Lighthouse (Codex) masaüstü P ≥ 90, E ≥ 95, EU ≥ 95, SEO ≥ 90; mobil P ≥ 80, diğerleri aynı. Tarayıcı ağ listesinde yalnız `127.0.0.1:8080`. `/History` ve `/Upload` Görev 1'deki görüntülerle aynı. Bulunan her sorun düzeltildi ve yeniden çekildi.
   - Doğrula: raporlar ve ekran görüntüleri; doğrulanamayan her şey yazılı.
   - Bağımlılık: Kontrol C.

@@ -20,7 +20,9 @@
         ("Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.", "0.425 0.55 0.1 0.1", "0.54"),
         ("Özet, kararlar, yapılacaklar", "Özet, kararlar ve yapılacaklar tek sayfada toplanır; işler kişilere atanır.", "0.55 0.70 0.09 0.09", "0.70"),
         ("Arşive sor", "Geçmiş toplantılarınıza soru sorun; cevap, geldiği toplantıyla birlikte gelir.", "0.70 0.86 0.09 0.09", "0.86"),
-        ("Takvim ve paylaşma", "Tarihi olan işler takvim daveti olarak gelir; özeti ekibinize e-postayla gönderin.", "0.86 1 0.09 0.06", "1")
+        // Son adım sönmez (pencere 1'in ötesine uzanır, ramp out 0): sahne kayarak çıkarken başlık yalnız kalmasın (Görev 11).
+        // Metin sahnenin içinde, sahneyle birlikte yukarı çıkar; sonraki bölümün üstüne binmez.
+        ("Takvim ve paylaşma", "Tarihi olan işler takvim daveti olarak gelir; özeti ekibinize e-postayla gönderin.", "0.86 1.2 0.08 0", "1")
     ];
 }
 @section Head {

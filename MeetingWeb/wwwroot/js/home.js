@@ -85,14 +85,6 @@
   // ---- Sahne: örnek toplantının levhası. Metin hep HTML; SVG yalnız çubuk ve çizgi. ----
   function buildScene(host, opts) {
     const lines = MEETING.lines.filter(line => opts.wide || !line.wide);
-    // Pinli sahne kısa ekranda bütün satırları alamaz: özete dönüşmeyen satırlar sondan başlayarak çıkarılır (en az dört kalır).
-    if (opts.fit) {
-      const rowHeight = opts.wide ? 41 : 48;
-      const room = Math.floor((host.clientHeight - (opts.wide ? 330 : 170)) / rowHeight);
-      for (let i = lines.length - 1; i >= 0 && lines.length > Math.max(room, 4); i--) {
-        if (!lines[i].keep) lines.splice(i, 1);
-      }
-    }
     const scene = el("div", "hs" + (opts.wide ? " hs--wide" : " hs--narrow") + (opts.mini ? " hs--mini" : ""));
     const file = el("div", "hs-file");
     file.append(icon('<path d="M5 2.75h6.5L15 6.25v11H5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 10.5v3M10 9v6M12 11v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>', "hs-icon"), el("span", null, MEETING.file));
@@ -155,6 +147,7 @@
 
     scene.append(file, page, tools, ink);
     host.replaceChildren(scene);
+    if (opts.fit) fitScene(scene, page, rowsBox, sumBox, rows, opts, tools);
 
     // Çubuklar: her satır bir çubuktan doğar; kalan çubuklar yalnız sesin kendisi, satıra dönüşmez, söner.
     const count = opts.wide ? 24 : 12;
@@ -177,6 +170,25 @@
     const state = { scene, file, page, rowsBox, rows, sumBox, sumNodes, sumItems, tools, ask, chars, answerText, source, invite, mail, ink, grad, bars, opts, geo: null, p: 0 };
     layoutScene(state);
     return state;
+  }
+
+  // Pinli levha içindekileri üst üste bindirmeden almalı (ekranın gerçek yüksekliği ölçülür; iOS Safari'de araç çubuğu yüzünden
+  // Chrome'dakinden kısa). Önce özete dönüşmeyen satırlar sondan çıkarılır (en az dört kalır), yetmezse levhanın yazısı küçültülür.
+  function fitScene(scene, page, rowsBox, sumBox, rows, opts, tools) {
+    const waveRoom = opts.wide ? 120 : 64;
+    // Telefonda soru ve davet alanı satırlarla aynı yerin altında durur: konuşma satırları o alanı kullanabilir (ikisi aynı anda
+    // görünmez), özet ise kullanamaz; özetle soru/davet alanı üst üste binmemeli.
+    const below = opts.wide ? 0 : tools.offsetHeight + 12;
+    const fits = () => page.clientHeight >= Math.max(rowsBox.offsetHeight + waveRoom, sumBox.offsetHeight + below);
+    for (let i = rows.length - 1; i >= 0 && !fits() && rows.length > 4; i--) {
+      if (rows[i].line.keep) continue;
+      rows[i].row.remove();
+      rows.splice(i, 1);
+    }
+    const base = opts.wide ? 1 : 0.9;
+    for (let size = base; !fits() && size > base * 0.78; size -= 0.04) {
+      scene.style.fontSize = (size - 0.04).toFixed(2) + "rem";
+    }
   }
 
   // Geometri: çubukların dalgadaki yeri ve satırların, özet satırlarının çizgi başlangıçları ölçülür.
@@ -455,6 +467,22 @@
         if (main && main.read) main.read();
       });
     }
+    // Genişlik değişirse (dönme, pencere) sahne yeniden kurulur ki satır sayısı ve yazı boyu yeni yüksekliğe uysun.
+    // Yalnız yüksekliğin değişmesi (telefonda adres çubuğu) yeniden kurmaz.
+    let lastWidth = window.innerWidth, rebuildTimer = 0;
+    const rebuild = () => {
+      scenes.splice(scenes.indexOf(scene), 1);
+      const next = buildScene(sceneHost, { wide: !small.matches, fit: true, id: "hj-scene" });
+      Object.assign(scene, next);
+      apply(scene, parseFloat(journey.style.getPropertyValue("--sc-p")) || 0);
+      track(scene);
+    };
+    window.addEventListener("resize", () => {
+      if (window.innerWidth === lastWidth) return;
+      lastWidth = window.innerWidth;
+      clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(rebuild, 150);
+    }, { passive: true });
     // Pencere telefon ve masaüstü genişliği arasında geçerse sahne o düzene göre yeniden kurulur.
     small.addEventListener("change", () => {
       scenes.splice(scenes.indexOf(scene), 1);
