@@ -179,9 +179,11 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
     [Fact]
     public void Catalog_matches_the_site_map()
     {
-        var entries = _app.Services.GetRequiredService<SiteCatalog>().Entries;
+        var catalog = _app.Services.GetRequiredService<SiteCatalog>();
+        var entries = catalog.Entries;
 
         Assert.Equal(28, entries.Count);
+        Assert.Equal(entries, catalog.Sections.SelectMany(section => section.Entries));
         Assert.Equal(new Dictionary<string, int>
         {
             ["product"] = 11,
@@ -297,8 +299,9 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
     {
         using var client = AnonymousClient();
 
-        var unavailable = WebUtility.HtmlDecode(await client.GetStringAsync("/tr/integrations/teams"));
-        var available = WebUtility.HtmlDecode(await client.GetStringAsync("/tr/product/ask-archive"));
+        // Menüde "Yakında" işaretleri her sayfada var; burada yalnız sayfanın kendi içeriğine bakılır.
+        var unavailable = MainHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr/integrations/teams")));
+        var available = MainHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr/product/ask-archive")));
 
         Assert.Contains(">Yakında<", unavailable);
         Assert.DoesNotContain(">Yakında<", available);
@@ -314,5 +317,116 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
 
         Assert.DoesNotContain("—", html);
+    }
+
+    private static string MainHtml(string html) =>
+        Regex.Match(html, "<main[^>]*>(.*?)</main>", RegexOptions.Singleline).Groups[1].Value;
+
+    private static string MainNavHtml(string html)
+    {
+        var match = Regex.Match(html, "<nav[^>]*aria-label=\"Ana menü\"[^>]*>(.*?)</nav>", RegexOptions.Singleline);
+        Assert.True(match.Success, "ana menü (nav) yok");
+        return match.Groups[1].Value;
+    }
+
+    private static string FooterHtml(string html)
+    {
+        var match = Regex.Match(html, "<footer[^>]*>(.*?)</footer>", RegexOptions.Singleline);
+        Assert.True(match.Success, "alt bilgi (footer) yok");
+        return match.Groups[1].Value;
+    }
+
+    private static IEnumerable<string> TrHrefs(string html) =>
+        Regex.Matches(html, "href=\"(/tr/[^\"]*)\"").Select(match => match.Groups[1].Value);
+
+    [Fact]
+    public async Task Top_menu_has_six_sections_in_order()
+    {
+        using var client = AnonymousClient();
+
+        var nav = MainNavHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr")));
+        var titles = Regex.Matches(nav, "data-nav-section[^>]*>\\s*([^<]+?)\\s*<").Select(match => match.Groups[1].Value);
+
+        Assert.Equal(new[] { "Ürün", "Çözümler", "Entegrasyonlar", "Kaynaklar", "Kurumsal", "Fiyatlandırma" }, titles);
+        Assert.Contains("href=\"/tr/enterprise\"", nav);
+        Assert.Contains("href=\"/tr/pricing\"", nav);
+    }
+
+    [Fact]
+    public async Task Menu_links_match_the_catalog_and_all_open()
+    {
+        var catalogPaths = _app.Services.GetRequiredService<SiteCatalog>().Entries.Select(entry => entry.Path);
+        using var client = AnonymousClient();
+
+        var nav = MainNavHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr")));
+        var menuPaths = TrHrefs(nav).Distinct(StringComparer.Ordinal).ToList();
+
+        Assert.Equal(28, menuPaths.Count);
+        Assert.Equal(catalogPaths.Order(StringComparer.Ordinal), menuPaths.Order(StringComparer.Ordinal));
+        foreach (var path in menuPaths)
+        {
+            var response = await client.GetAsync(path);
+            Assert.True(response.StatusCode == HttpStatusCode.OK, path + " " + (int)response.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Product_menu_has_four_groups()
+    {
+        using var client = AnonymousClient();
+
+        var nav = MainNavHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr")));
+        var product = nav.Split("data-nav-section")[1];
+        var groups = Regex.Matches(product, "data-nav-group[^>]*>\\s*([^<]+?)\\s*<").Select(match => match.Groups[1].Value);
+
+        Assert.Equal(new[] { "Kaydet", "Anla", "Bul", "Paylaş" }, groups);
+    }
+
+    [Fact]
+    public async Task Unavailable_features_are_marked_soon_in_menu()
+    {
+        var entries = _app.Services.GetRequiredService<SiteCatalog>().Entries;
+        using var client = AnonymousClient();
+
+        var nav = MainNavHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr")));
+        var links = Regex.Matches(nav, "<a\\s[^>]*href=\"(/tr/[^\"]+)\"[^>]*>(.*?)</a>", RegexOptions.Singleline)
+            .ToDictionary(match => match.Groups[1].Value, match => match.Groups[2].Value);
+
+        foreach (var slug in new[] { "teams", "google-meet", "slack", "trello-jira" })
+            Assert.Contains("Yakında", links["/tr/integrations/" + slug]);
+        Assert.DoesNotContain("Yakında", links["/tr/product/ask-archive"]);
+        foreach (var entry in entries)
+            Assert.True(links[entry.Path].Contains("Yakında") == !entry.Available, entry.Path);
+    }
+
+    [Fact]
+    public async Task Footer_links_privacy_and_contact()
+    {
+        var catalogPaths = _app.Services.GetRequiredService<SiteCatalog>().Entries.Select(entry => entry.Path);
+        using var client = AnonymousClient();
+
+        var footer = FooterHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr/product/ask-archive")));
+
+        Assert.Contains("href=\"/Privacy\"", footer);
+        Assert.Contains("href=\"/tr/resources/contact\"", footer);
+        Assert.Contains(">Gizlilik<", footer);
+        Assert.Contains(">İletişim<", footer);
+        Assert.Equal(catalogPaths.Order(StringComparer.Ordinal), TrHrefs(footer).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Menu_button_has_a_name_and_starts_closed()
+    {
+        using var client = AnonymousClient();
+
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync("/tr"));
+        var button = Regex.Match(html, "<button[^>]*data-nav-toggle[^>]*>(.*?)</button>", RegexOptions.Singleline);
+
+        Assert.True(button.Success, "menü düğmesi yok");
+        Assert.Contains("aria-expanded=\"false\"", button.Value);
+        Assert.Contains("Menü", Regex.Replace(button.Groups[1].Value, "<[^>]+>", ""));
+        var controls = Regex.Match(button.Value, "aria-controls=\"([^\"]+)\"").Groups[1].Value;
+        Assert.NotEmpty(controls);
+        Assert.Contains("id=\"" + controls + "\"", html);
     }
 }
