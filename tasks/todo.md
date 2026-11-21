@@ -57,7 +57,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 3: Ana sayfa (scroll-craft)
 
-- [ ] **Görev 7: scroll-craft brief'i Ulaş'la** (S, insan adımı)
+- [x] **Görev 7: scroll-craft brief'i Ulaş'la** (S, insan adımı) · bitti 2026-11-21: Ulaş sekiz soruyu yanıtlamak yerine kararı devretti ("Senin kararın olsun"); brief `~/scrollcraft/builds/briefyn/BRIEF.md` yetkiyle yazıldı ve Ulaş onayladı. İmza hareketi "dalga satıra yatar", ayrı sahneler (video yok). Zoom cümlesi "tek tıkla aktarın" oldu (bildirim anahtarı yalnız sunucuda tanımlıysa kendiliğinden gelir).
   - Kabul: `doctor.mjs` koştu, eksikler yazıldı; çalışma klasörü repo dışında (`SCROLLCRAFT_HOME`); `playwright-core` o klasöre kuruldu, repodaki `package.json` değişmedi (plan karar 11). Adım 0'ın 8 sorusu Ulaş'a tek seferde soruldu, cevaplar kendi sözleriyle `BRIEF.md`'de (his eğrisi, zirve = yolculuk bölümü, "Bu, ___ olan site" cümlesi). Adım 1 yolculuğu ve Adım 2 dilbilgisi, parmak izi kapısı, bölüm başına cihaz tablosu yazıldı; spec'in kesin kuralları (uzun tire yok, sayaç yok, uydurma sayı yok, tek zirve, tek imza hareketi, video yok) brifte. Masaüstü ve telefon düzeni ayrı ayrı tarif edildi.
   - Doğrula: `BRIEF.md` Ulaş'a gösterildi, onay aldı.
   - Bağımlılık: Kontrol A (palet). Görev 5-6 ile aynı anda yapılabilir.

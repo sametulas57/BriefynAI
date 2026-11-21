@@ -19,7 +19,7 @@ public sealed class SiteCatalog
     public IReadOnlyList<SiteEntry> Entries { get; } =
     [
         new("product", "Kaydet", "upload", "Dosya yükleme", "Toplantı kaydınızı .mp3, .wav ya da .m4a olarak yükleyin, gerisini Briefyn yapsın.", true),
-        new("product", "Kaydet", "zoom", "Zoom'dan aktarma", "Zoom hesabınızı bağlayın, bulut kayıtlarınız kendiliğinden gelsin.", true),
+        new("product", "Kaydet", "zoom", "Zoom'dan aktarma", "Zoom hesabınızı bağlayın, bulut kayıtlarınızı tek tıkla aktarın.", true),
         new("product", "Anla", "transcription", "Yazıya dökme", "Toplantıda konuşulan her şey okunabilir bir metne dönüşür.", true),
         new("product", "Anla", "speakers", "Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.", true),
         new("product", "Anla", "summary", "Özet ve kararlar", "Toplantının özeti, kararları ve konuşulan başlıklar tek sayfada toplanır.", true),
@@ -34,7 +34,7 @@ public sealed class SiteCatalog
         new("solutions", null, "sales", "Satış ve müşteri görüşmeleri", "Müşteriyle ne konuşulduğunu ve ne söz verildiğini kayıt altında tutun.", true),
         new("solutions", null, "hr", "İnsan kaynakları ve işe alım", "Not tutmayı bırakın, görüşmenin kendisine odaklanın.", true),
         new("solutions", null, "agencies", "Danışmanlık ve ajanslar", "Her müşteri toplantısının özetini ve yapılacaklarını hızla paylaşın.", true),
-        new("integrations", null, "zoom", "Zoom", "Zoom bulut kayıtlarınız, hesabınızı bağladıktan sonra kendiliğinden gelir.", true),
+        new("integrations", null, "zoom", "Zoom", "Hesabınızı bağlayın, Zoom bulut kayıtlarınızı listeden seçip aktarın.", true),
         new("integrations", null, "calendar", "Takvim (Outlook, Google)", "Yapılacaklar takvim daveti olarak gelir, Outlook ya da Google takviminize eklenir.", true),
         new("integrations", null, "teams", "Microsoft Teams", "Teams toplantılarının kayıtlarını doğrudan almak için çalışıyoruz.", false),
         new("integrations", null, "google-meet", "Google Meet", "Google Meet kayıtlarını doğrudan almak için çalışıyoruz.", false),

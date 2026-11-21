@@ -199,7 +199,7 @@ Sıra ve bölümlerin nasıl hareket edeceği scroll-craft'ın tasarım adımın
 6. **Sık sorulanlar:** kod ve ayarlarla doğrulanmış cevaplar.
    - Ücretli mi? Şimdilik ücretsiz.
    - Hangi dosyalar? `.mp3`, `.wav`, `.m4a`, en fazla 300 MB.
-   - Zoom kayıtları? Bağlanınca otomatik gelir.
+   - Zoom kayıtları? Hesap bağlanınca bulut kayıtları listeden seçilip tek tıkla aktarılır. ("Kendiliğinden gelir" denmez: yalnız sunucuda Zoom bildirim anahtarı tanımlıysa doğru; Ulaş, 2026-11-21.)
    - Verilerim? Güven bölümüyle aynı cevap.
 7. **Kapanış:** "Kayıt yükle".
 8. **Alt bilgi:** menü bağlantıları, Gizlilik, İletişim.
