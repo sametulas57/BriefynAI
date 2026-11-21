@@ -1,9 +1,139 @@
 @page "/tr"
 @model MeetingWeb.Pages.Public.HomeModel
 @{
-    ViewData["Title"] = "Toplantı kayıtlarınız yazıya, özete ve yapılacaklara dönüşsün";
+    ViewData["Title"] = "Toplantıyı siz yapın, notları Briefyn çıkarsın";
+    // Kayan şerit: Briefyn her toplantının ses kaydını aynı yoldan işler; türe özel bir iddia yok (BRIEF 9. bölüm, satır 5).
+    string[] meetings =
+    [
+        "Haftalık ekip toplantısı", "Sprint planlama", "Müşteri görüşmesi", "Birebir görüşme", "İşe alım mülakatı",
+        "Proje başlangıcı", "Satış görüşmesi", "Yönetim toplantısı", "Ajans sunumu", "Geriye dönük değerlendirme"
+    ];
+    // Açılıştaki durgun ses dalgası (süs): çubuk boyları elle seçildi, konuşma gibi inip çıkıyor.
+    int[] heroBars = [14, 30, 22, 48, 70, 40, 92, 58, 108, 76, 44, 96, 64, 110, 84, 52, 100, 68, 36, 80, 56, 28, 42, 18];
+    // Yolculuğun adımları. Her cümlenin dayandığı özellik BRIEF.md 9. bölümdeki tabloda (satır 7-12).
+    // "End", adımın bittiği kaydırma payı: home.js sahnenin o anki hâlini bu değerden hesaplar.
+    (string Name, string Sentence, string Cue, string End)[] steps =
+    [
+        // İpucu pencereleri art arda: biri sönerken öteki gelmez, iki metin üst üste binmez (her geçiş yaklaşık 0,03 pay).
+        ("Yükleme", "Kaydı yükleyin ya da Zoom'dan tek tıkla aktarın.", "0.09 0.23 0.1 0.1", "0.22"),
+        ("Yazıya dökme", "Konuşulan her şey okunabilir bir metne dönüşür.", "0.23 0.425 0.08 0.06", "0.40"),
+        ("Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.", "0.425 0.55 0.1 0.1", "0.54"),
+        ("Özet, kararlar, yapılacaklar", "Özet, kararlar ve yapılacaklar tek sayfada toplanır; işler kişilere atanır.", "0.55 0.70 0.09 0.09", "0.70"),
+        ("Arşive sor", "Geçmiş toplantılarınıza soru sorun; cevap, geldiği toplantıyla birlikte gelir.", "0.70 0.86 0.09 0.09", "0.86"),
+        ("Takvim ve paylaşma", "Tarihi olan işler takvim daveti olarak gelir; özeti ekibinize e-postayla gönderin.", "0.86 1 0.09 0.06", "1")
+    ];
+}
+@section Head {
+    <meta name="description" content="Kaydı yükleyin; yazıya dökülsün, konuşmacılar ayrılsın, özet, kararlar ve yapılacaklar tek sayfada toplansın." />
+    @* scroll-craft motorunun stili en alttaki katmanda: Tailwind'in bütün katmanları onu geçer, menü ve alt bilgi öbür sayfalarla aynı kalır. *@
+    <style>@@layer scrollcraft; @@import url("/lib/scrollcraft/scrollcraft.css") layer(scrollcraft);</style>
+    @* Hareket yalnız "hareketi azalt" kapalıysa ve ekran en az 500 piksel yüksekse açılır ("sc-on").
+       Sınıf boyamadan önce konur ki sayfa durağan düzenden hareketli düzene sıçramasın. Motor 4 saniyede bağlanmazsa durağan düzene dönülür. *@
+    <script>(function(d){if(matchMedia("(prefers-reduced-motion: no-preference)").matches&&innerHeight>=500){d.classList.add("sc-on");setTimeout(function(){if(!d.classList.contains("sc-ready"))d.classList.remove("sc-on")},4000)}})(document.documentElement)</script>
 }
 
-<h1>Toplantı kayıtlarınız yazıya, özete ve yapılacaklara dönüşsün</h1>
-<p>Kaydı yükleyin; döküm, kararlar ve yapılacaklar hazır olsun.</p>
-<a href="/Upload">Kayıt yükle</a>
+<section class="hh" data-home-hero data-sc-act="flow" aria-labelledby="hh-title">
+    <div class="hh-photo" data-sc-parallax="1.2">
+        <div class="hh-drift">
+            <picture>
+                <source media="(max-width: 860px)" srcset="/img/home/salon-gece-dikey-780.webp" width="780" height="1386" />
+                <img src="/img/home/salon-gece-genis-1440.webp" srcset="/img/home/salon-gece-genis-1440.webp 1440w, /img/home/salon-gece-genis-1600.webp 1600w"
+                     sizes="100vw" width="1600" height="900" fetchpriority="high" decoding="async"
+                     alt="Akşam ışığında boş bir toplantı odası; masada kapalı bir dizüstü bilgisayar ve kahve fincanları duruyor." />
+            </picture>
+        </div>
+    </div>
+    <div class="hh-inner">
+        <div class="hh-copy">
+            @* Açılış metni hep görünür ("0 1 0 0"); ipucu olması yalnız doğrulama aracının kontrastı ölçmesi için. *@
+            <h1 id="hh-title" class="hh-title" data-sc-cue="0 1 0 0">Toplantıyı siz yapın, notları Briefyn çıkarsın.</h1>
+            <p class="hh-lede" data-sc-cue="0 1 0 0">Kaydı yükleyin; yazıya dökülsün, konuşmacılar ayrılsın, özet, kararlar ve yapılacaklar tek sayfada toplansın.</p>
+            <a href="/Upload" class="btn btn-grad mt-8 h-13 px-7 text-lg font-bold focus-visible:outline-hero-title">Kayıt yükle</a>
+            <p class="hh-note" data-sc-cue="0 1 0 0">Şimdilik ücretsiz.</p>
+        </div>
+    </div>
+    <div class="hh-panel" data-sc-parallax="0.5" aria-hidden="true">
+        <svg class="hh-wave" viewBox="0 0 480 220" focusable="false">
+            <defs>
+                @* Çubuklar panelin üst kenarından taşar: kenarın üstünde açık, panelin içinde koyu. *@
+                <linearGradient id="hh-wave-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="220">
+                    <stop offset="0.29" stop-color="#9BEFF7" />
+                    <stop offset="0.29" stop-color="#04121F" />
+                </linearGradient>
+            </defs>
+            <g fill="none" stroke="url(#hh-wave-ink)" stroke-width="7" stroke-linecap="round">
+                @for (var i = 0; i < heroBars.Length; i++)
+                {
+                    var x = 20 + i * 19.3;
+                    var half = heroBars[i] / 2.0;
+                    <path class="@(i % 2 == 1 ? "hh-bar-odd" : null)" d="M@(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) @((64 - half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))V@((64 + half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))" />
+                }
+            </g>
+            @* Henüz yazılmamış not satırları: dalganın gideceği yer. *@
+            <g fill="none" stroke="#04121F" stroke-opacity="0.22" stroke-width="7" stroke-linecap="round">
+                <path d="M20 152H380" />
+                <path d="M20 176H330" />
+                <path d="M20 200H200" />
+            </g>
+        </svg>
+    </div>
+</section>
+
+<section class="hstrip" data-home-strip>
+    <div class="hstrip-viewport">
+        <div class="hstrip-track" data-strip-track>
+            @for (var copy = 0; copy < 2; copy++)
+            {
+                <ul class="hstrip-list" aria-label="@(copy == 0 ? "Briefyn'e yükleyebileceğiniz toplantılar" : null)" aria-hidden="@(copy == 1 ? "true" : null)">
+                    @foreach (var meeting in meetings)
+                    {
+                        <li class="hstrip-item">
+                            <svg class="hstrip-mark" viewBox="0 0 30 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M3 10v4M9.5 6v12M16 3v18M22.5 7v10" /></g></svg>
+                            <span>@meeting</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    <button type="button" class="hstrip-toggle" data-strip-toggle aria-label="Şeridi durdur">
+        <svg class="hstrip-icon-pause" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M7 4.5v11M13 4.5v11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+        <svg class="hstrip-icon-play" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M7 4.8v10.4L15.2 10z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+    </button>
+</section>
+
+@* Zirve. Temel HTML durağan bir adım listesi (betik yokken ve "hareketi azalt" açıkken bu okunur);
+   home.js hareket izinliyse onu kaydırmayla ilerleyen pinli sahneye yükseltir. *@
+<section class="hj" id="yolculuk" data-home-journey data-sc-act="flow" data-sc-span="5" aria-labelledby="hj-title">
+    <div class="hj-stage" data-sc-stage>
+        <div class="hj-grid">
+            <h2 id="hj-title" class="hj-title">Bir toplantının yolculuğu</h2>
+            <figure class="hj-object">
+                <figcaption class="hj-label"><span class="hj-label-dot" aria-hidden="true"></span>Örnek toplantı: Haftalık ürün toplantısı</figcaption>
+                <div class="hj-sheet" data-hj-scene aria-hidden="true"></div>
+            </figure>
+            <div class="hj-cues">
+                <p class="hj-quiet" data-sc-cue="0 0.09 0 0.25">Bir toplantı bitti. Elinizde yalnız kaydı var.</p>
+                <ol class="hj-steps">
+                    @foreach (var step in steps)
+                    {
+                        <li class="hj-step">
+                            <div class="hj-step-text" data-sc-cue="@step.Cue">
+                                <h3 class="hj-step-name">@step.Name</h3>
+                                @* "e-posta" satır sonunda tireden bölünmesin. *@
+                                @{ var cut = step.Sentence.IndexOf("e-posta", StringComparison.Ordinal); }
+                                <p class="hj-step-sentence">@if (cut < 0) { @step.Sentence } else { @(step.Sentence[..cut])<span class="whitespace-nowrap">e-posta</span>@(step.Sentence[(cut + 7)..]) }</p>
+                            </div>
+                            <div class="hj-mini" data-hj-mini="@step.End" aria-hidden="true"></div>
+                        </li>
+                    }
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="/lib/scrollcraft/scrollcraft.js" defer></script>
+    <script src="~/js/home.js" asp-append-version="true" defer></script>
+}

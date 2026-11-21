@@ -69,7 +69,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 7.
   - Dosyalar: `MeetingWeb/wwwroot/img/home/*`.
 
-- [ ] **Görev 9: Açılış, kayan şerit ve yolculuk** (M, en riskli)
+- [x] **Görev 9: Açılış, kayan şerit ve yolculuk** (M, en riskli) · bitti 2026-11-21: motor değiştirilmeden `wwwroot/lib/scrollcraft/`'ta (hash skill'le aynı); motor CSS'i `@layer scrollcraft` ile en alt katmanda (düz yüklenince Tailwind'i eziyordu). İmza hareketi "dalga satıra yatar" `home.js`'te. shoot.mjs masaüstü, 390×844, 360×640 ve hareket azaltılmış: ölü kaydırma yok, taşma yok, ağ yalnız 127.0.0.1:8080; hareket azaltılınca motor bağlanmıyor, yolculuk durağan adım listesi. Kontrast en düşük 4,71. Brief'ten sapmalar (parallax yönü, ipucu pencereleri, telefonda %62/%38) görev raporunda. Odaklı testler 105/105. iOS Safari ve Lighthouse Görev 11'de.
   - İlk adım: motor (`scrollcraft.js` / `.css`, değiştirilmeden `wwwroot/lib/scrollcraft/`) `/tr`'de tek boş bölümle çalıştırılıp `shoot.mjs` ile görülür.
   - Kabul: açılışta tek cümlelik vaat, alt cümle, "Kayıt yükle"; sağa sabit hızla kayan şerit (uydurma logo yok); yolculuk bölümü zirve: yükleme → yazıya dökme → konuşmacılar → özet, kararlar, yapılacaklar → arşive sor → takvim ve paylaşma, her adım çalışan bir özelliğe dayanıyor (görev notunda eşleşme). Telefonda yolculuk kendi düzeninde. "Hareketi azalt" açıkken canlandırma yok, metin okunuyor. Dış adres yok, uzun tire yok.
   - Doğrula: odaklı test (`<h1>`, `/Upload` bağlantısı, uzun tire yok, dış adres yok); `shoot.mjs` masaüstü, 390 × 844 ve `--reduced-motion`; `sheet.png` okundu.
