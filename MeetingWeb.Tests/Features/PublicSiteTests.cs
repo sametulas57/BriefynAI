@@ -4,6 +4,7 @@ using MeetingWeb.Services.PublicSite;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
 namespace MeetingWeb.Tests.Features;
 
@@ -28,6 +29,152 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         BaseAddress = new Uri("https://localhost"),
         AllowAutoRedirect = false
     });
+
+    [Fact]
+    public async Task Home_is_public_and_invites_an_upload()
+    {
+        using var client = AnonymousClient();
+
+        var response = await client.GetAsync("/tr");
+        var html = await response.Content.ReadAsStringAsync();
+        var decoded = WebUtility.HtmlDecode(html);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<h1", html);
+        Assert.Contains("href=\"/Upload\"", html);
+        Assert.DoesNotContain("bootstrap.min.css", html);
+        Assert.Contains("/css/app.css", html);
+        Assert.DoesNotContain("—", decoded);
+        Assert.DoesNotMatch(new Regex("(src|href)\\s*=\\s*\"(https?:)?//"), html);
+        Assert.Contains("Giriş yap", decoded);
+        Assert.Contains("href=\"/Auth/Login\"", html);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/Index")]
+    public async Task Root_and_old_index_redirect_to_tr(string path)
+    {
+        using var client = AnonymousClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/tr", response.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Signed_in_user_stays_on_tr_and_sees_meetings_link()
+    {
+        using var client = _app.ClientFor(_app.Seed.AliceId);
+
+        var response = await client.GetAsync("/tr");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Toplantılarım", WebUtility.HtmlDecode(html));
+        Assert.Contains("href=\"/History\"", html);
+    }
+
+    [Fact]
+    public async Task Old_pages_do_not_load_the_new_stylesheet()
+    {
+        using var client = _app.ClientFor(_app.Seed.AliceId);
+
+        var response = await client.GetAsync("/History");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("/css/app.css", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Anonymous_upload_goes_to_login_and_comes_back_after_sign_in()
+    {
+        using var app = await PasswordResetTests.PasswordAppAsync();
+        using var client = PasswordResetTests.CookieClient(app);
+
+        var upload = await client.GetAsync("/Upload");
+
+        Assert.Equal(HttpStatusCode.Redirect, upload.StatusCode);
+        Assert.EndsWith("/Auth/Login?ReturnUrl=%2FUpload", upload.Headers.Location!.OriginalString);
+
+        const string loginUrl = "/Auth/Login?ReturnUrl=%2FUpload";
+        var token = await GetAntiforgeryTokenAsync(client, loginUrl);
+        var login = await PostFormAsync(client, loginUrl, token,
+            ("Input.Email", SeedData.AliceEmail), ("Input.Password", PasswordResetTests.OldPassword));
+
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal("/Upload", login.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Signed_in_redirects_that_used_index_now_reach_tr()
+    {
+        using var client = _app.ClientFor(_app.Seed.AliceId);
+
+        var login = await client.GetAsync("/Auth/Login");
+
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        var home = await client.GetAsync(login.Headers.Location);
+        Assert.Equal(HttpStatusCode.Redirect, home.StatusCode);
+        Assert.Equal("/tr", home.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Login_passes_return_url_to_register()
+    {
+        using var client = AnonymousClient();
+
+        var withReturnUrl = await client.GetStringAsync("/Auth/Login?ReturnUrl=%2FUpload");
+        var withoutReturnUrl = await client.GetStringAsync("/Auth/Login");
+
+        Assert.Contains("href=\"/Auth/Register?returnUrl=%2FUpload\"", withReturnUrl);
+        Assert.Contains("href=\"/Auth/Register\"", withoutReturnUrl);
+    }
+
+    [Fact]
+    public async Task Register_returns_to_local_return_url()
+    {
+        var response = await RegisterAsync("/Auth/Register?returnUrl=%2FUpload");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/Upload", response.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Register_without_return_url_goes_home()
+    {
+        var response = await RegisterAsync("/Auth/Register");
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Contains(response.Headers.Location!.OriginalString, new[] { "/", "/Index" });
+    }
+
+    [Theory]
+    [InlineData("https://saldirgan.example")]
+    [InlineData("//saldirgan.example")]
+    [InlineData("/\\saldirgan.example")]
+    public async Task Register_never_redirects_off_site(string returnUrl)
+    {
+        var response = await RegisterAsync("/Auth/Register?returnUrl=" + Uri.EscapeDataString(returnUrl));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var location = response.Headers.Location!.OriginalString;
+        Assert.Contains(location, new[] { "/", "/Index" });
+        Assert.False(location.StartsWith("http", StringComparison.OrdinalIgnoreCase));
+        Assert.False(location.StartsWith("//", StringComparison.Ordinal));
+        Assert.False(location.StartsWith("/\\", StringComparison.Ordinal));
+    }
+
+    private async Task<HttpResponseMessage> RegisterAsync(string url)
+    {
+        using var visitor = AnonymousClient();
+        var token = await GetAntiforgeryTokenAsync(visitor, url);
+        return await PostFormAsync(visitor, url, token,
+            ("Input.FullName", "Yeni Kullanıcı"), ("Input.Email", $"yeni-{Guid.NewGuid():N}@kisi.test"),
+            ("Input.Password", "Guclu-Parola-123"), ("Input.ConfirmPassword", "Guclu-Parola-123"),
+            ("Input.IsKvkkAccepted", "true"));
+    }
 
     [Fact]
     public void Catalog_matches_the_site_map()

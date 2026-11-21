@@ -14,6 +14,14 @@
     <header>
         <a href="/tr">Briefyn</a>
         <nav aria-label="Ana menü"></nav>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <a href="/History">Toplantılarım</a>
+        }
+        else
+        {
+            <a href="/Auth/Login">Giriş yap</a>
+        }
     </header>
     <main>@RenderBody()</main>
     <footer>

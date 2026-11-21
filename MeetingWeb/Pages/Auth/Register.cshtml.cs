@@ -65,7 +65,7 @@ namespace MeetingWeb.Pages.Auth
         }
 
         // HTTP POST handler for the registration workflow.
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
         {
             // DÜZELTME: Manuel KVKK Kontrolü (ModelState.IsValid kontrolünden hemen önce yapıyoruz)
             if (!Input.IsKvkkAccepted)
@@ -118,6 +118,8 @@ namespace MeetingWeb.Pages.Auth
 
                     // Authenticate the user bypassing the login screen and redirect to dashboard.
                     await _signInManager.SignInAsync(user, isPersistent: false);
+                    // Kayıttan sonra geldiği yere döner (ör. "Kayıt yükle" → /Upload); dış adrese asla (plan karar 9).
+                    if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
                     return RedirectToPage("/Index");
                 }
 

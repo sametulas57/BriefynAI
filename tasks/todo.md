@@ -12,7 +12,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: yok.
   - Dosyalar: `package.json`, `package-lock.json`, `MeetingWeb/Styles/app.css`, `scripts/verify.sh`, `.github/workflows/test.yml`, `.gitignore`, `README.md`.
 
-- [ ] **Görev 2: Görsel önizleme: palet, yazı tipi, logo** (S, paralel)
+- [x] **Görev 2: Görsel önizleme: palet, yazı tipi, logo** (S, paralel) · bitti 2026-11-21: Ulaş'ın ara notuyla ("mat olmasın, parlak renk olsun") parlak palet: ana #00BFD3, zemin #A9EEF5, koyu kardeş #00616E, vurgu orkide #DA5CF0; 25/25 kontrast çifti eşiği geçiyor. Yazı tipleri Bricolage Grotesque (başlık) + Atkinson Hyperlegible Next (metin), ikisi OFL-1.1. Onay Kontrol A'da bekliyor.
   - Kabul: tek bir HTML önizleme dosyası (`docs/brand/`): "Petrol ve buz"un daha canlı, zemini renkli hâli (koyu tema yok, bembeyaz zemin yok, Fireflies'ın moru ve Inter/DM Sans yok); Türkçe harfli, OFL lisanslı başlık ve metin yazı tipi önerisi; logo A'nın tema renginde SVG'si ve 16 piksel için az öğeli işaret; örnek düğme, menü ve "yakında" kartı. Her metin/zemin çiftinin kontrast oranı yanında yazılı (≥ 4,5:1).
   - Doğrula: dosya tarayıcıda açılıyor; Ulaş'a gönderildi.
   - Bağımlılık: yok. İşçi: Opus alt ajanı (`frontend-design`), Beyin notunun palet turları brifte.
@@ -24,7 +24,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 1.
   - Dosyalar: `MeetingWeb/Services/PublicSite/SiteCatalog.cs`, `MeetingWeb/Pages/Public/ComingSoon.cshtml(.cs)`, `MeetingWeb/Pages/Public/_ViewStart.cshtml`, `MeetingWeb/Pages/Shared/_PublicLayout.cshtml`, `MeetingWeb/Program.cs`, `MeetingWeb.Tests/Features/PublicSiteTests.cs`.
 
-- [ ] **Görev 4: `/tr`, `/` yönlendirmesi ve "Kayıt yükle" akışı** (S)
+- [x] **Görev 4: `/tr`, `/` yönlendirmesi ve "Kayıt yükle" akışı** (S) · bitti 2026-11-21: odaklı testler (PublicSite, WorkspaceBoundary, PasswordReset, IdentityPages, PersonalWorkspace) 236/236; kayıt `Url.IsLocalUrl` ile dış adrese (`https://`, `//`, `/\`) gitmiyor.
   - Kabul: `/tr` giriş yapmamış ziyaretçiye 200, `<h1>` ve `/Upload` bağlantısı (içerik şimdilik yer tutucu). `/` ve `/Index` 302 ile `/tr`'ye gidiyor; `Pages/Index` yalnız yönlendirme. Giriş yapmamış ziyaretçi `/Upload` açınca `/Auth/Login?ReturnUrl=%2FUpload`'a, girişten sonra `/Upload`'a gidiyor. Giriş yapmış kullanıcı `/tr`'de 200 alıyor ve "Toplantılarım" (`/History`) bağlantısını görüyor. `/History` `app.css` yüklemiyor. Var olan `RedirectToPage("/Index")` akışları (giriş sayfası GET, şifremi unuttum) testte `/tr`'ye varıyor. Kayıttan sonra da geri dönülüyor (plan karar 9): `/Auth/Login?ReturnUrl=%2FUpload`'daki kayıt bağlantısı `/Auth/Register?returnUrl=%2FUpload`'a gidiyor, kayıt bitince `/Upload`'a dönülüyor; `returnUrl` boşsa bugünkü gibi `/Index`; dış adres (`https://saldirgan.example`, `//saldirgan.example`) verilirse dışarı gidilmiyor. Giriş ve kayıt sayfalarının görünümü değişmiyor.
   - Doğrula: odaklı test; `PasswordResetTests`; `IdentityPagesTests`; `WorkspaceBoundaryTests`.
   - Bağımlılık: 3.
