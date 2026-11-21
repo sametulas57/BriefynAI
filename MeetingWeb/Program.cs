@@ -166,6 +166,11 @@ try
     // Match the routed page, not the raw path, because routing also accepts a trailing slash.
     static string? MatchedPage(HttpContext http) => http.Request.RouteValues["page"] as string;
 
+    // Razor Pages picks the handler from the route value, else the first "handler" query value.
+    static string? MatchedHandler(HttpContext http) =>
+        http.Request.RouteValues["handler"] as string is { Length: > 0 } routed ? routed
+        : http.Request.Query["handler"] is { Count: > 0 } values ? values[0] : null;
+
     // S8: sharing a report sends real email from our account, so each user gets a small hourly budget.
     builder.Services.AddRateLimiter(options =>
     {
@@ -227,7 +232,7 @@ try
 
             var userKey = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
             if (HttpMethods.IsPost(context.Request.Method) && string.Equals(MatchedPage(context), "/MyActions", StringComparison.Ordinal)
-                && string.Equals(context.Request.Query["handler"], "SendToCalendar", StringComparison.OrdinalIgnoreCase))
+                && string.Equals(MatchedHandler(context), "SendToCalendar", StringComparison.OrdinalIgnoreCase))
                 return RateLimitPartition.GetFixedWindowLimiter("calendar:" + userKey, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = context.RequestServices.GetRequiredService<IConfiguration>().GetValue("EmailSettings:CalendarResendLimitPerHour", 5),
@@ -237,9 +242,9 @@ try
 
             var isShare = HttpMethods.IsPost(context.Request.Method) &&
                           ((string.Equals(MatchedPage(context), "/Details", StringComparison.Ordinal) &&
-                            string.Equals(context.Request.Query["handler"], "Share", StringComparison.OrdinalIgnoreCase)) ||
+                            string.Equals(MatchedHandler(context), "Share", StringComparison.OrdinalIgnoreCase)) ||
                            (string.Equals(MatchedPage(context), "/Series/Show", StringComparison.Ordinal) &&
-                            string.Equals(context.Request.Query["handler"], "SendAgenda", StringComparison.OrdinalIgnoreCase)));
+                            string.Equals(MatchedHandler(context), "SendAgenda", StringComparison.OrdinalIgnoreCase)));
             if (!isShare) return RateLimitPartition.GetNoLimiter("unlimited");
 
             return RateLimitPartition.GetFixedWindowLimiter("share:" + userKey, _ => new FixedWindowRateLimiterOptions

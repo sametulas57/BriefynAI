@@ -87,32 +87,42 @@ namespace MeetingWeb.Services
                 if (task == null || user == null) return null;
                 var record = await db.CalendarInvites.SingleOrDefaultAsync(i => i.ActionItemId == actionItemId && i.UserId == userId);
                 var now = time.GetUtcNow().UtcDateTime;
+                var inSync = record != null && record.Status == CalendarInviteStatus.Active
+                    && !record.SendPending && record.DueDate == task.DueDate;
                 try
                 {
-                    if (record == null)
+                    var sequence = record?.Sequence ?? 0;
+                    if ((record == null || !InFlight(record, now)) && !inSync)
                     {
-                        record = new CalendarInvite
+                        var emailWillSend = record?.Status == CalendarInviteStatus.Active || AutoSends(user, task, now);
+                        if (record == null)
                         {
-                            ActionItemId = actionItemId,
-                            UserId = userId,
-                            Uid = NewUid(),
-                            Sequence = 0,
-                            Status = CalendarInviteStatus.Active,
-                            SendPending = false,
-                            DueDate = task.DueDate!.Value,
-                            UpdatedAtUtc = now
-                        };
-                        db.CalendarInvites.Add(record);
+                            // Reserve the UID without marking an email as sent.
+                            record = new CalendarInvite
+                            {
+                                ActionItemId = actionItemId,
+                                UserId = userId,
+                                Uid = NewUid(),
+                                Sequence = 0,
+                                Status = emailWillSend ? CalendarInviteStatus.Cancelled : CalendarInviteStatus.Active,
+                                SendPending = false,
+                                DueDate = task.DueDate!.Value,
+                                UpdatedAtUtc = now
+                            };
+                            db.CalendarInvites.Add(record);
+                            await db.SaveChangesAsync();
+                        }
+                        else if (!emailWillSend)
+                        {
+                            // A re-added entry must outrank the cancellation the person may have received.
+                            if (record.Status == CalendarInviteStatus.Cancelled) record.Sequence++;
+                            record.Status = CalendarInviteStatus.Active;
+                            record.DueDate = task.DueDate!.Value;
+                            await db.SaveChangesAsync();
+                        }
+                        sequence = emailWillSend ? NextSequence(record) : record.Sequence;
                     }
-                    if (!InFlight(record, now))
-                    {
-                        // A re-added entry must outrank the cancellation the person may have received.
-                        if (record.Status == CalendarInviteStatus.Cancelled) record.Sequence++;
-                        record.Status = CalendarInviteStatus.Active;
-                        record.DueDate = task.DueDate!.Value;
-                        await db.SaveChangesAsync();
-                    }
-                    return CalendarInviteBuilder.Build(BuildRequestData(task, user, record, now), CalendarMethod.Publish);
+                    return CalendarInviteBuilder.Build(BuildRequestData(task, user, record!, now) with { Sequence = sequence }, CalendarMethod.Publish);
                 }
                 catch (DbUpdateException) when (attempt == 0) { db.ChangeTracker.Clear(); }
             }
@@ -184,7 +194,7 @@ namespace MeetingWeb.Services
                 var record = records.FirstOrDefault(i => i.UserId == user.Id);
                 if (record != null && InFlight(record, now)) return;
                 if (!force && (record == null || record.Status == CalendarInviteStatus.Cancelled)
-                    && (!user.CalendarInvitesEnabled || task.DueDate < DisplayTime.TodayIn(now))) return;
+                    && !AutoSends(user, task, now)) return;
                 if (record == null)
                 {
                     record = new CalendarInvite { ActionItemId = actionItemId, UserId = user.Id, Uid = NewUid() };
@@ -194,7 +204,7 @@ namespace MeetingWeb.Services
                 {
                     if (!force && record.Status == CalendarInviteStatus.Active && record.DueDate == task.DueDate && !record.SendPending) return;
                     // A cancelled entry always moves past its cancellation; otherwise only a completed send moves on.
-                    if (record.Status == CalendarInviteStatus.Cancelled || !record.SendPending) record.Sequence++;
+                    record.Sequence = NextSequence(record);
                 }
                 record.Status = CalendarInviteStatus.Active;
                 record.DueDate = task.DueDate!.Value;
@@ -238,6 +248,12 @@ namespace MeetingWeb.Services
         }
 
         private static string NewUid() => Guid.NewGuid().ToString("N") + "@briefyn.ai";
+
+        private static bool AutoSends(ApplicationUser user, CalendarTask task, DateTime now) =>
+            user.CalendarInvitesEnabled && task.DueDate >= DisplayTime.TodayIn(now);
+
+        private static int NextSequence(CalendarInvite record) =>
+            record.Status == CalendarInviteStatus.Cancelled || !record.SendPending ? record.Sequence + 1 : record.Sequence;
 
         private static bool InFlight(CalendarInvite record, DateTime now) => record.SendPending && record.UpdatedAtUtc > now - SendClaim;
 
