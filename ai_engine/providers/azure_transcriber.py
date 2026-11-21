@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 
 from . import audio
+from .http_retry import retry_after_seconds
 from .speakers import format_lines
 
 
@@ -89,8 +90,8 @@ class AzureTranscriber:
                     files={"audio": ("mono.flac", file, "audio/flac")},
                     data={"definition": self._definition},
                 )
-            if last.status_code == 429:
-                self._sleep(min(float(last.headers.get("retry-after", "10")), 60.0))
+            if last.status_code == 429 and attempt < self._max_attempts:
+                self._sleep(retry_after_seconds(last.headers.get("retry-after")))
                 continue
             if last.status_code >= 500 and attempt < self._max_attempts:
                 self._sleep(2.0 * attempt)

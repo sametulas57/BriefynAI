@@ -12,6 +12,8 @@ from typing import cast
 
 import httpx
 
+from .http_retry import retry_after_seconds
+
 BASE_URL = "https://api.groq.com/openai/v1"
 
 
@@ -37,8 +39,8 @@ class GroqClient:
         last = None
         for attempt in range(1, self._max_attempts + 1):
             last = self._http.post(f"{BASE_URL}{path}", headers=self._headers, **kwargs)
-            if last.status_code == 429:
-                wait = min(float(last.headers.get("retry-after", "10")), 60.0)
+            if last.status_code == 429 and attempt < self._max_attempts:
+                wait = retry_after_seconds(last.headers.get("retry-after"))
                 logging.warning(  # noqa: LOG015 - Keep the configured root logger.
                     f"Groq rate limit, waiting {wait:.0f}s (attempt {attempt})"
                 )

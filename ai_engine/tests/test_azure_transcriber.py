@@ -111,7 +111,13 @@ def test_combined_phrases_are_used_when_phrases_are_missing_or_empty(source, phr
 
 
 @pytest.mark.parametrize(
-    "retry_after, expected_wait", [("7", 7.0), ("120", 60.0), (None, 10.0)]
+    "retry_after, expected_wait",
+    [
+        ("7", 7.0),
+        ("120", 60.0),
+        (None, 10.0),
+        ("Wed, 21 Oct 2015 07:28:00 GMT", 0.0),
+    ],
 )
 def test_rate_limit_retries_with_the_same_audio(source, retry_after, expected_wait):
     requests, sleeps = [], []
@@ -153,7 +159,7 @@ def test_final_rate_limit_raises_after_max_attempts(source):
     with pytest.raises(AzureSpeechError, match="HTTP 429"):
         transcriber_with(handler, sleeps, max_attempts=2).transcribe(source)
     assert len(requests) == 2
-    assert sleeps == [7.0, 7.0]
+    assert sleeps == [7.0]
 
 
 def test_non_retryable_error_fails_immediately_without_leaking_body(source):

@@ -3,6 +3,8 @@
 import json
 import pathlib
 import sys
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 
 import httpx
 import pytest
@@ -13,12 +15,13 @@ from providers.groq_client import GroqClient, GroqError
 from providers.groq_summarizer import GroqSummarizer, split_text, to_backend_format
 
 
-def client_with(handler, sleeps=None):
+def client_with(handler, sleeps=None, **kwargs):
     sleeps = [] if sleeps is None else sleeps
     return GroqClient(
         "test-key",
         http=httpx.Client(transport=httpx.MockTransport(handler)),
         sleep=sleeps.append,
+        **kwargs,
     )
 
 
@@ -40,6 +43,68 @@ def test_short_audio_is_one_piece():
 
 
 # --- Groq client ---
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [("5", 5.0), ("120", 60.0), ("-3", 0.0), ("abc", 10.0), (None, 10.0)],
+)
+def test_retry_after_seconds_handles_numbers_and_invalid_values(value, expected):
+    from providers.http_retry import retry_after_seconds
+
+    assert retry_after_seconds(value) == expected
+
+
+def test_retry_after_seconds_reads_http_date_relative_to_now():
+    from providers.http_retry import retry_after_seconds
+
+    now = datetime(2026, 11, 21, tzinfo=UTC)
+    value = format_datetime(now + timedelta(seconds=30), usegmt=True)
+    assert retry_after_seconds(value, now=now) == 30.0
+
+
+def test_retry_after_seconds_clamps_custom_default_to_custom_cap():
+    from providers.http_retry import retry_after_seconds
+
+    assert retry_after_seconds("abc", default=20.0, cap=15.0) == 15.0
+
+
+def test_client_final_rate_limit_does_not_sleep_or_log_again(caplog):
+    calls, sleeps = [], []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(429, headers={"retry-after": "7"})
+
+    with pytest.raises(GroqError, match="HTTP 429"):
+        client_with(handler, sleeps, max_attempts=2).chat_json(
+            "m", [{"role": "user", "content": "x"}], {"type": "object"}
+        )
+
+    assert len(calls) == 2
+    assert sleeps == [7.0]
+    assert len(caplog.records) == 1
+    assert "Groq rate limit" in caplog.records[0].message
+
+
+def test_client_retries_rate_limit_with_http_date():
+    calls, sleeps = [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(
+                429, headers={"retry-after": "Wed, 21 Oct 2015 07:28:00 GMT"}
+            )
+        return httpx.Response(
+            200, json={"choices": [{"message": {"content": '{"ok": true}'}}]}
+        )
+
+    assert client_with(handler, sleeps, max_attempts=2).chat_json(
+        "m", [{"role": "user", "content": "x"}], {"type": "object"}
+    ) == {"ok": True}
+    assert sleeps == [0.0]
+    assert len(calls) == 2
 
 
 def test_client_sends_the_key_and_waits_on_rate_limit():
