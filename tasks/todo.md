@@ -63,7 +63,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: Kontrol A (palet). Görev 5-6 ile aynı anda yapılabilir.
   - Dosyalar: repo dışı (`$SCROLLCRAFT_HOME/builds/briefyn/BRIEF.md`).
 
-- [ ] **Görev 8: Görseller** (S)
+- [x] **Görev 8: Görseller** (S) · bitti 2026-11-21: Astra (codex-fleet) ile üç görsel, BRIEF.md'deki tek stil önsözüyle; üçüne de bakıldı, yeniden üretim gerekmedi (yazı/logo/yüz yok, eller doğal). Astra istenenden küçük verdi (1672×941, 941×1672, 1024×1536); teslimler ölçülen boyuttan, büyütme yok: `salon-gece-genis-1600/1440.webp`, `salon-gece-dikey-780.webp` (780×1386), `masa-ustten-960.webp` (4:5), `masa-ustten-780.webp` (3:2). WebP q82, toplam 202 KB (bütçe 600). Ham PNG'ler ve istemler repo dışında `~/scrollcraft/builds/briefyn/out|istemler/`; kontak sayfası `lab/kontak.png`. Ücretli servis kullanılmadı.
   - Kabul: brief'teki her bölüm için codex-fleet (Astra) ile durağan görsel; tek stil önsözü her istemde aynı; görselde yazı yok; hepsine bakıldı, kötüler yeniden üretildi; masaüstü ve telefon için ayrı kırpım ve boyut, modern biçimde küçültülmüş. Ücretli servis (kie.ai) kullanılmadı.
   - Doğrula: görsellerin kontak sayfası Ulaş'a gösterildi; toplam boyut yazıldı.
   - Bağımlılık: 7.
