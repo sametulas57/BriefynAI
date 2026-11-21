@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-labelledby="t">
+  <title id="t">Briefyn</title>
+  <!-- 16 piksellik işaret (sekme simgesi): camgöbeği yuvarlak kare üstünde dört koyu öğe. Kısa çubuk, yukarıda not satırına kıvrılan uzun çubuk, iki kısa satır. Çizgiler 2 piksel, aralar 2 piksel, piksel ızgarasına oturuyor. Kare kendi zeminini getirdiği için açık ve koyu sekmede aynı dosya kullanılır. -->
+  <rect width="16" height="16" rx="3.5" fill="#00A3B8"/>
+  <g fill="none" stroke="#03272D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 7V10"/>
+    <path d="M7 12V6A2 2 0 0 1 9 4H13"/>
+    <path d="M11 8H13"/>
+    <path d="M11 12H12"/>
+  </g>
+</svg>
