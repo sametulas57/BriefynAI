@@ -50,6 +50,107 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.Contains("href=\"/Auth/Login\"", html);
     }
 
+    // Ana sayfa (Görev 9): açılış, kayan şerit, toplantının yolculuğu. BRIEF.md 5-7. ve 9. bölümler.
+    private async Task<string> HomeHtmlAsync()
+    {
+        using var client = AnonymousClient();
+        return await client.GetStringAsync("/tr");
+    }
+
+    private static string SectionHtml(string html, string marker)
+    {
+        var match = Regex.Match(html, "<section[^>]*" + marker + "[^>]*>(.*?)</section>", RegexOptions.Singleline);
+        Assert.True(match.Success, marker + " bölümü yok");
+        return match.Value;
+    }
+
+    [Fact]
+    public async Task Home_has_one_h1_and_the_hero_invites_an_upload()
+    {
+        var html = await HomeHtmlAsync();
+
+        Assert.Single(Regex.Matches(html, "<h1[\\s>]"));
+        var hero = SectionHtml(html, "data-home-hero");
+        Assert.Contains("<h1", hero);
+        Assert.Contains("href=\"/Upload\"", hero);
+        Assert.Contains("Kayıt yükle", WebUtility.HtmlDecode(hero));
+    }
+
+    [Fact]
+    public async Task Home_loads_the_scroll_engine_and_its_own_script_from_our_server()
+    {
+        var html = await HomeHtmlAsync();
+
+        Assert.Contains("/lib/scrollcraft/scrollcraft.css", html);
+        Assert.Matches(new Regex("<script src=\"/lib/scrollcraft/scrollcraft\\.js[^\"]*\""), html);
+        Assert.Matches(new Regex("<script src=\"/js/home\\.js[^\"]*\""), html);
+        Assert.DoesNotMatch(new Regex("url\\(\\s*[\"']?(https?:)?//"), html);
+        foreach (var file in new[] { "lib/scrollcraft/scrollcraft.js", "lib/scrollcraft/scrollcraft.css", "js/home.js" })
+            Assert.True(new FileInfo(Path.Combine(ProjectWebRoot(), file)).Exists, file + " yok");
+    }
+
+    [Fact]
+    public async Task Home_images_reserve_their_size_and_only_the_hero_image_loads_first()
+    {
+        var html = await HomeHtmlAsync();
+        var images = Regex.Matches(MainHtml(html), "<img\\s[^>]*>").Select(match => match.Value).ToList();
+
+        Assert.NotEmpty(images);
+        foreach (var image in images)
+        {
+            Assert.Matches(new Regex("\\swidth=\"\\d+\""), image);
+            Assert.Matches(new Regex("\\sheight=\"\\d+\""), image);
+            Assert.Contains("alt=", image);
+        }
+        var hero = SectionHtml(html, "data-home-hero");
+        Assert.Contains("fetchpriority=\"high\"", hero);
+        Assert.Single(Regex.Matches(html, "fetchpriority=\"high\""));
+    }
+
+    [Theory]
+    [InlineData("Yükleme", "Kaydı yükleyin ya da Zoom'dan tek tıkla aktarın.")]
+    [InlineData("Yazıya dökme", "Konuşulan her şey okunabilir bir metne dönüşür.")]
+    [InlineData("Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.")]
+    [InlineData("Özet, kararlar, yapılacaklar", "Özet, kararlar ve yapılacaklar tek sayfada toplanır; işler kişilere atanır.")]
+    [InlineData("Arşive sor", "Geçmiş toplantılarınıza soru sorun; cevap, geldiği toplantıyla birlikte gelir.")]
+    [InlineData("Takvim ve paylaşma", "Tarihi olan işler takvim daveti olarak gelir; özeti ekibinize e-postayla gönderin.")]
+    public async Task Journey_steps_are_written_in_the_page_itself(string step, string sentence)
+    {
+        var journey = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-journey"));
+        var steps = Regex.Match(journey, "<ol[^>]*>(.*?)</ol>", RegexOptions.Singleline);
+
+        Assert.True(steps.Success, "yolculuk adımları bir liste değil");
+        Assert.Equal(6, Regex.Matches(steps.Value, "<li[\\s>]").Count);
+        Assert.Matches(new Regex("<h3[^>]*>\\s*" + Regex.Escape(step) + "\\s*</h3>"), steps.Value);
+        // Cümlenin içinde satır bölünmesini önleyen etiket olabilir; okunan metin etiketsiz karşılaştırılır.
+        Assert.Contains(sentence, Regex.Replace(steps.Value, "<[^>]+>", ""));
+    }
+
+    [Fact]
+    public async Task Journey_marks_its_meeting_as_an_example()
+    {
+        var journey = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-journey"));
+
+        Assert.Contains("Örnek toplantı", journey);
+        Assert.Contains("Bir toplantının yolculuğu", journey);
+    }
+
+    [Fact]
+    public async Task Strip_lists_meeting_types_without_logos_and_can_be_paused()
+    {
+        var strip = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-strip"));
+        var button = Regex.Match(strip, "<button[^>]*data-strip-toggle[^>]*>(.*?)</button>", RegexOptions.Singleline);
+
+        Assert.True(button.Success, "şeritte durdurma düğmesi yok");
+        Assert.Contains("type=\"button\"", button.Value);
+        var name = Regex.Match(button.Value, "aria-label=\"([^\"]+)\"").Groups[1].Value
+                   + Regex.Replace(button.Groups[1].Value, "<[^>]+>", "");
+        Assert.Contains("Şeridi durdur", name);
+        Assert.DoesNotContain("<img", strip);
+        foreach (var meeting in new[] { "Sprint planlama", "Müşteri görüşmesi", "Birebir görüşme" })
+            Assert.Contains(meeting, strip);
+    }
+
     [Theory]
     [InlineData("/")]
     [InlineData("/Index")]
