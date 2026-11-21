@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Briefyn önizleme 1</title>
+<!-- Yalnız bu önizleme için: yazı tipleri Google Fonts'tan geliyor. Asıl sitede dosyalar kendi sunucumuzdan verilecek. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap">
+<style>
+  /* Tema renkleri: aşağıdaki betikteki COLORS listesiyle aynı değerler */
+  :root {
+    --b1: #E2FBFD;  /* base-100 */
+    --b2: #A9EEF5;  /* base-200, sayfa zemini */
+    --b3: #6FDCE8;  /* base-300 */
+    --bc: #03272D;  /* base-content */
+    --mu: #0E4952;  /* ikincil metin (daisyUI adı yok) */
+    --pr: #00BFD3;  /* primary: parlak camgöbeği, üstünde koyu yazı */
+    --pc: #03272D;  /* primary-content */
+    --se: #00616E;  /* secondary: aynı tonun koyu kardeşi, yazı ve çizgi için */
+    --sc: #F0FDFE;  /* secondary-content */
+    --ac: #DA5CF0;  /* accent: parlak orkide, üstünde koyu yazı */
+    --acc: #2E0636; /* accent-content */
+    --ne: #053C45;  /* neutral */
+    --nc: #CFF8FB;  /* neutral-content */
+    --in: #3EA6FF; --inc: #03272D;
+    --su: #2BCB8E; --suc: #03272D;
+    --wa: #FFB224; --wac: #03272D;
+    --er: #FF5C5C; --erc: #03272D;
+
+    --fh: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --fb: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+
+    --r-field: 8px;   /* düğme, giriş kutusu */
+    --r-box: 16px;    /* kart, panel */
+    --r-pill: 999px;  /* rozet */
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--b2);
+    color: var(--bc);
+    font: 17px/1.55 var(--fb);
+  }
+  a { color: var(--se); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--se); outline-offset: 2px; }
+  h1, h2, h3, h4 { font-family: var(--fh); font-stretch: 92%; letter-spacing: -0.01em; line-height: 1.12; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+
+  /* Belge başı */
+  .doc-head { padding: 40px 0 8px; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: start; }
+  .doc-head .brandline { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .doc-head .brandline svg { height: 30px; width: auto; }
+  .doc-head h1 { font-size: 44px; font-weight: 750; margin: 0 0 14px; max-width: 18ch; }
+  .doc-head p { margin: 0 0 12px; max-width: 62ch; }
+  .why { background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 20px 22px; }
+  .why h2 { font-size: 21px; margin: 0 0 8px; }
+  .why p { font-size: 15.5px; color: var(--mu); margin: 0 0 10px; }
+  .why p:last-child { margin-bottom: 0; }
+
+  section.part { padding: 44px 0 8px; }
+  section.part > h2 { font-size: 30px; margin: 0 0 6px; }
+  section.part > p.lead { margin: 0 0 22px; color: var(--mu); max-width: 70ch; }
+  .frame-label { font: 500 14px/1.3 var(--fb); color: var(--mu); margin: 0 0 8px; }
+
+  /* ------------------------------------------------------------
+     Örnek site parçaları. Her çerçeve kendi genişliğine göre dizilir
+     (container query), böylece aynı parça masaüstü ve 390 piksel
+     çerçevede yan yana görülebilir.
+     ------------------------------------------------------------ */
+  .frame { border: 1px solid var(--b3); border-radius: 20px; overflow: hidden; background: var(--b2); }
+  .site { container: site / inline-size; background: var(--b2); color: var(--bc); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px;
+    border-radius: var(--r-field); border: 1.5px solid transparent;
+    font: 700 16px/1 var(--fb); text-decoration: none; cursor: pointer; white-space: nowrap;
+  }
+  .btn-primary { background: var(--pr); color: var(--pc); }
+  .btn-primary:hover, .btn-primary.is-hover { background: #00ABBF; }
+  .btn-outline { background: transparent; color: var(--se); border-color: var(--se); }
+  .btn-outline:hover, .btn-outline.is-hover { background: var(--se); color: var(--sc); }
+  .btn.is-focus { outline: 3px solid var(--se); outline-offset: 2px; }
+
+  /* Üst menü şeridi */
+  .nav { display: flex; align-items: center; gap: 20px; padding: 0 28px; height: 68px; background: var(--b1); border-bottom: 1px solid var(--b3); position: relative; }
+  .nav .brand { display: inline-flex; align-items: center; flex: none; }
+  .nav .brand svg { height: 26px; width: auto; display: block; }
+  .nav-links { flex: 1; }
+  .nav-links > ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+  .nav-links li { position: relative; }
+  .nav-item {
+    display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px;
+    background: none; border: 0; border-radius: var(--r-field);
+    font: 500 15.5px/1 var(--fb); color: var(--bc); text-decoration: none; cursor: pointer;
+  }
+  .nav-item:hover, .nav-item[aria-expanded="true"] { background: var(--b2); }
+  .nav-item svg { transition: transform .15s ease; }
+  .nav-item[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .nav-end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .nav-end .btn { min-height: 40px; padding: 0 16px; font-size: 15px; }
+  .menu-btn { display: none; }
+
+  /* Açılır menü */
+  .dd-panel {
+    position: absolute; top: calc(100% + 10px); left: 0; z-index: 5;
+    background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box);
+    padding: 18px; min-width: 280px;
+    box-shadow: 0 12px 28px -12px rgba(6, 42, 48, .35);
+  }
+  .dd-panel[hidden] { display: none; }
+  .dd-panel.wide { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 8px 22px; min-width: 760px; }
+  .dd-panel.wide[hidden] { display: none; }
+  .dd-group h4 { font: 700 13.5px/1.3 var(--fb); color: var(--mu); margin: 4px 10px 6px; letter-spacing: 0; }
+  .dd-group ul { list-style: none; margin: 0; padding: 0; }
+  .dd-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: var(--r-field); color: var(--bc); text-decoration: none; font-size: 15.5px; }
+  .dd-link:hover, .dd-link.is-hover { background: var(--b2); }
+  .soon-tag { font: 700 12px/1 var(--fb); color: var(--acc); background: var(--ac); padding: 4px 7px; border-radius: var(--r-pill); white-space: nowrap; }
+
+  /* Telefonda menü paneli */
+  .mpanel { background: var(--b1); border-bottom: 1px solid var(--b3); padding: 8px 16px 20px; }
+  .mpanel[hidden] { display: none; }
+  .mpanel details { border-bottom: 1px solid var(--b3); }
+  .mpanel summary { list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 52px; font: 700 17px/1.2 var(--fb); cursor: pointer; }
+  .mpanel summary::-webkit-details-marker { display: none; }
+  .mpanel details[open] summary svg { transform: rotate(180deg); }
+  .mpanel .dd-group { padding-bottom: 8px; }
+  .mpanel .dd-group h4 { margin-left: 0; }
+  .mpanel .dd-link { padding-left: 0; padding-right: 0; min-height: 44px; }
+  .mpanel .plain { display: flex; align-items: center; min-height: 52px; border-bottom: 1px solid var(--b3); font: 700 17px/1.2 var(--fb); color: var(--bc); text-decoration: none; }
+  .mpanel .mp-actions { display: grid; gap: 10px; margin-top: 18px; }
+  .mpanel .mp-actions .btn { width: 100%; min-height: 48px; }
+
+  /* Açılış */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; padding: 64px 28px 72px; }
+  .hero h3 { font-size: 60px; font-weight: 750; font-stretch: 88%; letter-spacing: -0.025em; line-height: 1.02; margin: 0 0 20px; max-width: 12ch; }
+  .hero p { font-size: 19px; line-height: 1.55; color: var(--mu); margin: 0 0 28px; max-width: 42ch; }
+  .hero .btn { min-height: 52px; padding: 0 24px; font-size: 17px; }
+
+  .stage { background: var(--pr); color: var(--pc); border-radius: 24px; padding: 28px 24px; display: flex; align-items: center; }
+  .stage svg { flex: none; width: 160px; height: 168px; display: block; }
+  .stage ol { list-style: none; margin: 0; padding: 12px 0; flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: 48px; }
+  .stage li { display: flex; align-items: center; min-width: 0; }
+  .stage li span { background: var(--b1); color: var(--bc); border-radius: var(--r-field); padding: 7px 12px; font-size: 15px; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stage li b { font-weight: 700; }
+
+  /* Açılır menü gösterimi (masaüstü) */
+  .dd-demo { padding: 28px 28px 0; border-top: 1px solid var(--b3); }
+  .dd-demo .nav { border: 1px solid var(--b3); border-radius: var(--r-box); }
+  .dd-demo .holder { min-height: 330px; }
+
+  /* "Yakında" sayfası */
+  .soon { padding: 56px 28px 64px; border-top: 1px solid var(--b3); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  .card { background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 28px 28px 24px; }
+  .card .crumb { font-size: 14px; color: var(--mu); margin: 0 0 10px; }
+  .card h3 { font-size: 34px; font-weight: 700; margin: 0 0 10px; }
+  .card p.desc { margin: 0 0 18px; color: var(--mu); max-width: 48ch; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font: 700 14px/1 var(--fb); color: var(--acc); background: var(--ac); padding: 7px 12px; border-radius: var(--r-pill); margin-bottom: 22px; }
+  .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--acc); }
+  .card .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .card .back { font-weight: 500; }
+
+  .kit h4 { font: 700 15px/1.3 var(--fb); margin: 0 0 10px; color: var(--bc); }
+  .kit .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }
+  .kit .cap { display: block; font-size: 13px; color: var(--mu); margin-top: 6px; text-align: center; }
+  .badge { display: inline-flex; align-items: center; font: 700 13.5px/1 var(--fb); padding: 7px 11px; border-radius: var(--r-pill); }
+  .b-in { background: var(--in); color: var(--inc); }
+  .b-su { background: var(--su); color: var(--suc); }
+  .b-wa { background: var(--wa); color: var(--wac); }
+  .b-er { background: var(--er); color: var(--erc); }
+
+  .foot { background: var(--ne); color: var(--nc); padding: 22px 28px; display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; font-size: 15px; }
+  .foot svg { height: 22px; width: auto; }
+  .foot a { color: var(--nc); }
+  .foot .sp { margin-left: auto; }
+
+  /* Dar çerçeve (telefon) */
+  @container site (max-width: 760px) {
+    .nav { padding: 0 16px; height: 60px; gap: 10px; }
+    .nav .brand svg { height: 22px; }
+    .nav-links { display: none; }
+    .nav-end .login { display: none; }
+    .menu-btn { display: inline-flex; }
+    .hero { grid-template-columns: 1fr; gap: 28px; padding: 36px 16px 40px; }
+    .hero h3 { font-size: 40px; }
+    .hero p { font-size: 17.5px; margin-bottom: 22px; }
+    .hero .btn { width: 100%; }
+    .stage { flex-direction: column; align-items: stretch; padding: 18px 16px 20px; }
+    .stage svg { width: 124px; height: 104px; align-self: center; }
+    .stage ol { grid-auto-rows: auto; gap: 8px; padding: 4px 0 0; }
+    .stage li span { font-size: 15px; white-space: normal; }
+    .dd-demo { display: none; }
+    .soon { grid-template-columns: 1fr; padding: 36px 16px 40px; gap: 28px; }
+    .card { padding: 22px 18px 20px; }
+    .card h3 { font-size: 28px; }
+    .card .actions .btn { width: 100%; min-height: 48px; }
+    .foot { padding: 20px 16px; }
+    .foot .sp { margin-left: 0; width: 100%; }
+  }
+
+  .phones { display: grid; grid-template-columns: 390px 390px minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 28px; }
+  .phone { width: 100%; max-width: 390px; }
+  .phone .frame { border-radius: 28px; }
+  .phone.cut .frame { height: 760px; }
+  .notes { font-size: 15.5px; color: var(--mu); }
+  .notes h3 { font-size: 20px; color: var(--bc); margin: 0 0 8px; }
+  .notes ul { padding-left: 20px; margin: 0 0 14px; }
+  .notes li { margin-bottom: 6px; }
+
+  /* Renkler */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .sw { background: var(--b1); border: 1px solid var(--b3); border-radius: 14px; overflow: hidden; }
+  .sw .chip { height: 84px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 10px 12px; font: 700 16px/1.1 var(--fh); font-stretch: 92%; }
+  .sw .chip .aa { font: 500 13px/1 var(--fb); }
+  .sw .ln { display: block; white-space: nowrap; }
+  .sw .ln .dot { width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; }
+  .sw .meta { padding: 10px 12px 12px; font-size: 14px; line-height: 1.4; }
+  .sw .meta code { font-size: 13px; }
+  .sw .meta .use { color: var(--mu); display: block; margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--b1); border-radius: 14px; overflow: hidden; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--b3); vertical-align: middle; }
+  th { font: 700 14px/1.3 var(--fb); background: var(--b1); }
+  tr:last-child td { border-bottom: 0; }
+  td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dot { display: inline-block; width: 18px; height: 18px; border-radius: 5px; vertical-align: -4px; margin-right: 8px; border: 1px solid rgba(12, 42, 48, .18); }
+  .demo { display: inline-block; min-width: 92px; padding: 4px 9px; border-radius: 6px; font-weight: 700; margin-right: 10px; border: 1px solid rgba(12, 42, 48, .12); }
+  /* Sonuç işaretleri de parlak dolgu + koyu yazı: oranları kontrast tablosunda (başarı ve hata durumu) */
+  .ok, .bad { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700; font-size: 13.5px; line-height: 1.3; color: var(--bc); white-space: nowrap; }
+  .ok { background: var(--su); }
+  .bad { background: var(--er); }
+  .tblwrap { overflow-x: auto; border: 1px solid var(--b3); border-radius: 14px; }
+  #brightTable { min-width: 860px; }
+  .twocol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 24px; }
+  .twocol h3, .stack h3 { font-size: 20px; margin: 0 0 10px; }
+  .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 28px; }
+  pre.theme { background: var(--ne); color: var(--nc); border-radius: 14px; padding: 18px 20px; overflow-x: auto; margin: 0; line-height: 1.5; }
+  .copy { margin: 10px 0 0; }
+  .small { font-size: 14.5px; color: var(--mu); }
+
+  /* Yazı tipleri */
+  .fonts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .font { background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 24px; }
+  .font .name { font-size: 15px; color: var(--mu); margin: 0 0 6px; }
+  .font .big { margin: 0 0 14px; }
+  .f-h .big { font-family: var(--fh); font-weight: 750; font-stretch: 88%; font-size: 46px; line-height: 1.04; letter-spacing: -0.02em; }
+  .f-b .big { font-family: var(--fb); font-size: 21px; line-height: 1.5; }
+  .font .chars { font-size: 26px; letter-spacing: .04em; margin: 0 0 14px; word-spacing: .2em; }
+  .f-h .chars { font-family: var(--fh); font-weight: 700; }
+  .f-b .chars { font-family: var(--fb); }
+  .font .weights { margin: 0 0 16px; }
+  .font dl { margin: 0; font-size: 14.5px; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; }
+  .font dt { color: var(--mu); }
+  .font dd { margin: 0; overflow-wrap: anywhere; }
+  .check { font-size: 14.5px; margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--b2); }
+  .scale { margin-top: 24px; background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 24px; }
+  .scale div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--b3); }
+  .scale div:last-child { border-bottom: 0; }
+  .scale span:first-child { font-size: 13.5px; color: var(--mu); }
+
+  /* Logo */
+  .logos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .lg { border-radius: var(--r-box); border: 1px solid var(--b3); padding: 34px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  .lg svg { width: 100%; max-width: 300px; height: auto; }
+  .lg p { margin: 0; font-size: 14px; }
+  .sizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  .sizebox { background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 20px; }
+  .sizebox h3 { font-size: 19px; margin: 0 0 4px; }
+  .sizebox p { margin: 0 0 14px; font-size: 14.5px; color: var(--mu); }
+  .sizerow { display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap; }
+  .sizerow figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .sizerow figcaption { font-size: 13px; color: var(--mu); }
+  .sizerow .tile { background: #FFFFFF; border: 1px solid var(--b3); display: grid; place-items: center; }
+  .sizerow svg { display: block; }
+  canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; width: 112px; height: 112px; border: 1px solid var(--b3); display: block; }
+  .tabs { display: flex; gap: 0; margin-top: 16px; flex-wrap: wrap; }
+  .tab { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; font: 13px/1 system-ui, sans-serif; border-radius: 9px 9px 0 0; min-width: 180px; }
+  .tab.light { background: #FFFFFF; color: #1F1F1F; }
+  .tab.dark { background: #35363A; color: #E8EAED; }
+
+  .facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .facts > div { background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 20px 22px; }
+  .facts h3 { font-size: 20px; margin: 0 0 8px; }
+  .facts ul { margin: 0; padding-left: 20px; font-size: 15px; }
+  .facts li { margin-bottom: 7px; }
+  footer.end { padding: 36px 0 56px; font-size: 14px; color: var(--mu); }
+
+  @media (max-width: 1240px) {
+    .phones { grid-template-columns: repeat(2, minmax(0, 390px)); }
+    .phones .notes { grid-column: 1 / -1; }
+  }
+  @media (max-width: 900px) {
+    .wrap { padding: 0 16px; }
+    .doc-head { grid-template-columns: 1fr; gap: 20px; padding-top: 28px; }
+    .doc-head h1 { font-size: 34px; }
+    .phones { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+    .phones .notes { justify-self: stretch; }
+    .twocol, .fonts, .facts, .sizes { grid-template-columns: minmax(0, 1fr); }
+    .logos { grid-template-columns: minmax(0, 1fr); }
+    .f-h .big { font-size: 36px; }
+    section.part > h2 { font-size: 26px; }
+    .phone.cut .frame { height: 720px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="doc-head">
+    <div>
+      <div class="brandline" id="headLogo"></div>
+      <h1>Önizleme 1: renk, yazı tipi ve logo</h1>
+      <p>Bu sayfa onay için hazırlandı. En üstte sitenin parçaları yeni renklerle, hem masaüstünde hem 390 piksellik telefon genişliğinde duruyor. Altında renk listesi ve daisyUI eşlemesi, kontrast oranları, yazı tipleri ve logo var.</p>
+      <p class="small">Sayfa koyu tema içermiyor; telefonunuz ya da bilgisayarınız koyu modda olsa da açık görünür. Kontrast oranları ve renk tonları bu sayfanın içindeki betikle hesaplanıyor; elle yazılmış sayı yok.</p>
+    </div>
+    <aside class="why" aria-labelledby="why-h">
+      <h2 id="why-h">"Petrol ve buz"dan ne değişti</h2>
+      <p>Ton ailesi aynı: petrol mavisi, buz ve küçük bir mor. Bu sürümde renkler mat değil, parlak. Değişen dört şey var.</p>
+      <p><b>Ana renk parlak camgöbeği.</b> Eski <code>#0D5C63</code> koyu ve matlaşmış bir petroldü (<span data-hsl="#0D5C63" data-k="sl"></span>). Yeni ana renk <code>#00BFD3</code> (<span data-hsl="#00BFD3" data-k="sl"></span>): ton neredeyse aynı (<span data-hsl="#0D5C63" data-k="h"></span> ve <span data-hsl="#00BFD3" data-k="h"></span>), ama tam doygun ve iki kat açık.</p>
+      <p><b>Zemin renkli.</b> Beyaza yakın <code>#F4F8F8</code> (<span data-hsl="#F4F8F8" data-k="sl"></span>) yerine açık su rengi <code>#A9EEF5</code> (<span data-hsl="#A9EEF5" data-k="sl"></span>). Kartlar ve menüler daha açık bir buz renginde.</p>
+      <p><b>Parlaklık ve okunurluk birlikte.</b> Parlak renkler dolgu olarak kullanılıyor ve üstlerine koyu yazı geliyor: düğmede koyu yazı <span data-ratio="#03272D,#00BFD3"></span>, beyaz yazı olsaydı <span data-ratio="#FFFFFF,#00BFD3"></span> kalırdı. Zeminin üstündeki bağlantı ve ikincil düğme için aynı tonun koyu kardeşi <code>#00616E</code> var; o da tam doygun.</p>
+      <p><b>Mor, Fireflies'ın morundan uzaklaştı ve parladı.</b> Eski vurgu <code>#5A4E9E</code> (<span data-hsl="#5A4E9E" data-k="h"></span>) brifteki 247° ile 252° aralığının içindeydi. Yeni orkide <code>#DA5CF0</code> (<span data-hsl="#DA5CF0" data-k="h"></span>), yalnız "yakında" işaretlerinde.</p>
+    </aside>
+  </header>
+
+  <section class="part" aria-labelledby="s-site">
+    <h2 id="s-site">Sitede nasıl duruyor</h2>
+    <p class="lead">Üst menü, açılış, açılır menü, bir "yakında" sayfası, düğmeler ve alt bilgi. Menüdeki başlıklara tıklanabilir; telefon çerçevesinde "Menü" düğmesi paneli açar.</p>
+    <p class="frame-label">Masaüstü</p>
+    <div class="frame"><div class="site" id="desk"></div></div>
+
+    <div class="phones">
+      <div class="phone">
+        <p class="frame-label">Telefon, 390 piksel</p>
+        <div class="frame"><div class="site" id="phone1"></div></div>
+      </div>
+      <div class="phone cut">
+        <p class="frame-label">Telefon, menü açıkken</p>
+        <div class="frame"><div class="site" id="phone2"></div></div>
+      </div>
+      <div class="notes">
+        <h3>Bu bölümde dikkat edilecekler</h3>
+        <ul>
+          <li>Sayfa zemini açık su rengi, kartlar ve menü şeridi daha açık buz renginde. Bembeyaz alan yok.</li>
+          <li>Parlak camgöbeği üç yerde: "Kayıt yükle" düğmesi, açılıştaki büyük panel ve alt bilgideki logo. Panelde ses dalgası not satırlarına dönüşüyor; logonun fikri sayfada da tekrar ediyor.</li>
+          <li>Parlak renklerin üstündeki yazı hep koyu. Beyaz yazı bu renklerde okunmuyor; sayılar "Parlaklık ve kontrast" tablosunda.</li>
+          <li>Bağlantılar, ikincil düğme ve klavye odağı aynı camgöbeğinin koyu kardeşiyle (<code>#00616E</code>) çiziliyor.</li>
+          <li>Düğmeler ve dokunulan satırlar telefonda en az 44 piksel yüksekliğinde.</li>
+          <li>Menüde henüz olmayan entegrasyonlar (Teams, Meet, Slack, Trello ve Jira) parlak orkide "yakında" işaretiyle duruyor.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="s-color">
+    <h2 id="s-color">Renkler</h2>
+    <p class="lead">Her kart bir zemin rengini ve üstüne yazılan rengi birlikte gösteriyor; sağ alttaki sayı ikisinin kontrast oranı. Sayfa zemini <code>base-200</code>; kartlar, açılır menü ve giriş kutuları <code>base-100</code>. Parlak renklerin (ana renk, orkide, durum renkleri) üstündeki yazı hep koyu.</p>
+    <div class="swatches" id="swatches"></div>
+
+    <div class="stack">
+      <div>
+        <h3>daisyUI eşlemesi (Görev 5 için)</h3>
+        <div class="tblwrap"><table id="mapTable"><thead><tr><th>daisyUI adı</th><th>Değer</th><th>OKLCH</th><th>Kullanım</th></tr></thead><tbody></tbody></table></div>
+        <p class="small">Sayfanın gövdesine <code>bg-base-200</code> verilir. Unutulsa bile varsayılan zemin <code>base-100</code> olur, o da beyaz değil. İkincil metin rengi daisyUI'de yok; tema dışında ayrı bir Tailwind rengi olarak eklenir.</p>
+      </div>
+      <div>
+        <h3>Tema bloğu, olduğu gibi temaya girer</h3>
+        <pre class="theme" id="themeBlock"></pre>
+        <p class="copy"><button class="btn btn-outline" type="button" id="copyTheme">Tema bloğunu kopyala</button> <span class="small" id="copyMsg" role="status"></span></p>
+        <p class="small">Biçim daisyUI 5 belgesindeki <code>@plugin "daisyui/theme"</code> örneğinden alındı (daisyui.com/docs/themes, 21 Kasım 2026'da bakıldı). OKLCH değerleri yukarıdaki onaltılık değerlerden bu sayfada hesaplanıyor.</p>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div>
+        <h3>Parlaklık ve kontrast birlikte nasıl çözüldü</h3>
+        <p class="small" style="margin:0 0 10px;max-width:80ch">Parlak bir renk açık zemindeki yazıyı taşıyamaz, beyaz yazıyı da taşıyamaz. İki yol kullanıldı: parlak renk dolgu olur ve üstüne koyu yazı gelir; zeminde yazı gerekiyorsa aynı tonun koyu ama yine tam doygun kardeşi kullanılır. Tabloda her parlak rengin üç ihtimali yan yana.</p>
+        <div class="tblwrap"><table id="brightTable"><thead><tr><th>Parlak renk</th><th>Doygunluk, açıklık</th><th>Üstünde koyu yazı</th><th>Üstünde beyaz yazı</th><th>Zemindeki yazı rengi olarak</th><th>Kullanıldığı yer</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="twocol">
+      <div>
+        <h3>"Petrol ve buz" ile yan yana</h3>
+        <div class="tblwrap"><table id="diffTable"><thead><tr><th>Rol</th><th>Önce</th><th>Şimdi</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div>
+        <h3>Fireflies'ın morundan uzaklık</h3>
+        <div class="tblwrap"><table id="ffTable"><thead><tr><th>Renk</th><th>Ton</th><th>Doygunluk</th><th>En yakın Fireflies tonuna</th></tr></thead><tbody></tbody></table></div>
+        <p class="small" id="ffNote"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="s-contrast">
+    <h2 id="s-contrast">Kontrast oranları</h2>
+    <p class="lead">Sitede gerçekten kullanılan her yazı ve zemin çifti. Oranlar WCAG 2 bağıl parlaklık formülüyle, bu sayfada hesaplanıyor. Eşik normal yazıda 4,5:1; büyük başlıkta ve yazı olmayan çizgilerde (logo, odak çizgisi) 3:1.</p>
+    <div class="tblwrap"><table id="contrastTable"><thead><tr><th>Çift</th><th>Nerede</th><th>Oran</th><th>Eşik</th><th>Sonuç</th></tr></thead><tbody></tbody></table></div>
+    <p class="small" id="contrastSum"></p>
+  </section>
+
+  <section class="part" aria-labelledby="s-type">
+    <h2 id="s-type">Yazı tipleri</h2>
+    <p class="lead">Başlıkta karakteri olan, genişliği ayarlanabilen bir grotesk; metinde harfleri birbirinden kolay ayrılan, okunurluk için çizilmiş bir aile. İkisi de SIL Open Font License 1.1 ile dağıtılıyor, Inter ve DM Sans değil.</p>
+    <div class="fonts">
+      <article class="font f-h">
+        <p class="name">Başlık: Bricolage Grotesque</p>
+        <p class="big">Toplantı biter, notlar hazır olur.</p>
+        <p class="chars">Ğ ğ Ş ş I ı İ i Ç ç Ö ö Ü ü</p>
+        <p class="weights" style="font-family:var(--fh);font-size:22px"><span style="font-weight:500">Orta 500</span> &nbsp; <span style="font-weight:700">Kalın 700</span> &nbsp; <span style="font-weight:800;font-stretch:80%">Dar ve kalın</span></p>
+        <dl>
+          <dt>Resmî depo</dt><dd><a href="https://github.com/ateliertriay/bricolage">github.com/ateliertriay/bricolage</a> (Atelier Triay, Mathieu Triay)</dd>
+          <dt>Lisans</dt><dd>SIL Open Font License 1.1, depoda <code>OFL.txt</code></dd>
+          <dt>Dosya</dt><dd>Depoda <code>fonts/webfonts/BricolageGrotesque[opsz,wdth,wght].woff2</code> tek değişken dosya; ağırlık, genişlik ve optik boyut ekseni var.</dd>
+          <dt>Kullanım</dt><dd>Başlıklar 700, genişlik %88 ile %92 arası; küçük ara başlıklar metin yazı tipiyle.</dd>
+        </dl>
+        <p class="check" data-font="Bricolage Grotesque">Türkçe harf denetimi çalışıyor…</p>
+      </article>
+      <article class="font f-b">
+        <p class="name">Metin: Atkinson Hyperlegible Next</p>
+        <p class="big">Pijamalı hasta yağız şoföre çabucak güvendi. Toplantıdaki kararları, yapılacak işleri ve sorumluları ayrı ayrı görürsünüz; Çarşamba günkü görüşmenin özeti İstanbul ekibine gönderildi.</p>
+        <p class="chars">Ğ ğ Ş ş I ı İ i Ç ç Ö ö Ü ü</p>
+        <p class="weights" style="font-size:18px"><span style="font-weight:400">Normal 400</span> &nbsp; <span style="font-weight:500">Orta 500</span> &nbsp; <span style="font-weight:700">Kalın 700</span></p>
+        <dl>
+          <dt>Resmî depo</dt><dd><a href="https://github.com/googlefonts/atkinson-hyperlegible-next">github.com/googlefonts/atkinson-hyperlegible-next</a> (Braille Institute için Applied Design Works)</dd>
+          <dt>Lisans</dt><dd>SIL Open Font License 1.1, depoda <code>OFL.txt</code></dd>
+          <dt>Dosya</dt><dd>Depoda <code>fonts/webfonts/</code> altında her ağırlık için ayrı <code>.woff2</code>, ayrıca tek değişken dosya <code>AtkinsonHyperlegibleNext[wght].woff2</code>.</dd>
+          <dt>Kullanım</dt><dd>Gövde 17 piksel, satır aralığı 1,55; menü ve düğmeler 500 ve 700.</dd>
+        </dl>
+        <p class="check" data-font="Atkinson Hyperlegible Next">Türkçe harf denetimi çalışıyor…</p>
+      </article>
+    </div>
+    <div class="scale" aria-label="Yazı boyutu ölçeği">
+      <div><span>Açılış başlığı, 60 px</span><span style="font:750 60px/1.02 var(--fh);font-stretch:88%;letter-spacing:-0.025em">Kayıt yükleyin</span></div>
+      <div><span>Bölüm başlığı, 34 px</span><span style="font:700 34px/1.1 var(--fh);font-stretch:92%">Özet ve kararlar</span></div>
+      <div><span>Ara başlık, 21 px</span><span style="font:700 21px/1.2 var(--fh);font-stretch:92%">Görüşmede kim ne söyledi</span></div>
+      <div><span>Metin, 17 px</span><span style="font:400 17px/1.55 var(--fb)">Ses dosyası analizden sonra silinir, döküm şifreli saklanır.</span></div>
+      <div><span>Küçük metin, 14 px</span><span style="font:400 14px/1.45 var(--fb);color:var(--mu)">En fazla 300 MB; .mp3, .wav ya da .m4a.</span></div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="s-logo">
+    <h2 id="s-logo">Logo</h2>
+    <p class="lead">Logo A, yeniden çizildi: dört ses çubuğu, sonuncusu iki not satırına dönüşüyor, altında kısa bir üçüncü satır. İşaret ve "briefyn" yazısı aynı kalınlıkta tek çizgiyle çizildi; içinde resim ya da yazı tipi yok, yalnız yollar var. Açık zeminde işaret koyu camgöbeğiyle, koyu alt bilgide parlak camgöbeğiyle, parlak dolguda tek renk koyu çiziliyor.</p>
+    <div class="logos" id="logos"></div>
+    <div class="sizes">
+      <div class="sizebox">
+        <h3>Tam işaret</h3>
+        <p>Logodaki işaretin kendisi. 64 ve 32 pikselde iyi; 16 pikselde çizgiler bir pikselin altına iniyor ve birbirine karışıyor.</p>
+        <div class="sizerow" id="fullSizes"></div>
+      </div>
+      <div class="sizebox">
+        <h3>16 piksel işareti (sekme simgesi)</h3>
+        <p>Camgöbeği yuvarlak kare üstünde dört koyu öğe: kısa çubuk, yukarıda satıra kıvrılan uzun çubuk, iki kısa satır. Çizgiler ve aralar 2 piksel, piksel ızgarasına oturuyor. Kare kendi zeminini getirdiği için açık ve koyu sekmede aynı dosya kullanılıyor.</p>
+        <div class="sizerow" id="smallSizes"></div>
+      </div>
+    </div>
+    <div class="sizebox" style="margin-top:14px">
+      <h3>16 pikselde piksel piksel</h3>
+      <p>Soldaki iki kare tam işaretin, sağdaki iki kare 16 piksel işaretinin tarayıcıda 16×16 ve 32×32 çizilmiş hâli, büyütülmüş. Yüksek çözünürlüklü ekranlarda sekme simgesi genellikle 32 pikselle çizilir. Altta açık ve koyu tarayıcı sekmesinde gerçek boyutta.</p>
+      <div class="sizerow" id="pixels"></div>
+      <div class="tabs" id="tabs"></div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="s-facts">
+    <h2 id="s-facts">Neye baktım, neyi varsaydım</h2>
+    <div class="facts">
+      <div>
+        <h3>Baktıklarım</h3>
+        <ul>
+          <li>İki yazı tipinin GitHub deposu ve GitHub'ın lisans bilgisi: ikisinde de OFL-1.1 ve kök klasörde <code>OFL.txt</code>.</li>
+          <li>Depolardaki dosya listesi (<code>fonts/webfonts/</code>): Bricolage'da değişken <code>BricolageGrotesque[opsz,wdth,wght].woff2</code> ve ağırlık başına dosyalar; Atkinson'da ağırlık başına <code>.woff2</code> ve değişken <code>AtkinsonHyperlegibleNext[wght].woff2</code>. İki depoda da GitHub sürüm (release) sayfası yok; dosyalar doğrudan depodan alınacak.</li>
+          <li>Google Fonts'un verdiği CSS: iki aile de <code>latin</code> ve <code>latin-ext</code> alt kümeleriyle geliyor; Ğ, Ş, İ <code>latin-ext</code> kümesinde, ı (U+0131), Ç, Ö, Ü <code>latin</code> kümesinde.</li>
+          <li>Türkçe harflerin gerçekten bu yazı tiplerinden çizildiği: sayfa açılınca tarayıcıda ölçülüyor, sonucu yazı tipi kartlarının altında.</li>
+          <li>Kontrast oranları ve renk tonları: sayfadaki betikle hesaplanıyor.</li>
+          <li>daisyUI 5 tema bloğunun biçimi: daisyui.com/docs/themes sayfası.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Varsaydıklarım</h3>
+        <ul>
+          <li>Google Fonts'taki sürümlerin depodaki dosyalarla aynı harfleri içerdiği. Görev 5'te dosyalar depodan indirilince harf denetimi o dosyalarla bir kez daha yapılmalı.</li>
+          <li>Fireflies renkleri brifteki değerler (<code>#6C31D9</code> ve <code>#4013F2</code>); sitelerine bakmadım.</li>
+          <li>Düğmenin üzerine gelince rengi (<code>#00ABBF</code>) bu sayfada elle seçildi; daisyUI kendi hesabını yapar, Görev 5'te yeniden ölçülmeli.</li>
+          <li>16 piksel simgesinin karesi ana renkten biraz koyu (<code>#00A3B8</code>): ana renk beyaz sekmede 3:1'in altında kalıyordu, bu ton hem beyaz hem koyu sekmede 3:1'i geçiyor. Yalnız simgede kullanılıyor.</li>
+          <li>daisyUI'nin <code>link-primary</code> ve <code>btn-outline btn-primary</code> sınıfları parlak ana rengi yazı rengi yapar; açık zeminde okunmaz. Bağlantı ve ikincil düğmede <code>secondary</code> kullanılmalı (Görev 5'e not).</li>
+          <li>Parlak düğme dolgusunun zeminle oranı 3:1'in altında (yazı değil). Düğmeyi tanıtan şey üstündeki koyu yazı olduğu için WCAG bunu istemiyor diye okudum; yine de istenirse düğmeye koyu ince bir kenar eklenebilir.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="end">Briefyn arayüz yenileme, Görev 2. Dosyalar: <code>docs/brand/onizleme-1.html</code>, <code>docs/brand/logo-a.svg</code>, <code>docs/brand/logo-a-isaret-16.svg</code>.</footer>
+</div>
+
+<script>
+/* ---------- Tek kaynak: renkler ---------- */
+const COLORS = [
+  { k: "b1",  daisy: "base-100",          name: "Buz",              hex: "#E2FBFD", use: "Kart, açılır menü, menü şeridi, giriş kutusu" },
+  { k: "b2",  daisy: "base-200",          name: "Su",               hex: "#A9EEF5", use: "Sayfa zemini" },
+  { k: "b3",  daisy: "base-300",          name: "Sığ su",           hex: "#6FDCE8", use: "Kenar çizgisi, ayraç" },
+  { k: "bc",  daisy: "base-content",      name: "Derin petrol",     hex: "#03272D", use: "Ana metin, başlıklar" },
+  { k: "pr",  daisy: "primary",           name: "Camgöbeği",        hex: "#00BFD3", use: "Birincil düğme, açılış paneli, koyu alanda logo işareti" },
+  { k: "pc",  daisy: "primary-content",   name: "Derin petrol",     hex: "#03272D", use: "Camgöbeği üstündeki yazı ve çizim" },
+  { k: "se",  daisy: "secondary",         name: "Koyu camgöbeği",   hex: "#00616E", use: "Bağlantı, ikincil düğme, klavye odağı, açık zeminde logo işareti" },
+  { k: "sc",  daisy: "secondary-content", name: "Köpük beyazı",     hex: "#F0FDFE", use: "Koyu camgöbeği üstündeki yazı" },
+  { k: "ac",  daisy: "accent",            name: "Orkide",           hex: "#DA5CF0", use: "\"Yakında\" işaretleri" },
+  { k: "acc", daisy: "accent-content",    name: "Mürdüm",           hex: "#2E0636", use: "Orkide üstündeki yazı" },
+  { k: "ne",  daisy: "neutral",           name: "Gece petrolü",     hex: "#053C45", use: "Alt bilgi" },
+  { k: "nc",  daisy: "neutral-content",   name: "Köpük",            hex: "#CFF8FB", use: "Alt bilgideki yazı" },
+  { k: "in",  daisy: "info",              name: "Gök mavisi",       hex: "#3EA6FF", use: "Bilgi durumu" },
+  { k: "inc", daisy: "info-content",      name: "Derin petrol",     hex: "#03272D", use: "Bilgi durumunun yazısı" },
+  { k: "su",  daisy: "success",           name: "Nane",             hex: "#2BCB8E", use: "Başarı durumu" },
+  { k: "suc", daisy: "success-content",   name: "Derin petrol",     hex: "#03272D", use: "Başarı durumunun yazısı" },
+  { k: "wa",  daisy: "warning",           name: "Kehribar",         hex: "#FFB224", use: "Uyarı durumu" },
+  { k: "wac", daisy: "warning-content",   name: "Derin petrol",     hex: "#03272D", use: "Uyarı durumunun yazısı" },
+  { k: "er",  daisy: "error",             name: "Mercan",           hex: "#FF5C5C", use: "Hata durumu" },
+  { k: "erc", daisy: "error-content",     name: "Derin petrol",     hex: "#03272D", use: "Hata durumunun yazısı" },
+  { k: "mu",  daisy: null,                name: "İkincil metin",    hex: "#0E4952", use: "Açıklama cümleleri, menü grup adları (daisyUI adı yok)" }
+];
+const C = Object.fromEntries(COLORS.map(c => [c.k, c.hex]));
+
+/* ---------- Renk hesapları ---------- */
+const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+const lin = v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+function lum(h) { const [r, g, b] = rgb(h).map(lin); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function hsl(h) {
+  const [r, g, b] = rgb(h), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  let hh = 0, s = 0;
+  if (d) { s = d / (1 - Math.abs(2 * l - 1)); hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; if (hh < 0) hh += 360; }
+  return { h: hh, s: s * 100, l: l * 100 };
+}
+function oklch(h) {
+  const [r, g, b] = rgb(h).map(lin);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  const ch = Math.sqrt(A * A + B * B); let hue = Math.atan2(B, A) * 180 / Math.PI; if (hue < 0) hue += 360;
+  return `oklch(${(L * 100).toFixed(2)}% ${ch.toFixed(4)} ${ch < 0.0005 ? 0 : hue.toFixed(2)})`;
+}
+const tr = (n, d = 2) => n.toFixed(d).replace(".", ",");
+const hueDist = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+
+/* ---------- Logo SVG'leri (docs/brand/logo-a.svg ile aynı yollar) ---------- */
+const MARK_PATHS = `<path d="M3.5 23V31"/><path d="M13.75 16V38"/><path d="M24 7V45"/><path d="M34.25 16V33Q34.25 37 38.25 37C44 37 46 27 52 27H86"/><path d="M34.25 26H38.25C44 26 46 16 52 16H86"/><path d="M58 38H74"/>`;
+function logoH(mark, word, label = true) {
+  return `<svg viewBox="0 2 252 49" ${label ? 'role="img" aria-label="Briefyn"' : 'aria-hidden="true"'} xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="${mark}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">${MARK_PATHS}</g>
+    <g fill="none" stroke="${word}" stroke-width="6.5" stroke-linecap="butt" stroke-linejoin="round">
+      <path d="M99.25 6V40"/><circle cx="108" cy="28" r="8.75"/><path d="M127.75 16V40"/><path d="M127.75 27A7.75 7.75 0 0 1 135.5 19.25H138.5"/>
+      <path d="M145.25 16V40"/><path d="M156 28H176.5"/><path d="M173.25 28A8.75 8.75 0 1 0 170.69 34.19"/>
+      <path d="M186 40V15.5A6.25 6.25 0 0 1 192.25 9.25H195.5"/><path d="M179.5 19.25H193"/>
+      <path d="M228.25 16V40"/><path d="M228.25 28A8.75 8.75 0 0 1 245.75 28V40"/></g>
+    <g fill="${word}"><circle cx="145.25" cy="9.4" r="3.4"/><path d="M197.5 16H204.5L209.25 28.06L214 16H221L208 49H201L205.75 36.94Z"/></g></svg>`;
+}
+// Tam işaret, kare kutuda (logodaki işaret)
+function markFull(color, size) {
+  return `<svg width="${size}" height="${size}" viewBox="-1.25 -17.5 88 88" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" stroke="${color}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">${MARK_PATHS}</g></svg>`;
+}
+// 16 piksel işareti (docs/brand/logo-a-isaret-16.svg ile aynı yollar): camgöbeği kare, koyu çizgiler
+const TILE = "#00A3B8";
+function mark16(_c, size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="16" height="16" rx="3.5" fill="${TILE}"/><g fill="none" stroke="${C.pc}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V10"/><path d="M7 12V6A2 2 0 0 1 9 4H13"/><path d="M11 8H13"/><path d="M11 12H12"/></g></svg>`;
+}
+
+/* ---------- Menü içeriği (SPEC.md sayfa haritası) ---------- */
+const MENU = [
+  { label: "Ürün", groups: [
+    { name: "Kaydet", items: ["Dosya yükleme", "Zoom'dan aktarma"] },
+    { name: "Anla", items: ["Yazıya dökme", "Konuşmacılar", "Özet ve kararlar", "Yapılacaklar"] },
+    { name: "Bul", items: ["Arşive sor", "Toplantı serileri"] },
+    { name: "Paylaş", items: ["Takvim daveti", "E-postayla paylaşma", "Ekip çalışma alanı"] } ] },
+  { label: "Çözümler", groups: [ { items: ["Yönetim ve liderler", "Proje ve yazılım ekipleri", "Satış ve müşteri görüşmeleri", "İnsan kaynakları ve işe alım", "Danışmanlık ve ajanslar"] } ] },
+  { label: "Entegrasyonlar", groups: [ { items: ["Zoom", "Takvim (Outlook, Google)", ["Microsoft Teams"], ["Google Meet"], ["Slack"], ["Trello ve Jira"]] } ] },
+  { label: "Kaynaklar", groups: [ { items: ["Yardım merkezi", "Güvenlik ve gizlilik", "Yenilikler", "İletişim"] } ] },
+  { label: "Kurumsal" },
+  { label: "Fiyatlandırma" }
+];
+const chev = `<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const linkItem = it => Array.isArray(it)
+  ? `<li><a class="dd-link" href="#" data-noop>${it[0]}<span class="soon-tag">yakında</span></a></li>`
+  : `<li><a class="dd-link" href="#" data-noop>${it}</a></li>`;
+const groupsHtml = m => m.groups.map(g => `<div class="dd-group">${g.name ? `<h4>${g.name}</h4>` : ""}<ul>${g.items.map(linkItem).join("")}</ul></div>`).join("");
+
+function navHtml(p, openIndex = -1, menuOpen = false) {
+  const items = MENU.map((m, i) => m.groups
+    ? `<li><button class="nav-item" type="button" aria-expanded="${i === openIndex}" aria-controls="${p}-dd${i}">${m.label}${chev}</button>
+         <div class="dd-panel ${m.groups.length > 1 ? "wide" : ""}" id="${p}-dd${i}" ${i === openIndex ? "" : "hidden"}>${groupsHtml(m)}</div></li>`
+    : `<li><a class="nav-item" href="#" data-noop>${m.label}</a></li>`).join("");
+  const mobile = MENU.map(m => m.groups
+    ? `<details ${m.label === "Ürün" ? "open" : ""}><summary>${m.label}${chev}</summary>${groupsHtml(m)}</details>`
+    : `<a class="plain" href="#" data-noop>${m.label}</a>`).join("");
+  return `<header class="nav">
+      <a class="brand" href="#" data-noop aria-label="Briefyn ana sayfa">${logoH(C.se, C.bc, false)}</a>
+      <nav class="nav-links" aria-label="Ana menü"><ul>${items}</ul></nav>
+      <div class="nav-end">
+        <a class="btn btn-outline login" href="#" data-noop>Giriş yap</a>
+        <button class="btn btn-outline menu-btn" type="button" aria-expanded="${menuOpen}" aria-controls="${p}-mp">Menü</button>
+      </div>
+    </header>
+    <div class="mpanel" id="${p}-mp" ${menuOpen ? "" : "hidden"}>${mobile}
+      <div class="mp-actions"><a class="btn btn-primary" href="#" data-noop>Kayıt yükle</a><a class="btn btn-outline" href="#" data-noop>Giriş yap</a></div>
+    </div>`;
+}
+
+// Açılış panelindeki ses dalgası: çubuklar, sonra üç satıra açılan çizgiler
+function stageSvg() {
+  const hs = [10, 22, 14, 34, 52, 30, 64, 40, 86, 58];
+  const bars = hs.map((h, i) => { const x = 8 + i * 12; return `<path d="M${x} ${84 - h / 2}V${84 + h / 2}"/>`; }).join("");
+  return `<svg viewBox="0 0 200 168" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" class="wave"><g fill="none" stroke="${C.pc}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${bars}
+    <path d="M128 50V118"/>
+    <path d="M128 70C150 70 158 36 196 36"/><path d="M128 84H196"/><path d="M128 98C150 98 158 132 196 132"/></g></svg>`;
+}
+
+function siteHtml(p, opts = {}) {
+  return `${navHtml(p, -1, !!opts.menuOpen)}
+    <section class="hero">
+      <div>
+        <h3>Toplantı biter, notlar hazır olur.</h3>
+        <p>Kaydı yükleyin; Briefyn kimin ne dediğini yazıya döker, alınan kararları ve yapılacak işleri ayrı ayrı çıkarır.</p>
+        <a class="btn btn-primary" href="#" data-noop>Kayıt yükle</a>
+      </div>
+      <div class="stage">${stageSvg()}
+        <ol aria-label="Örnek toplantı notu">
+          <li><span><b>Özet:</b> ödeme ve iade akışı konuşuldu.</span></li>
+          <li><span><b>Karar:</b> ödeme sayfası pazartesi açılır.</span></li>
+          <li><span><b>Yapılacak:</b> Burak iadeyi perşembe dener.</span></li>
+        </ol>
+      </div>
+    </section>
+    ${opts.ddDemo ? `<section class="dd-demo"><p class="frame-label">Açılır menü, "Ürün" açık</p><div class="holder">${navHtml(p + "x", 0).replace(/<div class="mpanel"[\s\S]*$/, "")}</div></section>` : ""}
+    <section class="soon">
+      <article class="card">
+        <p class="crumb">Ürün, Bul</p>
+        <h3>Arşive sor</h3>
+        <p class="desc">Geçmiş toplantılarınıza yazıyla soru sorun, cevabı hangi toplantıdan geldiğiyle birlikte görün.</p>
+        <span class="status">Bu sayfa hazırlanıyor</span>
+        <div class="actions"><a class="btn btn-primary" href="#" data-noop>Kayıt yükle</a><a class="back" href="#" data-noop>Ana sayfaya dön</a></div>
+      </article>
+      <div class="kit">
+        <h4>Düğmeler</h4>
+        <div class="row">
+          <span><a class="btn btn-primary" href="#" data-noop>Kayıt yükle</a><span class="cap">Birincil</span></span>
+          <span><a class="btn btn-outline" href="#" data-noop>Giriş yap</a><span class="cap">İkincil</span></span>
+          <span><span class="btn btn-primary is-hover">Kayıt yükle</span><span class="cap">Üzerine gelince</span></span>
+          <span><span class="btn btn-primary is-focus">Kayıt yükle</span><span class="cap">Klavye odağı</span></span>
+        </div>
+        <h4>Durum işaretleri</h4>
+        <div class="row">
+          <span class="badge b-in">Sırada bekliyor</span>
+          <span class="badge b-su">Yazıya döküldü</span>
+          <span class="badge b-wa">Bir konuşmacının adı yok</span>
+          <span class="badge b-er">Dosya 300 MB'tan büyük</span>
+        </div>
+      </div>
+    </section>
+    <footer class="foot">${logoH(C.pr, C.nc, false)}<a href="#" data-noop>Gizlilik</a><a href="#" data-noop>İletişim</a><span class="sp">Toplantılarınız yapay zekâ eğitiminde kullanılmaz.</span></footer>`;
+}
+
+document.getElementById("headLogo").innerHTML = logoH(C.se, C.bc);
+document.getElementById("desk").innerHTML = siteHtml("d", { ddDemo: true });
+document.getElementById("phone1").innerHTML = siteHtml("p1");
+document.getElementById("phone2").innerHTML = siteHtml("p2", { menuOpen: true });
+
+/* Menü davranışı: tıklayınca aç/kapa, Esc ve dışarı tıklama kapatır */
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-noop]")) e.preventDefault();
+  const btn = e.target.closest(".nav-item[aria-controls], .menu-btn");
+  document.querySelectorAll(".nav-item[aria-expanded='true']").forEach(b => {
+    if (b !== btn && !b.closest(".dd-demo")) { b.setAttribute("aria-expanded", "false"); document.getElementById(b.getAttribute("aria-controls")).hidden = true; }
+  });
+  if (!btn) return;
+  const open = btn.getAttribute("aria-expanded") !== "true";
+  btn.setAttribute("aria-expanded", String(open));
+  document.getElementById(btn.getAttribute("aria-controls")).hidden = !open;
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  document.querySelectorAll(".nav-item[aria-expanded='true']").forEach(b => {
+    if (b.closest(".dd-demo")) return;
+    b.setAttribute("aria-expanded", "false"); document.getElementById(b.getAttribute("aria-controls")).hidden = true; b.focus();
+  });
+});
+
+/* ---------- Renk kartları ve tablolar ---------- */
+// Her kart bir zemin ve üstündeki yazı rengi
+const SW = [["b2", "bc"], ["b1", "bc"], ["b3", "bc"], ["b1", "mu"], ["pr", "pc"], ["se", "sc"], ["ac", "acc"], ["ne", "nc"], ["in", "inc"], ["su", "suc"], ["wa", "wac"], ["er", "erc"]];
+const byK = k => COLORS.find(c => c.k === k);
+const swLine = c => `<span class="ln"><span class="dot" style="background:${c.hex}"></span><code>${c.hex}</code> <code>${c.daisy ?? "ayrı değişken"}</code></span>`;
+document.getElementById("swatches").innerHTML = SW.map(([b, f]) => {
+  const B = byK(b), F = byK(f), textCard = f === "mu";
+  const title = textCard ? F.name : B.name;
+  return `<div class="sw"><div class="chip" style="background:${B.hex};color:${F.hex}"><span>${title}</span><span class="aa">${tr(ratio(B.hex, F.hex))} : 1</span></div>
+    <div class="meta">${textCard ? swLine(F) : swLine(B) + swLine(F)}<span class="use">${textCard ? F.use : B.use}</span></div></div>`;
+}).join("");
+
+document.querySelector("#mapTable tbody").innerHTML = COLORS.map(c =>
+  `<tr><td><span class="dot" style="background:${c.hex}"></span><code>${c.daisy ? "--color-" + c.daisy : "--color-muted (öneri)"}</code></td><td class="n"><code>${c.hex}</code></td><td class="n"><code>${oklch(c.hex)}</code></td><td>${c.use}</td></tr>`).join("");
+
+const themeLines = COLORS.filter(c => c.daisy).map(c => `  --color-${c.daisy}: ${oklch(c.hex)}; /* ${c.hex} */`);
+const themeText = `@plugin "daisyui/theme" {
+  name: "briefyn";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+${themeLines.join("\n")}
+
+  --radius-selector: 2rem;  /* rozet */
+  --radius-field: 0.5rem;   /* düğme, giriş kutusu */
+  --radius-box: 1rem;       /* kart, panel */
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* daisyUI dışında: ikincil metin */
+@theme { --color-muted: ${oklch(C.mu)}; /* ${C.mu} */ }`;
+document.getElementById("themeBlock").textContent = themeText;
+document.getElementById("copyTheme").addEventListener("click", async () => {
+  const msg = document.getElementById("copyMsg");
+  try { await navigator.clipboard.writeText(themeText); msg.textContent = "Kopyalandı."; }
+  catch { msg.textContent = "Kopyalanamadı; bloğu seçip elle kopyalayın."; }
+});
+
+const fmtHsl = h => { const x = hsl(h); return `ton ${Math.round(x.h)}°, doygunluk %${Math.round(x.s)}, açıklık %${Math.round(x.l)}`; };
+const DIFF = [
+  ["Zemin", "#F4F8F8", C.b2], ["Kart", "#FFFFFF", C.b1], ["Ana metin", "#0F2427", C.bc], ["İkincil metin", "#465A5D", C.mu],
+  ["Ana renk", "#0D5C63", C.pr], ["Düğme yazısı", "#FFFFFF", C.pc], ["Bağlantı rengi", "#0D5C63", C.se], ["Mor vurgu", "#5A4E9E", C.ac]
+];
+document.querySelector("#diffTable tbody").innerHTML = DIFF.map(([n, a, b]) =>
+  `<tr><td>${n}</td><td>${a ? `<span class="dot" style="background:${a}"></span><code>${a}</code><br><span class="small">${fmtHsl(a)}</span>` : "yoktu"}</td>
+   <td><span class="dot" style="background:${b}"></span><code>${b}</code><br><span class="small">${fmtHsl(b)}</span></td></tr>`).join("");
+
+const FF = ["#6C31D9", "#4013F2"];
+const ffH = FF.map(h => hsl(h).h);
+const ffRows = [["Fireflies moru", FF[0], true], ["Fireflies moru", FF[1], true], ["Eski vurgu (Petrol ve buz)", "#5A4E9E"], ["Yeni vurgu (Orkide)", C.ac], ["Ana renk (Camgöbeği)", C.pr], ["Bilgi durumu (Gök mavisi)", C.in]];
+document.querySelector("#ffTable tbody").innerHTML = ffRows.map(([n, h, ff]) => {
+  const x = hsl(h), d = Math.min(...ffH.map(f => hueDist(f, x.h)));
+  const inside = x.h >= Math.min(...ffH) && x.h <= Math.max(...ffH);
+  return `<tr><td><span class="dot" style="background:${h}"></span>${n} <code>${h}</code></td><td class="n">${Math.round(x.h)}°</td><td class="n">%${Math.round(x.s)}</td>
+    <td class="n">${ff ? "kendisi" : inside ? '<span class="bad">aralığın içinde</span>' : `${Math.round(d)}°`}</td></tr>`;
+}).join("");
+document.getElementById("ffNote").textContent =
+  `Brifteki iki Fireflies rengi bu formülle ${Math.round(Math.min(...ffH))}° ile ${Math.round(Math.max(...ffH))}° arasına düşüyor (brif yaklaşık 247° ile 252° diyordu; #6C31D9 hesapta ${Math.round(ffH[0])}° çıkıyor). Yeni orkide tonda en az ${Math.round(Math.min(...ffH.map(f => hueDist(f, hsl(C.ac).h))))}° uzakta, açıklığı da farklı (%${Math.round(hsl(C.ac).l)}, onlarınki %${Math.round(hsl(FF[0]).l)} ve %${Math.round(hsl(FF[1]).l)}): koyu menekşe değil, açık pembeye çalan bir orkide. Degrade olarak hiç kullanılmıyor.`;
+
+/* ---------- Kontrast tablosu ---------- */
+const PAIRS = [
+  ["bc", "b2", "Sayfa metni, zeminde", 4.5],
+  ["bc", "b2", "Açılış başlığı (büyük yazı)", 3],
+  ["bc", "b1", "Kart, menü şeridi ve açılır menü metni", 4.5],
+  ["mu", "b2", "Açılış alt cümlesi, açıklamalar", 4.5],
+  ["mu", "b1", "Kart açıklaması, menü grup adı", 4.5],
+  ["pc", "pr", "Birincil düğme \"Kayıt yükle\"", 4.5],
+  ["pc", "#00ABBF", "Birincil düğme, üzerine gelince", 4.5],
+  ["se", "b1", "İkincil düğme ve bağlantı, kartta ve menü şeridinde", 4.5],
+  ["se", "b2", "İkincil düğme ve bağlantı, zeminde", 4.5],
+  ["sc", "se", "İkincil düğme, üzerine gelince", 4.5],
+  ["pc", "pr", "Açılış panelindeki çizim (yazı değil)", 3],
+  ["bc", "b1", "Açılış panelindeki not satırları", 4.5],
+  ["acc", "ac", "\"Yakında\" işareti, \"Bu sayfa hazırlanıyor\"", 4.5],
+  ["nc", "ne", "Alt bilgi", 4.5],
+  ["inc", "in", "Bilgi durumu", 4.5],
+  ["suc", "su", "Başarı durumu", 4.5],
+  ["wac", "wa", "Uyarı durumu", 4.5],
+  ["erc", "er", "Hata durumu", 4.5],
+  ["se", "b2", "Klavye odağı çizgisi, zeminde (yazı değil)", 3],
+  ["se", "b1", "Klavye odağı çizgisi, kartta (yazı değil)", 3],
+  ["se", "b2", "Logo işareti, zeminde (yazı değil)", 3],
+  ["pr", "ne", "Logo işareti, alt bilgide (yazı değil)", 3],
+  ["pc", "#00A3B8", "16 piksel simgesi: çizgiler, kare üstünde (yazı değil)", 3],
+  ["#00A3B8", "#FFFFFF", "16 piksel simgesi: kare, açık sekmede (yazı değil)", 3],
+  ["#00A3B8", "#35363A", "16 piksel simgesi: kare, koyu sekmede (yazı değil)", 3]
+];
+const val = k => k.startsWith("#") ? k : C[k];
+const nm = k => k.startsWith("#") ? k : (COLORS.find(c => c.k === k).daisy ?? "ikincil metin");
+let minRow = null, fails = 0;
+document.querySelector("#contrastTable tbody").innerHTML = PAIRS.map(([f, b, where, th]) => {
+  const r = ratio(val(f), val(b)); const pass = r >= th; if (!pass) fails++;
+  if (th === 4.5 && (!minRow || r < minRow.r)) minRow = { r, where };
+  return `<tr><td><span class="demo" style="color:${val(f)};background:${val(b)}">Ağ Şİ</span><span class="small">${nm(f)} / ${nm(b)}</span></td><td>${where}</td>
+    <td class="n">${tr(r)} : 1</td><td class="n">${tr(th, 1)} : 1</td><td class="${pass ? "ok" : "bad"}">${pass ? "geçer" : "geçmez"}</td></tr>`;
+}).join("");
+document.getElementById("contrastSum").textContent =
+  `${PAIRS.length} çiftin ${PAIRS.length - fails} tanesi eşiği geçiyor. Normal yazıdaki en düşük oran ${tr(minRow.r)} : 1 (${minRow.where.toLocaleLowerCase("tr")}).`;
+
+/* "Neden" paragrafındaki sayılar */
+document.querySelectorAll("[data-hsl]").forEach(el => {
+  const x = hsl(el.dataset.hsl), k = el.dataset.k;
+  el.textContent = k === "h" ? `${Math.round(x.h)}°` : k === "sl" ? `doygunluk %${Math.round(x.s)}, açıklık %${Math.round(x.l)}` : `%${Math.round(x.s)}`;
+});
+document.querySelectorAll("[data-ratio]").forEach(el => {
+  const [a, b] = el.dataset.ratio.split(","); el.textContent = `${tr(ratio(a, b))}:1`;
+});
+
+/* Parlaklık ve kontrast tablosu */
+const BRIGHT = [
+  ["pr", "se", "Birincil düğme, açılış paneli, alt bilgide logo"],
+  ["ac", null, "\"Yakında\" işaretleri"],
+  ["in", null, "Bilgi durumu"],
+  ["su", null, "Başarı durumu"],
+  ["wa", null, "Uyarı durumu"],
+  ["er", null, "Hata durumu"]
+];
+const cell = (r, th) => `${tr(r)} : 1 <span class="${r >= th ? "ok" : "bad"}">${r >= th ? "geçer" : "geçmez"}</span>`;
+document.querySelector("#brightTable tbody").innerHTML = BRIGHT.map(([k, sib, where]) => {
+  const c = byK(k), x = hsl(c.hex);
+  const dark = cell(ratio(C.bc, c.hex), 4.5), white = cell(ratio("#FFFFFF", c.hex), 4.5);
+  const onBg = ratio(c.hex, C.b2);
+  const text = sib
+    ? `kendisi ${tr(onBg)} : 1 <span class="bad">geçmez</span>; yerine koyu kardeşi <span class="dot" style="background:${C[sib]}"></span><code>${C[sib]}</code> ${tr(ratio(C[sib], C.b2))} : 1 <span class="ok">geçer</span> (doygunluk %${Math.round(hsl(C[sib]).s)})`
+    : `kendisi ${tr(onBg)} : 1 <span class="bad">geçmez</span>; yazı rengi olarak kullanılmıyor`;
+  return `<tr><td><span class="dot" style="background:${c.hex}"></span><code>${c.hex}</code> ${c.daisy}</td><td class="n">%${Math.round(x.s)}, %${Math.round(x.l)}</td><td>${dark}</td><td>${white}</td><td>${text}</td><td>${where}</td></tr>`;
+}).join("");
+
+/* ---------- Logo bölümü ---------- */
+document.getElementById("logos").innerHTML = [
+  [C.b2, C.se, C.bc, "Sayfa zemininde", C.bc],
+  [C.b1, C.se, C.bc, "Kartta ve menü şeridinde", C.bc],
+  [C.pr, C.pc, C.pc, "Camgöbeği üstünde, tek renk", C.pc],
+  [C.ne, C.pr, C.nc, "Alt bilgide", C.nc]
+].map(([bg, m, w, cap, capc]) => `<div class="lg" style="background:${bg}">${logoH(m, w)}<p style="color:${capc}">${cap}</p></div>`).join("");
+const sizeRow = fn => [64, 32, 16].map(s => `<figure><div class="tile" style="width:${s + 16}px;height:${s + 16}px">${fn(C.se, s)}</div><figcaption>${s} px</figcaption></figure>`).join("");
+document.getElementById("fullSizes").innerHTML = sizeRow(markFull);
+document.getElementById("smallSizes").innerHTML = sizeRow(mark16);
+
+// Gerçek piksel çizimi: SVG 16x16 ve 32x32 tuvale çizilir, büyütülerek gösterilir
+const pix = document.getElementById("pixels");
+[["Tam işaret, 16", markFull, 16], ["Tam işaret, 32", markFull, 32], ["16 piksel işareti, 16", mark16, 16], ["16 piksel işareti, 32", mark16, 32]].forEach(([cap, fn, s]) => {
+  const fig = document.createElement("figure");
+  const cv = document.createElement("canvas"); cv.width = s; cv.height = s; cv.className = "px";
+  cv.setAttribute("role", "img"); cv.setAttribute("aria-label", cap + " piksel, büyütülmüş");
+  fig.append(cv); const fc = document.createElement("figcaption"); fc.textContent = cap + " px"; fig.append(fc); pix.append(fig);
+  const img = new Image();
+  img.onload = () => { const x = cv.getContext("2d"); x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, s, s); x.drawImage(img, 0, 0, s, s); };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(fn(C.se, s));
+});
+document.getElementById("tabs").innerHTML =
+  `<div class="tab light">${mark16(null, 16)}Briefyn</div><div class="tab light">${markFull(C.se, 16)}Briefyn (tam işaret)</div><div class="tab dark">${mark16(null, 16)}Briefyn</div>`;
+
+/* ---------- Türkçe harf denetimi ----------
+   Her harf önce yalnız yedek yazı tipiyle, sonra "Yazı tipi, yedek" diye ölçülür.
+   Genişlik değişiyorsa harf bu yazı tipinden çiziliyor demektir. */
+const TR = "ğĞşŞıİçÇöÖüÜ".split("");
+async function checkFont(el) {
+  const fam = el.dataset.font;
+  try { await document.fonts.load(`400 40px "${fam}"`, TR.join("")); await document.fonts.load(`700 40px "${fam}"`, TR.join("")); } catch (e) {}
+  const cx = document.createElement("canvas").getContext("2d");
+  const has = ch => ["monospace", "serif"].some(base => {
+    cx.font = `40px ${base}`; const w0 = cx.measureText(ch).width;
+    cx.font = `40px "${fam}", ${base}`; return Math.abs(cx.measureText(ch).width - w0) > 0.01;
+  });
+  const missing = TR.filter(ch => !has(ch));
+  const loaded = document.fonts.check(`40px "${fam}"`, "ğ") && [...document.fonts].some(f => f.family.replace(/"/g, "") === fam && f.status === "loaded");
+  if (!loaded) el.textContent = "Yazı tipi yüklenemedi (internet yok ya da Google Fonts erişilemiyor); örnekler yedek yazı tipiyle görünüyor, denetim yapılamadı.";
+  else if (missing.length === 0) el.textContent = `Tarayıcıda ölçüldü: ${TR.length} Türkçe harfin (${TR.join(" ")}) hepsi bu yazı tipinden çiziliyor.`;
+  else el.textContent = `Tarayıcıda ölçüldü: şu harfler bu yazı tipinde yok, yedekten geliyor: ${missing.join(" ")}`;
+  el.dataset.result = missing.length === 0 && loaded ? "ok" : "fail";
+}
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => document.querySelectorAll(".check").forEach(checkFont));
+</script>
+</body>
+</html>
