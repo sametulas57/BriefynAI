@@ -143,6 +143,21 @@ public class CalendarSyncTests
     }
 
     [Fact]
+    public async Task Due_today_without_a_record_sends_invite()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        ChangeTask(app, task => task.DueDate = DisplayTime.TodayIn(Now));
+        Assert.True(app.WithDb(db => db.Users.Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled));
+        Assert.Empty(Records(app));
+
+        await RunAsync(app);
+
+        var sent = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Request, sent.Method);
+        Assert.Equal(DisplayTime.TodayIn(Now), sent.Invite.DueDate);
+    }
+
+    [Fact]
     public async Task Past_due_date_without_a_record_sends_nothing()
     {
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
@@ -789,7 +804,45 @@ public class CalendarSelfServiceTests
     }
 
     [Fact]
-    public async Task Download_creates_stable_active_record_without_email_and_date_update_reuses_it()
+    public async Task Download_before_pending_date_update_preserves_the_email_update()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        await RunAsync(app, force: false);
+        Assert.Equal(0, Assert.Single(mail.Sent).Invite.Sequence);
+        mail.Sent.Clear();
+        ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
+        using var scope = app.Services.CreateScope();
+        var output = await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+
+        await RunAsync(app, force: false);
+
+        var update = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Request, update.Method);
+        Assert.Equal(1, update.Invite.Sequence);
+        Assert.Equal(new DateOnly(2026, 11, 25), update.Invite.DueDate);
+        Assert.Contains("SEQUENCE:1\r\n", output);
+        Assert.Contains("DTSTART;VALUE=DATE:20261125\r\n", output);
+    }
+
+    [Fact]
+    public async Task Download_before_first_automatic_invite_preserves_the_email_invite()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        Assert.True(app.WithDb(db => db.Users.Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled));
+        Assert.Empty(app.WithDb(db => db.CalendarInvites.ToList()));
+        using var scope = app.Services.CreateScope();
+        var output = await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+
+        await RunAsync(app, force: false);
+
+        var sent = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Request, sent.Method);
+        Assert.Contains("UID:" + sent.Invite.Uid + "\r\n", output);
+        Assert.Contains("SEQUENCE:" + sent.Invite.Sequence + "\r\n", output);
+    }
+
+    [Fact]
+    public async Task Download_reserves_stable_uid_without_email_and_date_update_reuses_it()
     {
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
         using var scope = app.Services.CreateScope();
@@ -800,7 +853,8 @@ public class CalendarSelfServiceTests
         Assert.Contains("METHOD:PUBLISH\r\n", output);
         Assert.Contains("UID:" + record.Uid + "\r\n", output);
         Assert.DoesNotContain(output.Split("\r\n"), line => line.StartsWith("ATTENDEE", StringComparison.Ordinal));
-        Assert.Equal((CalendarInviteStatus.Active, 0, false, Now), (record.Status, record.Sequence, record.SendPending, record.UpdatedAtUtc));
+        Assert.Equal((CalendarInviteStatus.Cancelled, 0, false, Now), (record.Status, record.Sequence, record.SendPending, record.UpdatedAtUtc));
+        Assert.Contains("SEQUENCE:1\r\n", output);
         Assert.Equal(output, await calendar.BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId));
         Assert.Empty(mail.Sent);
         ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
@@ -811,6 +865,29 @@ public class CalendarSelfServiceTests
         Assert.Equal(1, update.Invite.Sequence);
         Assert.Equal(new DateOnly(2026, 11, 25), update.Invite.DueDate);
         Assert.Contains("https://briefyn.example/MyActions", update.Invite.Description);
+    }
+
+    [Fact]
+    public async Task Download_with_automatic_invites_disabled_creates_active_record_and_keeps_it_updated()
+    {
+        var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled = false; return db.SaveChanges(); });
+        using var scope = app.Services.CreateScope();
+        var output = await scope.ServiceProvider.GetRequiredService<ICalendarSyncService>().BuildDownloadAsync(app.Seed.TaskA, app.Seed.CarolId);
+        var record = app.WithDb(db => db.CalendarInvites.AsNoTracking().Single());
+        Assert.Equal((CalendarInviteStatus.Active, 0), (record.Status, record.Sequence));
+        Assert.Contains("SEQUENCE:0\r\n", output);
+        await RunAsync(app, force: false);
+        Assert.Empty(mail.Sent);
+
+        ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
+        await RunAsync(app, force: false);
+
+        var update = Assert.Single(mail.Sent);
+        Assert.Equal(CalendarMethod.Request, update.Method);
+        Assert.Equal(record.Uid, update.Invite.Uid);
+        Assert.Equal(1, update.Invite.Sequence);
+        Assert.Equal(new DateOnly(2026, 11, 25), update.Invite.DueDate);
     }
 
     [Theory]
@@ -939,6 +1016,7 @@ public class CalendarSelfServiceTests
     [Theory]
     [InlineData("/MyActions/?handler=SendToCalendar")]
     [InlineData("/myactions?handler=SendToCalendar")]
+    [InlineData("/MyActions?handler=SendToCalendar&handler=x")]
     public async Task Resend_limit_also_applies_to_routed_page_variants(string path)
     {
         using var app = await ReadyAsync(new RecordingEmail(), resendLimit: 2);
@@ -1025,6 +1103,7 @@ public class CalendarSelfServiceTests
     public async Task Download_reactivates_cancelled_record_with_same_uid_and_current_due_date()
     {
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
+        app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled = false; return db.SaveChanges(); });
         AddRecord(app, CalendarInviteStatus.Cancelled);
         ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
         using var scope = app.Services.CreateScope();
@@ -1104,11 +1183,12 @@ public class CalendarSelfServiceTests
     }
 
     [Fact]
-    public async Task Download_concurrent_update_reloads_and_leaves_in_flight_winner_unchanged()
+    public async Task Download_reactivation_reloads_and_leaves_in_flight_winner_unchanged()
     {
         var writes = new DownloadWriteInterceptor();
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail, interceptor: writes);
-        AddRecord(app, CalendarInviteStatus.Active);
+        app.WithDb(db => { db.Users.Single(u => u.Id == app.Seed.CarolId).CalendarInvitesEnabled = false; return db.SaveChanges(); });
+        AddRecord(app, CalendarInviteStatus.Cancelled);
         ChangeTask(app, task => task.DueDate = new(2026, 11, 25));
         writes.BeforeWrite = () =>
         {
@@ -1509,6 +1589,33 @@ public class CalendarLossTests
 
 public class CalendarSweepTests
 {
+    [Fact]
+    public async Task Stale_failed_cancellation_is_retried_once_by_sweep()
+    {
+        var mail = new RecordingEmail();
+        using var app = await ReadyAsync(mail);
+        var original = Assert.Single(Records(app));
+        app.WithDb(db => db.ActionItems.Where(a => a.Id == app.Seed.TaskA)
+            .ExecuteUpdate(s => s.SetProperty(a => a.CompletedAtUtc, (DateTime?)Now)));
+        mail.FailNext = true;
+        await SweepAsync(app);
+        var pending = Assert.Single(Records(app));
+        Assert.Equal(CalendarInviteStatus.Cancelled, pending.Status);
+        Assert.True(pending.SendPending);
+        Assert.True(pending.UpdatedAtUtc < Now.AddMinutes(-10));
+        Assert.Empty(mail.Sent);
+        mail.Attempts.Clear();
+
+        await SweepAsync(app);
+
+        AssertCancellation(Assert.Single(mail.Sent), original);
+        Assert.Single(mail.Attempts);
+        Assert.False(Assert.Single(Records(app)).SendPending);
+        await SweepAsync(app);
+        Assert.Single(mail.Sent);
+        Assert.Single(mail.Attempts);
+    }
+
     [Fact]
     public void Sweep_job_has_no_arguments()
     {

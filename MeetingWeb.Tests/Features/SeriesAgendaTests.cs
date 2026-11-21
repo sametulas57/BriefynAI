@@ -145,8 +145,9 @@ public class SeriesAgendaTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("/")]
+    [InlineData("?handler=SendAgenda")]
+    [InlineData("/?handler=SendAgenda")]
+    [InlineData("?handler=SendAgenda&handler=x")]
     public async Task Send_agenda_is_rate_limited_per_user(string suffix)
     {
         var id = Series(S.WorkspaceA, "Gündem");
@@ -154,7 +155,7 @@ public class SeriesAgendaTests : IAsyncLifetime
         var token = await GetAntiforgeryTokenAsync(alice, "/Profile");
         for (var i = 0; i < 11; i++)
         {
-            using var response = await PostFormAsync(alice, $"/Series/{id}{suffix}?handler=SendAgenda", token,
+            using var response = await PostFormAsync(alice, $"/Series/{id}{suffix}", token,
                 ("selectedEmails", SeedData.CarolEmail));
         }
         Assert.Equal(10, _app.Jobs.CountFor(nameof(IEmailService.SendSeriesAgendaAsync)));
