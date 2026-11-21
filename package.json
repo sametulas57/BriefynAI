@@ -1,0 +1,13 @@
+{
+  "name": "briefyn-web-styles",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss -i MeetingWeb/Styles/app.css -o MeetingWeb/wwwroot/css/app.css --minify",
+    "css:watch": "tailwindcss -i MeetingWeb/Styles/app.css -o MeetingWeb/wwwroot/css/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.5",
+    "daisyui": "5.8.2",
+    "tailwindcss": "4.3.5"
+  }
+}

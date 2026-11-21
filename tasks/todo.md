@@ -5,7 +5,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 1: Temel, önizleme ve adresler
 
-- [ ] **Görev 1: CSS derleme temeli** (M)
+- [x] **Görev 1: CSS derleme temeli** (M) · bitti 2026-11-21: önceki ekran görüntüleri `~/scrollcraft/builds/briefyn/once/`; `css:build` hook'a ~0,3 sn ekliyor (üç ölçüm ortalaması 0,33 sn); sürümler tailwindcss 4.3.5, @tailwindcss/cli 4.3.5, daisyui 5.8.2; `@parcel/watcher`'ın kurulum betiği npm 11'de çalışmıyor, watch hazır derlenmiş paketle çalışıyor (denendi).
   - İlk adım, hiçbir şeye dokunmadan: yerel yığında `/History` ve `/Upload`'ın 1440 ve 390 genişlikte ekran görüntüleri alınır (Görev 11'deki karşılaştırma için), repo dışında saklanır.
   - Kabul: repo kökünde `package.json` + `package-lock.json` (yalnız `tailwindcss`, `@tailwindcss/cli`, `daisyui`); `npm run css:build` `MeetingWeb/Styles/app.css`'ten küçültülmüş `MeetingWeb/wwwroot/css/app.css` üretiyor, içinde geçici `briefyn` teması var. `verify.sh` CSS derlemesini koşuyor; `node_modules` yoksa "bir kez kur: `npm ci`" diyerek duruyor. CI'da Node kuruluyor ve `npm ci` koşuyor. Derlenmiş CSS ve `node_modules` git'e girmiyor. README'de npm adımları var. Derlemenin hook'a eklediği süre yazıldı.
   - Doğrula: `npm ci && npm run css:build`; `scripts/verify.sh`; `git status`'ta `app.css` yok.

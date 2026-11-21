@@ -1,11 +1,16 @@
 #!/bin/sh
-# Tek doğrulama komutu: C# ve Python lint/biçim, tip kontrolü, .NET build + testler ve pytest.
+# Tek doğrulama komutu: CSS derleme, C# ve Python lint/biçim, tip kontrolü, .NET build + testler ve pytest.
 # Pre-commit ve CI bu komutu çalıştırır; sonuç tek satır GEÇTİ ya da KALDI olarak yazılır.
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 1
 if [ ! -x ai_engine/.venv/bin/python ]; then
   echo "Doğrulama: KALDI (ai_engine/.venv yok)"
   echo "  Bir kez kur: python3 -m venv ai_engine/.venv && ai_engine/.venv/bin/python -m pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt"
+  exit 1
+fi
+if [ ! -d node_modules ]; then
+  echo "Doğrulama: KALDI (node_modules yok)"
+  echo "  Bir kez kur: npm ci"
   exit 1
 fi
 LOG=$(mktemp)
@@ -21,6 +26,7 @@ gate() {
   shift
   "$@" >"$LOG" 2>&1 || fail "$AD"
 }
+gate "CSS derleme" npm run css:build
 # Bayat Razor derleme sunucusu değişmemiş sayfalarda sahte hata veriyordu (2026-10-22'de iki kez).
 dotnet build-server shutdown >/dev/null 2>&1
 gate "C# lint/biçim" dotnet format Briefyn.slnx --verify-no-changes
@@ -41,4 +47,4 @@ if [ -z "$PY" ] || [ "$PY_KOD" -ne 0 ]; then
 fi
 GECEN=$(printf '%s' "$NET" | sed -nE 's/.*(Başarılı|Passed): *([0-9]+).*/\2/p')
 TOPLAM=$(printf '%s' "$NET" | sed -nE 's/.*(Toplam|Total): *([0-9]+).*/\2/p')
-echo "Doğrulama: GEÇTİ (lint, biçim, tipler · .NET $GECEN/$TOPLAM · pytest $(printf '%s' "$PY" | sed -E 's/ in [0-9.]+s//'))"
+echo "Doğrulama: GEÇTİ (CSS, lint, biçim, tipler · .NET $GECEN/$TOPLAM · pytest $(printf '%s' "$PY" | sed -E 's/ in [0-9.]+s//'))"

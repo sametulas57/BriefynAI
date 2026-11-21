@@ -1,0 +1,36 @@
+/* Herkese açık sayfaların (Pages/Public, _PublicLayout) Tailwind girişi.
+   Derle: npm run css:build  ·  geliştirirken: npm run css:watch
+   Çıktı MeetingWeb/wwwroot/css/app.css git'e girmez. Eski Bootstrap sayfaları bu dosyayı yüklemez. */
+@import "tailwindcss" source("..");
+@source not "../wwwroot/lib";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* Geçici tema: yalnız derlemenin çalıştığını göstermek için. Onaylı palet Görev 5'te girer. */
+@plugin "daisyui/theme" {
+  name: "briefyn";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #F4F8F8;
+  --color-base-200: #E3F0F1;
+  --color-base-300: #D5E0E1;
+  --color-base-content: #0F2427;
+  --color-primary: #0D5C63;
+  --color-primary-content: #FFFFFF;
+  --color-secondary: #5A4E9E;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #5A4E9E;
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #465A5D;
+  --color-neutral-content: #FFFFFF;
+  --color-info: #0D5C63;
+  --color-info-content: #FFFFFF;
+  --color-success: #2B6E2F;
+  --color-success-content: #FFFFFF;
+  --color-warning: #8F5300;
+  --color-warning-content: #FFFFFF;
+  --color-error: #B42318;
+  --color-error-content: #FFFFFF;
+}
