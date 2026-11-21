@@ -186,10 +186,12 @@ def test_long_transcript_keeps_only_leading_whole_lines():
     assert content.startswith("Konuşmacılar: Konuşmacı 1, Konuşmacı 2, Konuşmacı 3\n")
 
 
-def test_overlong_first_line_is_not_sent_partially():
+def test_overlong_first_line_sends_leading_characters_instead_of_empty_text():
+    transcript = "Konuşmacı 1: " + "a" * 68 + "\nKonuşmacı 2: Merhaba."
     llm = FakeLlm({"oneriler": []})
-    SpeakerSuggester(llm, max_chars=10).suggest(TRANSCRIPT)
-    assert llm.calls[0][1][0]["content"].endswith("Toplantı dökümü:\n\n")
+    SpeakerSuggester(llm, max_chars=50).suggest(transcript)
+    sent_text = llm.calls[0][1][0]["content"].split("Toplantı dökümü:\n\n", 1)[1]
+    assert sent_text == transcript[:50]
 
 
 def test_system_explains_that_the_addressed_person_is_not_the_speaker():

@@ -64,7 +64,7 @@ class SpeakerSuggester:
                     break
                 lines.append(line)
                 length += len(line)
-            text = "".join(lines)
+            text = "".join(lines) or transcript[: self._max_chars]
 
         result = self._llm.complete_json(
             SYSTEM,
