@@ -26,7 +26,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
 - [x] `scripts/verify.sh` GEÇTİ (`0055b9b`'nin commit öncesi kontrolü, .NET 620/620).
 - [x] Web konteyneri yeniden başlatıldı; iki Hangfire sunucusu açıldı, biri yalnız `eposta`'yı dinliyor.
 - [x] Ulaş kendi tarayıcısında denedi: e-posta geldi, bağlantı açıldı, yeni şifre kaydedildi, yeni şifreyle girildi, aynı bağlantı ikinci kez reddedildi (Ulaş'ın aktarımı). Hangfire'da 3 sıfırlama ve 2 "şifreniz değişti" işi, beşi de `eposta` sunucusunda `Succeeded`.
-- [ ] E-postanın düştüğü klasör yazılmadı.
+- [x] E-posta Outlook'ta gelen kutusuna düştü, gereksize değil (Ulaş, 2026-11-21).
 - [x] Bulunan eksik: mevcut şifre yeni şifre olarak kabul edildi → spec karar 11, Görev 4-5 ile birlikte düzeltildi.
 - Not: `docs/raporlar/2026-11-21-sifre-sifirlama-deneme.md`.
 
@@ -67,7 +67,7 @@ Plan: `tasks/plan.md` · Spec: `SPEC.md`. Odaklı test komutu: `dotnet test Meet
   - [x] 5. Adres ve hesap başına sınır: testte; adres sınırı yerelde.
   - [x] 6. Kod veritabanında yok (saklanmıyor), Hangfire argümanında ve günlükte yok: testte.
   - [x] 7. Sahte Host başlığı bağlantıyı çeviremiyor: testte.
-  - [ ] 8. Yerel deneme: e-posta, bağlantı, ikinci kullanım geçti; e-postanın düştüğü klasör yazılmadı.
+  - [x] 8. Yerel deneme: e-posta gelen kutusuna geldi, bağlantı çalıştı, ikinci kullanım reddedildi.
   - [x] 9. verify GEÇTİ, ADR-0016 yazıldı, push ve CI aşağıda.
 - [x] `scripts/verify.sh` GEÇTİ; commit'ler main'e push edildi (`8b5ca0a..45995a4`); CI yeşil (Tests ve CodeQL, 45995a4).
 - [x] Ulaş'a `/agent-skills:review` hatırlatıldı (koşulmadı).
