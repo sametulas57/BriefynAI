@@ -1,6 +1,6 @@
 # Spec: Arayüz yenileme 1: ana sayfa ve herkese açık çerçeve (masaüstü ve mobil)
 
-Durum: onaylandı (Ulaş, 2026-11-21) · plan henüz yok (`tasks/plan.md` ve `tasks/todo.md` önceki işe ait, plan adımında yenilenir) · Backlog 4 · araştırma notu Beyin `knowledge/concepts/briefyn-fireflies-arastirmasi.md`
+Durum: onaylandı (Ulaş, 2026-11-21) · plan `tasks/plan.md`, görevler `tasks/todo.md` (onaylı, 2026-11-21) · Backlog 4 · araştırma notu Beyin `knowledge/concepts/briefyn-fireflies-arastirmasi.md`
 
 ## Amaç
 
