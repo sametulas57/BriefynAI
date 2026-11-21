@@ -33,10 +33,19 @@ namespace MeetingWeb.Tests.Infrastructure
         public IEmailService? EmailServiceOverride { get; init; }
         public TimeProvider? TimeProviderOverride { get; init; }
         public bool UseCookieAuthentication { get; init; }
+        // Parallel-request tests: each DbContext opens its own connection to a temp SQLite file. The shared in-memory
+        // connection is not safe for concurrent requests (SQLite error 5 while EF registers functions on it).
+        public bool UseFileDatabase { get; init; }
 
         // Per-factory folders, so parallel test classes never share files.
         public string WebRoot => Path.Combine(_tempRoot, "wwwroot");
         public string AudioRoot => Path.Combine(_tempRoot, "audio");
+        private string FileConnectionString => new SqliteConnectionStringBuilder
+        {
+            DataSource = Path.Combine(_tempRoot, "test.db"),
+            Pooling = false,
+            DefaultTimeout = 30
+        }.ToString();
 
         // Where Data Protection keys (login cookies, antiforgery, TempData) are stored; tests can share one folder
         // between two app instances to simulate a container restart.
@@ -82,7 +91,8 @@ namespace MeetingWeb.Tests.Infrastructure
                 foreach (var d in efDescriptors) services.Remove(d);
                 services.AddDbContext<ApplicationDbContext>(o =>
                 {
-                    o.UseSqlite(_connection);
+                    if (UseFileDatabase) o.UseSqlite(FileConnectionString);
+                    else o.UseSqlite(_connection);
                     if (CommandInterceptor != null) o.AddInterceptors(CommandInterceptor);
                 });
 
@@ -127,6 +137,7 @@ namespace MeetingWeb.Tests.Infrastructure
             using var scope = Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await db.Database.EnsureCreatedAsync();
+            if (UseFileDatabase) await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
             Seed = await SeedData.CreateAsync(db);
         }
 

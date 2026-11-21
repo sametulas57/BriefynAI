@@ -55,7 +55,7 @@ public class PasswordResetTests
     [Fact]
     public async Task Six_parallel_resets_do_not_show_English_errors_and_queue_one_notification()
     {
-        using var app = await PasswordAppAsync();
+        using var app = await PasswordAppAsync(new BriefynFactory { UseCookieAuthentication = true, UseFileDatabase = true });
         var (code, _) = await ResetLinkAsync(app);
         var clients = Enumerable.Range(0, 6).Select(_ => CookieClient(app)).ToArray();
         try
