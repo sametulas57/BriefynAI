@@ -144,6 +144,8 @@ Katalogda olmayan bir adres 404 verir.
 - açık, renkli ve canlı: zemin bembeyaz değil, açık tonlu bir renk;
 - ana renk canlı petrol / camgöbeği mavisi;
 - koyu tema yok, cıyak (neon) renk yok, şablon görünümü yok.
+- **Geçişli renk** (Ulaş, 2026-11-21, önizleme 1'den sonra): renkler mat ve düz değil, geçişli (degrade) olur; örnek "turuncudan mora ya da mordan siyaha". Degrade düğme, açılış, şerit gibi yüzeylerde kullanılır; degrade yazı yine yok, Fireflies'ın kendi mor degradesi (`#6C31D9`–`#4013F2`) yine yok.
+- **Zemin** (Ulaş, aynı gün): sayfa açık zeminli kalır; yalnız açılış bölümü ve alt bilgi koyu degrade olur, ana renk orada parlar. Sayfanın tamamı koyu olmaz.
 
 Başlangıç noktası `docs/brand/palet-onerileri.html` dosyasındaki "Petrol ve buz" paleti. Ulaş bu tonları beğendi, ama daha canlı ve zemini renkli bir hâlini istiyor. Aynı dosyadaki diğer iki palet ve beyaz ağırlıklı yön reddedildi. Kesin renk değerlerini tasarım adımında Opus alt ajanı seçer. Kodlamaya geçmeden önce Ulaş önizlemeyi görüp onaylar.
 
