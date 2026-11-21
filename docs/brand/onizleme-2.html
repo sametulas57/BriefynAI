@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Briefyn önizleme 2</title>
+<!-- Yalnız bu önizleme için: yazı tipleri Google Fonts'tan geliyor. Asıl sitede dosyalar kendi sunucumuzdan verilecek. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&display=swap">
+<style>
+  /* Belgenin kendi renkleri (yönlerden bağımsız, sitenin parçası değil) */
+  :root {
+    --dbg: #EDEFF4; --dcard: #F8F9FB; --dline: #D3D8E2; --dtx: #161A22; --dmu: #4A5263; --dlink: #1F4FA8;
+    --fh: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --fb: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+    --r-field: 8px; --r-box: 16px; --r-pill: 999px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--dbg); color: var(--dtx); font: 17px/1.55 var(--fb); }
+  a { color: var(--dlink); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--dlink); outline-offset: 2px; }
+  h1, h2, h3, h4 { font-family: var(--fh); font-stretch: 92%; letter-spacing: -0.01em; line-height: 1.12; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13.5px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+
+  .doc-head { padding: 40px 0 8px; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: start; }
+  .doc-head h1 { font-size: 44px; font-weight: 750; margin: 0 0 14px; max-width: 20ch; }
+  .doc-head p { margin: 0 0 12px; max-width: 62ch; }
+  .why { background: var(--dcard); border: 1px solid var(--dline); border-radius: var(--r-box); padding: 20px 22px; }
+  .why h2 { font-size: 21px; margin: 0 0 8px; }
+  .why p, .why li { font-size: 15.5px; color: var(--dmu); }
+  .why p { margin: 0 0 10px; }
+  .why ul { margin: 0; padding-left: 20px; }
+  .why li { margin-bottom: 6px; }
+  .jump { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 6px 0 0; padding: 0; list-style: none; font-weight: 700; }
+
+  section.part { padding: 44px 0 8px; }
+  section.part > h2 { font-size: 30px; margin: 0 0 6px; }
+  section.part > p.lead { margin: 0 0 22px; color: var(--dmu); max-width: 72ch; }
+  .frame-label { font: 500 14px/1.3 var(--fb); color: var(--dmu); margin: 0 0 8px; }
+  .small { font-size: 14.5px; color: var(--dmu); }
+
+  /* Üç açılış yan yana */
+  .minis { display: grid; grid-template-columns: repeat(3, minmax(0, 390px)); gap: 24px; justify-content: space-between; }
+  .mini h3 { font-size: 20px; margin: 0 0 4px; }
+  .mini p.sub { margin: 0 0 10px; font-size: 14.5px; color: var(--dmu); }
+  .gbar { height: 14px; border-radius: var(--r-pill); margin: 0 0 12px; }
+
+  /* ------------------------------------------------------------
+     Örnek site parçaları. Renkler her yönün kapsayıcısında değişken
+     olarak verilir; çerçeve kendi genişliğine göre dizilir
+     (container query).
+     ------------------------------------------------------------ */
+  .frame { border: 1px solid var(--dline); border-radius: 20px; overflow: hidden; background: var(--b2); }
+  .site { container: site / inline-size; background: var(--b2); color: var(--bc); }
+  .site a { color: var(--se); }
+  .site :focus-visible { outline: 3px solid var(--se); outline-offset: 2px; }
+  .site .dark :focus-visible { outline-color: var(--ht); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 44px; padding: 0 18px;
+    border-radius: var(--r-field); border: 1.5px solid transparent;
+    font: 700 16px/1 var(--fb); text-decoration: none; cursor: pointer; white-space: nowrap;
+  }
+  .site a.btn-grad, .btn-grad {
+    color: var(--cta-ink); background-image: var(--g-cta); background-size: 160% 100%; background-position: 0 0;
+    transition: background-position .25s ease;
+  }
+  /* Üzerine gelince degrade kayar; görünen renkler hep aynı degradenin içinde kalır, en kötü nokta değişmez */
+  .btn-grad:hover, .btn-grad.is-hover { background-position: 100% 0; }
+  .site a.btn-outline, .btn-outline { background: transparent; color: var(--se); border-color: var(--se); }
+  .btn-outline:hover, .btn-outline.is-hover { background: var(--se); color: var(--sc) !important; }
+  .btn.is-focus { outline: 3px solid var(--se); outline-offset: 2px; }
+
+  /* Üst menü şeridi */
+  .nav { display: flex; align-items: center; gap: 20px; padding: 0 28px; height: 68px; background: var(--b1); border-bottom: 1px solid var(--b3); position: relative; }
+  .nav .brand { display: inline-flex; align-items: center; flex: none; }
+  .nav .brand svg { height: 26px; width: auto; display: block; }
+  .nav-links { flex: 1; }
+  .nav-links > ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+  .nav-links li { position: relative; }
+  .nav-item {
+    display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px;
+    background: none; border: 0; border-radius: var(--r-field);
+    font: 500 15.5px/1 var(--fb); color: var(--bc); text-decoration: none; cursor: pointer;
+  }
+  .site a.nav-item { color: var(--bc); }
+  .nav-item:hover, .nav-item[aria-expanded="true"] { background: var(--b2); }
+  .nav-item svg { transition: transform .15s ease; }
+  .nav-item[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .nav-end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .nav-end .btn { min-height: 40px; padding: 0 16px; font-size: 15px; }
+  .menu-btn { display: none; }
+
+  /* Açılır menü */
+  .dd-panel {
+    position: absolute; top: calc(100% + 10px); left: 0; z-index: 5;
+    background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box);
+    padding: 18px; min-width: 280px;
+  }
+  .dd-panel[hidden] { display: none; }
+  .dd-panel.wide { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 8px 22px; min-width: 760px; }
+  .dd-panel.wide[hidden] { display: none; }
+  .dd-group h4 { font: 700 13.5px/1.3 var(--fb); color: var(--mu); margin: 4px 10px 6px; letter-spacing: 0; }
+  .dd-group ul { list-style: none; margin: 0; padding: 0; }
+  .site a.dd-link, .dd-link { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: var(--r-field); color: var(--bc); text-decoration: none; font-size: 15.5px; }
+  .dd-link:hover { background: var(--b2); }
+  .soon-tag { font: 700 12px/1 var(--fb); color: var(--acc); background: var(--ac); padding: 4px 7px; border-radius: var(--r-pill); white-space: nowrap; }
+
+  .mpanel { background: var(--b1); border-bottom: 1px solid var(--b3); padding: 8px 16px 20px; }
+  .mpanel[hidden] { display: none; }
+  .mpanel details { border-bottom: 1px solid var(--b3); }
+  .mpanel summary { list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 52px; font: 700 17px/1.2 var(--fb); cursor: pointer; }
+  .mpanel summary::-webkit-details-marker { display: none; }
+  .mpanel details[open] summary svg { transform: rotate(180deg); }
+  .mpanel .dd-group h4 { margin-left: 0; }
+  .mpanel .dd-link { padding-left: 0; padding-right: 0; min-height: 44px; }
+  .site .mpanel a.plain { display: flex; align-items: center; min-height: 52px; border-bottom: 1px solid var(--b3); font: 700 17px/1.2 var(--fb); color: var(--bc); text-decoration: none; }
+  .mpanel .mp-actions { display: grid; gap: 10px; margin-top: 18px; }
+  .mpanel .mp-actions .btn { width: 100%; min-height: 48px; }
+
+  /* Koyu degrade açılış */
+  .hero { background-image: var(--g-hero); color: var(--ht); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; padding: 72px 28px 80px; }
+  .hero h3 { font-size: 60px; font-weight: 750; font-stretch: 88%; letter-spacing: -0.025em; line-height: 1.02; margin: 0 0 20px; max-width: 12ch; color: var(--ht); }
+  .hero p { font-size: 19px; line-height: 1.55; color: var(--hs); margin: 0 0 28px; max-width: 42ch; }
+  .hero .btn { min-height: 52px; padding: 0 26px; font-size: 17px; }
+
+  .stage { background-image: var(--g-stage); border-radius: 24px; padding: 28px 24px; display: flex; align-items: center; }
+  .stage svg { flex: none; width: 160px; height: 168px; display: block; }
+  .stage ol { list-style: none; margin: 0; padding: 12px 0; flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: 48px; }
+  .stage li { display: flex; align-items: center; min-width: 0; }
+  .stage li span { background: var(--b1); color: var(--bc); border-radius: var(--r-field); padding: 7px 12px; font-size: 15px; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stage li b { font-weight: 700; }
+
+  .dd-demo { padding: 28px 28px 0; }
+  .dd-demo .nav { border: 1px solid var(--b3); border-radius: var(--r-box); }
+  .dd-demo .holder { min-height: 330px; }
+
+  /* "Yakında" sayfası */
+  .soon { padding: 56px 28px 64px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  .card { background: var(--b1); border: 1px solid var(--b3); border-radius: var(--r-box); padding: 28px 28px 24px; }
+  .card .crumb { font-size: 14px; color: var(--mu); margin: 0 0 10px; }
+  .card h3 { font-size: 34px; font-weight: 700; margin: 0 0 10px; }
+  .card p.desc { margin: 0 0 18px; color: var(--mu); max-width: 48ch; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font: 700 14px/1 var(--fb); color: var(--acc); background: var(--ac); padding: 7px 12px; border-radius: var(--r-pill); margin-bottom: 22px; }
+  .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--acc); }
+  .card .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .card .back { font-weight: 500; }
+
+  .kit h4 { font: 700 15px/1.3 var(--fb); margin: 0 0 10px; color: var(--bc); }
+  .kit .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 22px; }
+  .kit .cap { display: block; font-size: 13px; color: var(--mu); margin-top: 6px; text-align: center; }
+  .badge { display: inline-flex; align-items: center; font: 700 13.5px/1 var(--fb); padding: 7px 11px; border-radius: var(--r-pill); color: var(--bc); }
+
+  /* Koyu degrade alt bilgi */
+  .foot { background-image: var(--g-foot); color: var(--nc); padding: 26px 28px; display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; font-size: 15px; }
+  .foot svg { height: 22px; width: auto; }
+  .site .foot a { color: var(--nc); }
+  .foot .sp { margin-left: auto; }
+
+  @container site (max-width: 760px) {
+    .nav { padding: 0 16px; height: 60px; gap: 10px; }
+    .nav .brand svg { height: 22px; }
+    .nav-links { display: none; }
+    .nav-end .login { display: none; }
+    .menu-btn { display: inline-flex; }
+    .hero { grid-template-columns: 1fr; gap: 28px; padding: 40px 16px 44px; }
+    .hero h3 { font-size: 40px; }
+    .hero p { font-size: 17.5px; margin-bottom: 22px; }
+    .hero .btn { width: 100%; }
+    .stage { flex-direction: column; align-items: stretch; padding: 18px 16px 20px; }
+    .stage svg { width: 124px; height: 104px; align-self: center; }
+    .stage ol { grid-auto-rows: auto; gap: 8px; padding: 4px 0 0; }
+    .stage li span { white-space: normal; }
+    .dd-demo { display: none; }
+    .soon { grid-template-columns: 1fr; padding: 36px 16px 40px; gap: 28px; }
+    .card { padding: 22px 18px 20px; }
+    .card h3 { font-size: 28px; }
+    .card .actions .btn { width: 100%; min-height: 48px; }
+    .foot { padding: 22px 16px; }
+    .foot .sp { margin-left: 0; width: 100%; }
+  }
+
+  /* Yön bölümleri */
+  .dir { padding: 56px 0 8px; border-top: 1px solid var(--dline); margin-top: 40px; }
+  .dir-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; align-items: start; margin-bottom: 22px; }
+  .dir-head h2 { font-size: 34px; margin: 0 0 8px; }
+  .dir-head p { margin: 0 0 10px; max-width: 62ch; }
+  .stops { background: var(--dcard); border: 1px solid var(--dline); border-radius: var(--r-box); padding: 16px 18px; }
+  .stops h3 { font-size: 16px; margin: 0 0 10px; font-family: var(--fb); font-weight: 700; letter-spacing: 0; }
+  .stop-row { margin-bottom: 12px; }
+  .stop-row:last-child { margin-bottom: 0; }
+  .stop-row .gbar { height: 22px; margin: 4px 0 4px; border-radius: 8px; }
+  .stop-row .lbl { font-size: 14px; font-weight: 700; }
+  .stop-row .hx { font-size: 13px; color: var(--dmu); }
+  .dir-grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 28px; }
+  .phone .frame { border-radius: 28px; }
+  .info h3 { font-size: 20px; margin: 0 0 10px; }
+  .info > div { margin-bottom: 28px; }
+
+  .logos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .lg { border-radius: var(--r-box); border: 1px solid var(--dline); padding: 24px 16px 16px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .lg svg { width: 100%; max-width: 240px; height: auto; }
+  .lg p { margin: 0; font-size: 13.5px; text-align: center; line-height: 1.4; }
+  .verdict { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700; font-size: 13px; }
+  .tabs { display: flex; gap: 0; margin-top: 12px; flex-wrap: wrap; }
+  .tab { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; font: 13px/1 system-ui, sans-serif; border-radius: 9px 9px 0 0; min-width: 150px; }
+  .tab.light { background: #FFFFFF; color: #1F1F1F; }
+  .tab.dark { background: #35363A; color: #E8EAED; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--dcard); }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--dline); vertical-align: middle; }
+  th { font: 700 13.5px/1.3 var(--fb); }
+  tr:last-child td { border-bottom: 0; }
+  td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tblwrap { overflow-x: auto; border: 1px solid var(--dline); border-radius: 14px; }
+  .tblwrap table { min-width: 640px; }
+  .dot { display: inline-block; width: 16px; height: 16px; border-radius: 5px; vertical-align: -3px; margin-right: 6px; border: 1px solid rgba(22, 26, 34, .2); }
+  .gdot { display: inline-block; width: 44px; height: 16px; border-radius: 5px; vertical-align: -3px; margin-right: 6px; border: 1px solid rgba(22, 26, 34, .2); }
+  .demo { display: inline-block; min-width: 64px; padding: 4px 8px; border-radius: 6px; font-weight: 700; margin-right: 8px; border: 1px solid rgba(22, 26, 34, .15); }
+  /* Sonuç işaretleri: parlak dolgu + koyu yazı (oranları en alttaki belge renkleri tablosunda) */
+  .ok, .bad { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-weight: 700; font-size: 13px; line-height: 1.3; color: #161A22; white-space: nowrap; }
+  .ok { background: #2BCB8E; }
+  .bad { background: #FF5C5C; }
+  details.theme { margin-top: 12px; }
+  details.theme summary { cursor: pointer; font-weight: 700; color: var(--dlink); }
+  pre.theme { background: #161A22; color: #E9EDF5; border-radius: 14px; padding: 16px 18px; overflow-x: auto; margin: 10px 0 0; line-height: 1.5; }
+
+  .facts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .facts > div { background: var(--dcard); border: 1px solid var(--dline); border-radius: var(--r-box); padding: 20px 22px; }
+  .facts h3 { font-size: 20px; margin: 0 0 8px; }
+  .facts ul { margin: 0; padding-left: 20px; font-size: 15px; }
+  .facts li { margin-bottom: 7px; }
+  footer.end { padding: 36px 0 56px; font-size: 14px; color: var(--dmu); }
+
+  @media (max-width: 1240px) {
+    .minis { grid-template-columns: repeat(auto-fit, minmax(300px, 390px)); justify-content: start; }
+    .dir-grid { grid-template-columns: minmax(0, 1fr); }
+    .phone { max-width: 390px; }
+  }
+  @media (max-width: 900px) {
+    .wrap { padding: 0 16px; }
+    .doc-head, .dir-head { grid-template-columns: 1fr; gap: 20px; }
+    .doc-head { padding-top: 28px; }
+    .doc-head h1 { font-size: 34px; }
+    .dir-head h2 { font-size: 28px; }
+    .minis { grid-template-columns: minmax(0, 1fr); }
+    .logos, .facts { grid-template-columns: minmax(0, 1fr); }
+    section.part > h2 { font-size: 26px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="doc-head">
+    <div>
+      <h1>Önizleme 2: geçişli renk, üç yön</h1>
+      <p>Önizleme 1'deki düz renklerin yerine geçişli (degrade) renk. Sayfa açık zeminli kalıyor; yalnız açılış bölümü ve alt bilgi koyu degrade, parlak renk orada duruyor. Üç yön aynı parçalarla yan yana: açılış, degrade "Kayıt yükle" düğmesi, menü şeridi, açılır menü, "yakında" kartı ve alt bilgi.</p>
+      <p class="small">Kontrast oranları bu sayfadaki betikle hesaplanıyor. Degradeli yüzeylerde degrade 200 noktada örnekleniyor ve tablolarda en kötü nokta yazıyor. Elle yazılmış oran yok.</p>
+      <ul class="jump">
+        <li><a href="#dir-a">Yön A: Gün batımı</a></li>
+        <li><a href="#dir-b">Yön B: Gece moru</a></li>
+        <li><a href="#dir-c">Yön C: Derin su</a></li>
+      </ul>
+    </div>
+    <aside class="why" aria-labelledby="why-h">
+      <h2 id="why-h">Bu turda ne değişti</h2>
+      <ul>
+        <li>Renk düz değil, geçişli: düğme, açılış ve alttaki panel degradeli.</li>
+        <li>Açılış ve alt bilgi koyu; parlak degrade bu koyu zeminin üstünde duruyor. Sayfanın geri kalanı açık ve renkli.</li>
+        <li>Degrade yazı yok: bütün yazılar düz renk. Degrade yalnız yüzeyde ve logo işaretinde.</li>
+        <li>Fireflies'ın kendi mor degradesi (<code>#6C31D9</code> ile <code>#4013F2</code>) kullanılmadı; her yönün renk tonları aşağıdaki tabloda onların aralığıyla karşılaştırılıyor.</li>
+        <li>Parlama efekti, ışık halkası ya da gölge parıltısı yok.</li>
+      </ul>
+    </aside>
+  </header>
+
+  <section class="part" aria-labelledby="s-minis">
+    <h2 id="s-minis">Üç açılış yan yana</h2>
+    <p class="lead">Telefon genişliğinde (390 piksel) üç yönün menü şeridi ve açılışı. Her yönün masaüstü ve telefon hâlinin tamamı aşağıda kendi bölümünde.</p>
+    <div class="minis" id="minis"></div>
+  </section>
+
+  <div id="dirs"></div>
+
+  <section class="part" aria-labelledby="s-ff">
+    <h2 id="s-ff">Fireflies'ın morundan uzaklık</h2>
+    <p class="lead">Her yönün degrade durakları ve düz renkleri. Ton farkı Fireflies'ın 247° ile 262° arasındaki aralığına göre ölçülüyor (aralığın içindeyse 0°). Açıklığı %10'un altındaki duraklar gözle siyah görünür; onların tonu yalnız bilgi için yazıyor.</p>
+    <div class="tblwrap"><table id="ffTable"><thead><tr><th>Yön</th><th>Renk</th><th>Ton</th><th>Doygunluk</th><th>Açıklık</th><th>Aralığa uzaklık</th></tr></thead><tbody></tbody></table></div>
+    <p class="small" id="ffNote"></p>
+  </section>
+
+  <section class="part" aria-labelledby="s-type">
+    <h2 id="s-type">Yazı tipleri</h2>
+    <p class="lead">Önizleme 1'deki öneri değişmedi. Başlık: Bricolage Grotesque (<a href="https://github.com/ateliertriay/bricolage">github.com/ateliertriay/bricolage</a>). Metin: Atkinson Hyperlegible Next (<a href="https://github.com/googlefonts/atkinson-hyperlegible-next">github.com/googlefonts/atkinson-hyperlegible-next</a>). İkisi de SIL Open Font License 1.1.</p>
+    <p class="small check" data-font="Bricolage Grotesque">Türkçe harf denetimi çalışıyor…</p>
+    <p class="small check" data-font="Atkinson Hyperlegible Next">Türkçe harf denetimi çalışıyor…</p>
+  </section>
+
+  <section class="part" aria-labelledby="s-doc">
+    <h2 id="s-doc">Bu belgenin kendi renkleri</h2>
+    <p class="lead">Sitenin parçası değil; yalnız bu önizleme sayfasının çerçevesi. Yine de ölçüldü.</p>
+    <div class="tblwrap"><table id="docTable"><thead><tr><th>Çift</th><th>Nerede</th><th>Oran</th><th>Eşik</th><th>Sonuç</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="part" aria-labelledby="s-facts">
+    <h2 id="s-facts">Neye baktım, neyi varsaydım</h2>
+    <div class="facts">
+      <div>
+        <h3>Baktıklarım</h3>
+        <ul>
+          <li>Kontrast oranları: WCAG 2 bağıl parlaklık formülü, bu sayfadaki betikle. Degradeler tarayıcının varsayılanı gibi sRGB içinde, duraklar arasında doğrusal karışımla 200 noktada örnekleniyor.</li>
+          <li>Logo SVG dosyalarının renkleri: <code>logo-a.svg</code> işaret <code>#00616E</code>, yazı <code>#03272D</code>; <code>logo-a-isaret-16.svg</code> kare <code>#00A3B8</code>, çizgiler <code>#03272D</code>. Dosyalara dokunulmadı.</li>
+          <li>Yazı tipi depoları ve lisansları önizleme 1 için GitHub'dan kontrol edildi; bu turda yeniden bakılmadı.</li>
+          <li>Türkçe harflerin yazı tiplerinden çizildiği: sayfa açılınca tarayıcıda ölçülüyor (yukarıda).</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Varsaydıklarım</h3>
+        <ul>
+          <li>Fireflies renkleri koordinatörün ölçtüğü değerler; sitelerine kendim bakmadım.</li>
+          <li>Açılıştaki yazının degradenin her noktasına düşebileceğini varsaydım; oran bütün degrade üzerinden ölçüldü, bu yüzden gerçekte daha iyi olabilir, daha kötü olamaz.</li>
+          <li>Düğmenin üzerine gelince degrade yalnız kayıyor, yeni renk eklenmiyor. Görev 5'te daisyUI'nin kendi <code>btn</code> stilinin bunu bozmadığı kontrol edilmeli.</li>
+          <li>daisyUI'de degrade rengi adı yok. Degradeler tema dışında CSS değişkeni olarak (<code>--grad-cta</code>, <code>--grad-hero</code>, <code>--grad-stage</code>, <code>--grad-foot</code>) ve kendi sınıfımızla verilir; <code>primary</code> düz renk gereken yerler için.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="end">Briefyn arayüz yenileme, Görev 2, ikinci tur. Dosya: <code>docs/brand/onizleme-2.html</code>. Logo dosyaları değişmedi.</footer>
+</div>
+
+<script>
+/* ---------- Renk hesapları ---------- */
+const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+const lin = v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+function lum(h) { const [r, g, b] = rgb(h).map(lin); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function hsl(h) {
+  const [r, g, b] = rgb(h), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  let hh = 0, s = 0;
+  if (d) { s = d / (1 - Math.abs(2 * l - 1)); hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; if (hh < 0) hh += 360; }
+  return { h: hh, s: s * 100, l: l * 100 };
+}
+function oklch(h) {
+  const [r, g, b] = rgb(h).map(lin);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  const ch = Math.sqrt(A * A + B * B); let hue = Math.atan2(B, A) * 180 / Math.PI; if (hue < 0) hue += 360;
+  return `oklch(${(L * 100).toFixed(2)}% ${ch.toFixed(4)} ${ch < 0.0005 ? 0 : hue.toFixed(2)})`;
+}
+const toHex = a => "#" + a.map(v => Math.round(v * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
+const tr = (n, d = 2) => n.toFixed(d).replace(".", ",");
+// Degrade örnekleme: duraklar arasında sRGB içinde doğrusal karışım, 200 nokta
+function samples(x) {
+  if (typeof x === "string") return [{ c: x, t: null }];
+  const out = [];
+  for (let i = 0; i <= 200; i++) {
+    const t = i / 200; let k = 0;
+    while (k < x.stops.length - 2 && t > x.stops[k + 1][1]) k++;
+    const [a, pa] = x.stops[k], [b, pb] = x.stops[k + 1];
+    const u = Math.min(1, Math.max(0, (t - pa) / (pb - pa))), A = rgb(a), B = rgb(b);
+    out.push({ c: toHex(A.map((v, j) => v + (B[j] - v) * u)), t });
+  }
+  return out;
+}
+function worst(f, b) {
+  let best = null;
+  for (const x of samples(f)) for (const y of samples(b)) {
+    const r = ratio(x.c, y.c);
+    if (!best || r < best.r) best = { r, f: x, b: y };
+  }
+  return best;
+}
+const css = g => `linear-gradient(${g.angle}deg, ${g.stops.map(([c, p]) => `${c} ${Math.round(p * 100)}%`).join(", ")})`;
+const barCss = g => `linear-gradient(90deg, ${g.stops.map(([c, p]) => `${c} ${Math.round(p * 100)}%`).join(", ")})`;
+
+/* ---------- Ortak durum renkleri (önizleme 1'den) ---------- */
+const STATUS = { in: "#3EA6FF", su: "#2BCB8E", wa: "#FFB224", er: "#FF5C5C" };
+
+/* ---------- Üç yön: tek kaynak ---------- */
+const DIRS = [
+  {
+    id: "a", name: "Gün batımı", short: "Turuncudan orkideye",
+    desc: [
+      "Ulaş'ın \"turuncudan mora\" örneği: düğme ve paneldeki degrade sıcak turuncudan pembeye, oradan orkideye gidiyor; mor ucu Fireflies'ın menekşesine değil, macentaya kayıyor.",
+      "Açılış ve alt bilgi şarap renginden gece moruna inen koyu bir zemin; sayfanın açık kısmı kayısı tonlu."
+    ],
+    c: {
+      b1: "#FFF5EF", b2: "#FFE2D2", b3: "#FFC4A6", bc: "#2A0E1E", mu: "#5C2440",
+      pr: "#FF4F7B", pc: "#2A0E1E", se: "#A3135F", sc: "#FFF5EF",
+      ac: "#E04FD0", acc: "#2A0E1E", ne: "#1F0A1B", nc: "#FDE8F1",
+      ht: "#FFF4EC", hs: "#F6D7E6", ctaInk: "#2A0E1E", stageInk: "#2A0E1E"
+    },
+    names: { b1: "Kayısı köpüğü", b2: "Kayısı", b3: "Şeftali", bc: "Şarap karası", mu: "Koyu gül", pr: "Mercan pembesi", se: "Koyu ahududu", ac: "Orkide", ne: "Gece şarabı" },
+    g: {
+      cta:   { angle: 90,  stops: [["#FF8A1F", 0], ["#FF4F7B", 0.5], ["#E04FD0", 1]] },
+      hero:  { angle: 160, stops: [["#1F0A1B", 0], ["#3A0C35", 0.55], ["#5C1242", 1]] },
+      stage: { angle: 135, stops: [["#FFB03A", 0], ["#FF5A7A", 0.55], ["#E04FD0", 1]] },
+      foot:  { angle: 100, stops: [["#1F0A1B", 0], ["#3A0C35", 1]] },
+      mark:  { angle: 90,  stops: [["#FF8A1F", 0], ["#FF4F7B", 0.5], ["#E04FD0", 1]] }
+    }
+  },
+  {
+    id: "b", name: "Gece moru", short: "Mordan siyaha",
+    desc: [
+      "Ulaş'ın \"mordan siyaha\" örneği: açılış koyu mürdümden siyaha iniyor, düğme ve panel parlak orkideden koyu mora geçiyor.",
+      "Mor tonlar 284° ile 295° arasında, Fireflies'ın 247° ile 262° aralığının dışında; düğmenin yazısı beyaz, sayfanın açık kısmı leylak tonlu."
+    ],
+    c: {
+      b1: "#FCF2FE", b2: "#F2DDF9", b3: "#E2BDF0", bc: "#200826", mu: "#52285E",
+      pr: "#A622C2", pc: "#FFFFFF", se: "#87199C", sc: "#FCF2FE",
+      ac: "#EE8CFF", acc: "#200826", ne: "#1A0620", nc: "#F7E6FB",
+      ht: "#FFFFFF", hs: "#EED6F5", ctaInk: "#FFFFFF", stageInk: "#FFFFFF"
+    },
+    names: { b1: "Leylak köpüğü", b2: "Leylak", b3: "Lavanta", bc: "Mürdüm karası", mu: "Koyu erik", pr: "Orkide moru", se: "Koyu orkide", ac: "Açık orkide", ne: "Gece mürdümü" },
+    g: {
+      cta:   { angle: 90,  stops: [["#B526CC", 0], ["#8A1AB0", 1]] },
+      hero:  { angle: 165, stops: [["#3D0B4C", 0], ["#1A0620", 0.5], ["#0C030E", 1]] },
+      stage: { angle: 135, stops: [["#D84BE6", 0], ["#9A22C2", 1]] },
+      foot:  { angle: 100, stops: [["#1A0620", 0], ["#0C030E", 1]] },
+      mark:  { angle: 90,  stops: [["#F09CFF", 0], ["#C85AF0", 1]] }
+    }
+  },
+  {
+    id: "c", name: "Derin su", short: "Camgöbeğinden elektrik mavisine",
+    desc: [
+      "Bizim camgöbeği ailemizden: düğme parlak camgöbeğinden gök mavisine, açılıştaki panel camgöbeğinden elektrik mavisine geçiyor.",
+      "Açılış ve alt bilgi lacivert-siyahtan derin elektrik mavisine açılıyor; sayfanın açık kısmı önizleme 1'in su rengine yakın."
+    ],
+    c: {
+      b1: "#E8FBFD", b2: "#BDF0F6", b3: "#86DDEA", bc: "#03202B", mu: "#0E4458",
+      pr: "#12B6EE", pc: "#03202B", se: "#005E86", sc: "#F0FBFF",
+      ac: "#DA5CF0", acc: "#2E0636", ne: "#04121F", nc: "#D8F4FF",
+      ht: "#FFFFFF", hs: "#CFE8FF", ctaInk: "#03202B", stageInk: "#03202B"
+    },
+    names: { b1: "Buz", b2: "Su", b3: "Sığ su", bc: "Derin petrol", mu: "Koyu deniz", pr: "Gök camgöbeği", se: "Koyu deniz mavisi", ac: "Orkide", ne: "Gece laciverdi" },
+    g: {
+      cta:   { angle: 90,  stops: [["#00D3E6", 0], ["#1E9BFF", 1]] },
+      hero:  { angle: 160, stops: [["#04121F", 0], ["#06224A", 0.55], ["#0B3A8C", 1]] },
+      stage: { angle: 135, stops: [["#2EE6F0", 0], ["#1EA0FF", 0.55], ["#3A6BFF", 1]] },
+      foot:  { angle: 100, stops: [["#04121F", 0], ["#06224A", 1]] },
+      mark:  { angle: 90,  stops: [["#00D3E6", 0], ["#1E9BFF", 1]] }
+    }
+  }
+];
+const FF = { angle: 90, stops: [["#6C31D9", 0], ["#5D37F5", 0.48], ["#4013F2", 1]] };
+const FF_RANGE = [247, 262];
+
+const dirVars = d => [
+  ...Object.entries(d.c).map(([k, v]) => `--${k === "ctaInk" ? "cta-ink" : k === "stageInk" ? "stage-ink" : k}:${v}`),
+  `--g-cta:${css(d.g.cta)}`, `--g-hero:${css(d.g.hero)}`, `--g-stage:${css(d.g.stage)}`, `--g-foot:${css(d.g.foot)}`
+].join(";");
+
+/* ---------- Logo (docs/brand/logo-a.svg ile aynı yollar) ---------- */
+const MARK_PATHS = `<path d="M3.5 23V31"/><path d="M13.75 16V38"/><path d="M24 7V45"/><path d="M34.25 16V33Q34.25 37 38.25 37C44 37 46 27 52 27H86"/><path d="M34.25 26H38.25C44 26 46 16 52 16H86"/><path d="M58 38H74"/>`;
+let gid = 0;
+// mark: düz renk (hex) ya da degrade nesnesi; yazı her zaman düz renk
+function logoH(mark, word, label = true) {
+  let defs = "", paint = mark;
+  if (typeof mark !== "string") {
+    const id = "lg" + (++gid);
+    defs = `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="88" y2="0">${mark.stops.map(([c, p]) => `<stop offset="${p}" stop-color="${c}"/>`).join("")}</linearGradient></defs>`;
+    paint = `url(#${id})`;
+  }
+  return `<svg viewBox="0 2 252 49" ${label ? 'role="img" aria-label="Briefyn"' : 'aria-hidden="true"'} xmlns="http://www.w3.org/2000/svg">${defs}
+    <g fill="none" stroke="${paint}" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">${MARK_PATHS}</g>
+    <g fill="none" stroke="${word}" stroke-width="6.5" stroke-linecap="butt" stroke-linejoin="round">
+      <path d="M99.25 6V40"/><circle cx="108" cy="28" r="8.75"/><path d="M127.75 16V40"/><path d="M127.75 27A7.75 7.75 0 0 1 135.5 19.25H138.5"/>
+      <path d="M145.25 16V40"/><path d="M156 28H176.5"/><path d="M173.25 28A8.75 8.75 0 1 0 170.69 34.19"/>
+      <path d="M186 40V15.5A6.25 6.25 0 0 1 192.25 9.25H195.5"/><path d="M179.5 19.25H193"/>
+      <path d="M228.25 16V40"/><path d="M228.25 28A8.75 8.75 0 0 1 245.75 28V40"/></g>
+    <g fill="${word}"><circle cx="145.25" cy="9.4" r="3.4"/><path d="M197.5 16H204.5L209.25 28.06L214 16H221L208 49H201L205.75 36.94Z"/></g></svg>`;
+}
+// docs/brand/logo-a-isaret-16.svg, değiştirilmeden
+const FAV = `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="3.5" fill="#00A3B8"/><g fill="none" stroke="#03272D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V10"/><path d="M7 12V6A2 2 0 0 1 9 4H13"/><path d="M11 8H13"/><path d="M11 12H12"/></g></svg>`;
+const FILE_MARK = "#00616E", FILE_WORD = "#03272D";
+
+/* ---------- Menü içeriği (SPEC.md sayfa haritası) ---------- */
+const MENU = [
+  { label: "Ürün", groups: [
+    { name: "Kaydet", items: ["Dosya yükleme", "Zoom'dan aktarma"] },
+    { name: "Anla", items: ["Yazıya dökme", "Konuşmacılar", "Özet ve kararlar", "Yapılacaklar"] },
+    { name: "Bul", items: ["Arşive sor", "Toplantı serileri"] },
+    { name: "Paylaş", items: ["Takvim daveti", "E-postayla paylaşma", "Ekip çalışma alanı"] } ] },
+  { label: "Çözümler", groups: [ { items: ["Yönetim ve liderler", "Proje ve yazılım ekipleri", "Satış ve müşteri görüşmeleri", "İnsan kaynakları ve işe alım", "Danışmanlık ve ajanslar"] } ] },
+  { label: "Entegrasyonlar", groups: [ { items: ["Zoom", "Takvim (Outlook, Google)", ["Microsoft Teams"], ["Google Meet"], ["Slack"], ["Trello ve Jira"]] } ] },
+  { label: "Kaynaklar", groups: [ { items: ["Yardım merkezi", "Güvenlik ve gizlilik", "Yenilikler", "İletişim"] } ] },
+  { label: "Kurumsal" },
+  { label: "Fiyatlandırma" }
+];
+const chev = `<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const linkItem = it => Array.isArray(it)
+  ? `<li><a class="dd-link" href="#" data-noop>${it[0]}<span class="soon-tag">yakında</span></a></li>`
+  : `<li><a class="dd-link" href="#" data-noop>${it}</a></li>`;
+const groupsHtml = m => m.groups.map(g => `<div class="dd-group">${g.name ? `<h4>${g.name}</h4>` : ""}<ul>${g.items.map(linkItem).join("")}</ul></div>`).join("");
+
+function navHtml(d, p, openIndex = -1, menuOpen = false) {
+  const items = MENU.map((m, i) => m.groups
+    ? `<li><button class="nav-item" type="button" aria-expanded="${i === openIndex}" aria-controls="${p}-dd${i}">${m.label}${chev}</button>
+         <div class="dd-panel ${m.groups.length > 1 ? "wide" : ""}" id="${p}-dd${i}" ${i === openIndex ? "" : "hidden"}>${groupsHtml(m)}</div></li>`
+    : `<li><a class="nav-item" href="#" data-noop>${m.label}</a></li>`).join("");
+  const mobile = MENU.map(m => m.groups
+    ? `<details><summary>${m.label}${chev}</summary>${groupsHtml(m)}</details>`
+    : `<a class="plain" href="#" data-noop>${m.label}</a>`).join("");
+  return `<header class="nav">
+      <a class="brand" href="#" data-noop aria-label="Briefyn ana sayfa">${logoH(d.c.se, d.c.bc, false)}</a>
+      <nav class="nav-links" aria-label="Ana menü"><ul>${items}</ul></nav>
+      <div class="nav-end">
+        <a class="btn btn-outline login" href="#" data-noop>Giriş yap</a>
+        <button class="btn btn-outline menu-btn" type="button" aria-expanded="${menuOpen}" aria-controls="${p}-mp">Menü</button>
+      </div>
+    </header>
+    <div class="mpanel" id="${p}-mp" ${menuOpen ? "" : "hidden"}>${mobile}
+      <div class="mp-actions"><a class="btn btn-grad" href="#" data-noop>Kayıt yükle</a><a class="btn btn-outline" href="#" data-noop>Giriş yap</a></div>
+    </div>`;
+}
+
+// Açılış panelindeki ses dalgası: çubuklar, sonra üç satıra açılan çizgiler
+function stageSvg(ink) {
+  const hs = [10, 22, 14, 34, 52, 30, 64, 40, 86, 58];
+  const bars = hs.map((h, i) => { const x = 8 + i * 12; return `<path d="M${x} ${84 - h / 2}V${84 + h / 2}"/>`; }).join("");
+  return `<svg viewBox="0 0 200 168" preserveAspectRatio="xMaxYMid slice" aria-hidden="true"><g fill="none" stroke="${ink}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${bars}
+    <path d="M128 50V118"/>
+    <path d="M128 70C150 70 158 36 196 36"/><path d="M128 84H196"/><path d="M128 98C150 98 158 132 196 132"/></g></svg>`;
+}
+
+function heroHtml(d, id) {
+  return `<section class="hero dark" ${id ? `id="${id}"` : ""}>
+      <div>
+        <h3>Toplantı biter, notlar hazır olur.</h3>
+        <p>Kaydı yükleyin; Briefyn kimin ne dediğini yazıya döker, alınan kararları ve yapılacak işleri ayrı ayrı çıkarır.</p>
+        <a class="btn btn-grad" href="#" data-noop>Kayıt yükle</a>
+      </div>
+      <div class="stage">${stageSvg(d.c.stageInk)}
+        <ol aria-label="Örnek toplantı notu">
+          <li><span><b>Özet:</b> ödeme ve iade akışı konuşuldu.</span></li>
+          <li><span><b>Karar:</b> ödeme sayfası pazartesi açılır.</span></li>
+          <li><span><b>Yapılacak:</b> Burak iadeyi perşembe dener.</span></li>
+        </ol>
+      </div>
+    </section>`;
+}
+
+function siteHtml(d, p, opts = {}) {
+  if (opts.heroOnly) return navHtml(d, p) + heroHtml(d, opts.heroId);
+  return `${navHtml(d, p, -1, !!opts.menuOpen)}
+    ${heroHtml(d, opts.heroId)}
+    ${opts.ddDemo ? `<section class="dd-demo"><p class="frame-label" style="color:${d.c.mu}">Açılır menü, "Ürün" açık</p><div class="holder">${navHtml(d, p + "x", 0).replace(/<div class="mpanel"[\s\S]*$/, "")}</div></section>` : ""}
+    <section class="soon">
+      <article class="card">
+        <p class="crumb">Ürün, Bul</p>
+        <h3>Arşive sor</h3>
+        <p class="desc">Geçmiş toplantılarınıza yazıyla soru sorun, cevabı hangi toplantıdan geldiğiyle birlikte görün.</p>
+        <span class="status">Bu sayfa hazırlanıyor</span>
+        <div class="actions"><a class="btn btn-grad" href="#" data-noop>Kayıt yükle</a><a class="back" href="#" data-noop>Ana sayfaya dön</a></div>
+      </article>
+      <div class="kit">
+        <h4>Düğmeler</h4>
+        <div class="row">
+          <span><a class="btn btn-grad" href="#" data-noop>Kayıt yükle</a><span class="cap">Birincil</span></span>
+          <span><a class="btn btn-outline" href="#" data-noop>Giriş yap</a><span class="cap">İkincil</span></span>
+          <span><span class="btn btn-grad is-hover">Kayıt yükle</span><span class="cap">Üzerine gelince</span></span>
+          <span><span class="btn btn-grad is-focus">Kayıt yükle</span><span class="cap">Klavye odağı</span></span>
+        </div>
+        <h4>Durum işaretleri</h4>
+        <div class="row">
+          <span class="badge" style="background:${STATUS.in}">Sırada bekliyor</span>
+          <span class="badge" style="background:${STATUS.su}">Yazıya döküldü</span>
+          <span class="badge" style="background:${STATUS.wa}">Bir konuşmacının adı yok</span>
+          <span class="badge" style="background:${STATUS.er}">Dosya 300 MB'tan büyük</span>
+        </div>
+      </div>
+    </section>
+    <footer class="foot dark">${logoH(d.g.mark, d.c.nc, false)}<a href="#" data-noop>Gizlilik</a><a href="#" data-noop>İletişim</a><span class="sp">Toplantılarınız yapay zekâ eğitiminde kullanılmaz.</span></footer>`;
+}
+
+/* ---------- Kontrast çiftleri ---------- */
+function pairsFor(d) {
+  const c = d.c, g = d.g;
+  return [
+    [c.bc, c.b2, "Sayfa metni, açık zeminde", 4.5],
+    [c.bc, c.b1, "Kart, menü şeridi, açılır menü, paneldeki not satırları", 4.5],
+    [c.mu, c.b2, "Açıklama cümleleri, açık zeminde", 4.5],
+    [c.mu, c.b1, "Kart açıklaması, menü grup adı", 4.5],
+    [c.se, c.b1, "Bağlantı ve ikincil düğme, kartta ve menüde", 4.5],
+    [c.se, c.b2, "Bağlantı ve ikincil düğme, açık zeminde", 4.5],
+    [c.sc, c.se, "İkincil düğme, üzerine gelince", 4.5],
+    [c.ctaInk, g.cta, "Degrade \"Kayıt yükle\" düğmesi, üzerine gelince de", 4.5],
+    [c.ht, g.hero, "Açılış başlığı (büyük yazı), koyu degrade", 3],
+    [c.hs, g.hero, "Açılış alt cümlesi, koyu degrade", 4.5],
+    [c.stageInk, g.stage, "Açılış panelindeki çizim (yazı değil)", 3],
+    [c.acc, c.ac, "\"Yakında\" işareti, \"Bu sayfa hazırlanıyor\"", 4.5],
+    [c.nc, g.foot, "Alt bilgi yazısı, bağlantıları ve logo yazısı", 4.5],
+    [c.pc, c.pr, "Düz birincil renk (degrade olmayan yerler için)", 4.5],
+    [c.se, c.b2, "Logo işareti ve klavye odağı, açık zeminde (yazı değil)", 3],
+    [c.ht, g.hero, "Klavye odağı, açılışta (yazı değil)", 3],
+    [g.mark, g.hero, "Degrade logo işareti, koyu açılışta (yazı değil)", 3],
+    [g.mark, g.foot, "Degrade logo işareti, alt bilgide (yazı değil)", 3],
+    [c.bc, STATUS.in, "Bilgi durumu", 4.5],
+    [c.bc, STATUS.su, "Başarı durumu", 4.5],
+    [c.bc, STATUS.wa, "Uyarı durumu", 4.5],
+    [c.bc, STATUS.er, "Hata durumu", 4.5]
+  ];
+}
+const sw = x => typeof x === "string"
+  ? `<span class="dot" style="background:${x}"></span><code>${x}</code>`
+  : `<span class="gdot" style="background:${barCss(x)}"></span><code>degrade</code>`;
+const demoBg = x => typeof x === "string" ? x : barCss(x);
+const verdict = (r, th) => `<span class="${r >= th ? "ok" : "bad"}">${r >= th ? "geçer" : "geçmez"}</span>`;
+let totalPairs = 0, totalFails = 0;
+
+function contrastTable(d) {
+  const rows = pairsFor(d).map(([f, b, where, th]) => {
+    const w = worst(f, b); totalPairs++; if (w.r < th) totalFails++;
+    const pos = s => s.t !== null ? ` (%${Math.round(s.t * 100)})` : "";
+    const at = (w.b.t !== null || w.f.t !== null)
+      ? `ön <code>${w.f.c}</code>${pos(w.f)}, zemin <code>${w.b.c}</code>${pos(w.b)}`
+      : "düz renk";
+    const fg = typeof f === "string" ? f : w.f.c;
+    return `<tr><td><span class="demo" style="color:${fg};background:${demoBg(b)}">Ağ Şİ</span></td><td>${where}<br><span class="small">${sw(f)} / ${sw(b)}</span></td><td class="small">${at}</td><td class="n">${tr(w.r)} : 1</td><td class="n">${tr(th, 1)} : 1</td><td>${verdict(w.r, th)}</td></tr>`;
+  });
+  return `<div class="tblwrap"><table><thead><tr><th>Örnek</th><th>Çift ve yer</th><th>En kötü nokta (degradede yüzde)</th><th>Oran</th><th>Eşik</th><th>Sonuç</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+
+function mapTable(d) {
+  const c = d.c, n = d.names;
+  const rows = [
+    ["base-100", c.b1, n.b1, "Kart, menü şeridi, açılır menü"],
+    ["base-200", c.b2, n.b2, "Sayfa zemini"],
+    ["base-300", c.b3, n.b3, "Kenar çizgisi, ayraç"],
+    ["base-content", c.bc, n.bc, "Ana metin"],
+    ["primary", c.pr, n.pr, "Degrade olmayan yerlerde birincil renk (ör. seçili sekme)"],
+    ["primary-content", c.pc, "", "Düz birincil rengin üstündeki yazı"],
+    ["secondary", c.se, n.se, "Bağlantı, ikincil düğme, klavye odağı, açık zeminde logo işareti"],
+    ["secondary-content", c.sc, "", "İkincil düğmenin üzerine gelince yazısı"],
+    ["accent", c.ac, n.ac, "\"Yakında\" işaretleri"],
+    ["accent-content", c.acc, "", "Vurgunun üstündeki yazı"],
+    ["neutral", c.ne, n.ne, "Koyu yüzeylerin düz hâli (koyu degradenin ilk durağı)"],
+    ["neutral-content", c.nc, "", "Alt bilgideki yazı"],
+    ["info", STATUS.in, "", "Bilgi durumu"], ["info-content", c.bc, "", ""],
+    ["success", STATUS.su, "", "Başarı durumu"], ["success-content", c.bc, "", ""],
+    ["warning", STATUS.wa, "", "Uyarı durumu"], ["warning-content", c.bc, "", ""],
+    ["error", STATUS.er, "", "Hata durumu"], ["error-content", c.bc, "", ""]
+  ];
+  const extra = [["muted (tema dışı)", c.mu, n.mu, "Açıklama cümleleri"], ["açılış başlığı (tema dışı)", c.ht, "", "Koyu degrade üstündeki başlık"], ["açılış alt cümlesi (tema dışı)", c.hs, "", "Koyu degrade üstündeki alt cümle"]];
+  const body = [...rows, ...extra].map(([k, v, nm, use]) => `<tr><td><code>${k}</code></td><td class="n">${sw(v)}</td><td class="small">${nm}</td><td class="n"><code>${oklch(v)}</code></td><td class="small">${use}</td></tr>`).join("");
+  return `<div class="tblwrap"><table><thead><tr><th>daisyUI adı</th><th>Değer</th><th>Ad</th><th>OKLCH</th><th>Kullanım</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function themeBlock(d) {
+  const c = d.c;
+  const m = [["base-100", c.b1], ["base-200", c.b2], ["base-300", c.b3], ["base-content", c.bc], ["primary", c.pr], ["primary-content", c.pc],
+    ["secondary", c.se], ["secondary-content", c.sc], ["accent", c.ac], ["accent-content", c.acc], ["neutral", c.ne], ["neutral-content", c.nc],
+    ["info", STATUS.in], ["info-content", c.bc], ["success", STATUS.su], ["success-content", c.bc], ["warning", STATUS.wa], ["warning-content", c.bc], ["error", STATUS.er], ["error-content", c.bc]];
+  return `@plugin "daisyui/theme" {
+  name: "briefyn";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+${m.map(([k, v]) => `  --color-${k}: ${oklch(v)}; /* ${v} */`).join("\n")}
+
+  --radius-selector: 2rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* daisyUI dışında: ikincil metin, açılış yazıları ve degradeler */
+@theme {
+  --color-muted: ${oklch(c.mu)}; /* ${c.mu} */
+  --color-hero-title: ${oklch(c.ht)}; /* ${c.ht} */
+  --color-hero-text: ${oklch(c.hs)}; /* ${c.hs} */
+}
+:root {
+  --grad-cta: ${css(d.g.cta)};
+  --grad-hero: ${css(d.g.hero)};
+  --grad-stage: ${css(d.g.stage)};
+  --grad-foot: ${css(d.g.foot)};
+  --grad-mark: ${css(d.g.mark)};
+}`;
+}
+
+function logoTiles(d) {
+  const heroBg = css(d.g.hero);
+  const fileDark = worst(FILE_MARK, d.g.hero), fileWordDark = worst(FILE_WORD, d.g.hero);
+  const fileLight = Math.min(ratio(FILE_MARK, d.c.b2), ratio(FILE_WORD, d.c.b2));
+  const ownDark = worst(d.g.mark, d.g.hero), ownLight = ratio(d.c.se, d.c.b2);
+  const v = (r, th) => `<span class="verdict" style="background:${r >= th ? "#2BCB8E" : "#FF5C5C"};color:#161A22">${tr(r)} : 1, ${r >= th ? "okunuyor" : "okunmuyor"}</span>`;
+  return `<div class="logos">
+    <div class="lg" style="background:${d.c.b2}">${logoH(FILE_MARK, FILE_WORD)}<p style="color:${d.c.bc}">Dosyanın kendisi (<code>logo-a.svg</code>), açık zeminde<br>${v(fileLight, 3)}</p></div>
+    <div class="lg" style="background:${heroBg}">${logoH(FILE_MARK, FILE_WORD)}<p style="color:${d.c.ht}">Dosyanın kendisi, koyu açılışta<br>${v(Math.min(fileDark.r, fileWordDark.r), 3)}</p></div>
+    <div class="lg" style="background:${d.c.b2}">${logoH(d.c.se, d.c.bc)}<p style="color:${d.c.bc}">Bu yönün renkleriyle, açık zeminde<br>${v(ownLight, 3)}</p></div>
+    <div class="lg" style="background:${heroBg}">${logoH(d.g.mark, d.c.nc)}<p style="color:${d.c.ht}">Bu yönün renkleriyle, koyu açılışta (işaret degradeli, yazı düz)<br>${v(Math.min(ownDark.r, worst(d.c.nc, d.g.hero).r), 3)}</p></div>
+  </div>
+  <div class="tabs" aria-label="Sekme simgesi"><div class="tab light">${FAV}Briefyn</div><div class="tab dark">${FAV}Briefyn</div></div>
+  <p class="small">Sekme simgesi (<code>logo-a-isaret-16.svg</code>) değişmedi; karesi camgöbeği. ${d.id === "c" ? "Bu yönle uyumlu." : "Bu yön seçilirse simgenin karesi yönün rengine göre yeniden çizilmeli; dosyaya bu turda dokunulmadı."}</p>`;
+}
+
+/* ---------- Sayfayı kur ---------- */
+document.getElementById("minis").innerHTML = DIRS.map(d => `
+  <div class="mini">
+    <h3>Yön ${d.id.toUpperCase()}: ${d.name}</h3>
+    <p class="sub">${d.short}</p>
+    <div class="gbar" style="background:${barCss(d.g.cta)}" title="Düğme degradesi"></div>
+    <div class="frame" id="mini-${d.id}" style="${dirVars(d)}"><div class="site">${siteHtml(d, "m" + d.id, { heroOnly: true })}</div></div>
+  </div>`).join("");
+
+document.getElementById("dirs").innerHTML = DIRS.map(d => `
+  <section class="dir" id="dir-${d.id}" aria-labelledby="h-${d.id}" style="${dirVars(d)}">
+    <div class="dir-head">
+      <div>
+        <h2 id="h-${d.id}">Yön ${d.id.toUpperCase()}: ${d.name}</h2>
+        <p><b>${d.short}.</b></p>
+        ${d.desc.map(s => `<p>${s}</p>`).join("")}
+      </div>
+      <div class="stops">
+        <h3>Degrade durakları</h3>
+        ${[["Düğme", d.g.cta], ["Açılış zemini (koyu)", d.g.hero], ["Açılış paneli", d.g.stage], ["Alt bilgi (koyu)", d.g.foot], ["Logo işareti, koyu zeminde", d.g.mark]].map(([l, g]) => `
+          <div class="stop-row"><span class="lbl">${l}</span>, ${g.angle}°
+            <div class="gbar" style="background:${barCss(g)}"></div>
+            <span class="hx">${g.stops.map(([c, p]) => `<code>${c}</code> %${Math.round(p * 100)}`).join(", ")}</span></div>`).join("")}
+      </div>
+    </div>
+    <p class="frame-label">Masaüstü</p>
+    <div class="frame"><div class="site" id="desk-${d.id}">${siteHtml(d, "d" + d.id, { ddDemo: true, heroId: "hero-desk-" + d.id })}</div></div>
+    <div class="dir-grid">
+      <div class="phone">
+        <p class="frame-label">Telefon, 390 piksel</p>
+        <div class="frame"><div class="site" id="phone-${d.id}">${siteHtml(d, "p" + d.id)}</div></div>
+      </div>
+      <div class="info">
+        <div><h3>Logo</h3>${logoTiles(d)}</div>
+        <div><h3>Kontrast, degradenin en kötü noktasında</h3>${contrastTable(d)}<p class="small" id="sum-${d.id}"></p></div>
+        <div><h3>daisyUI eşlemesi (düz renk gereken yerler)</h3>${mapTable(d)}
+          <details class="theme"><summary>Tema bloğu ve degrade değişkenleri</summary><pre class="theme">${themeBlock(d).replace(/</g, "&lt;")}</pre></details></div>
+      </div>
+    </div>
+  </section>`).join("");
+
+// Yön başına özet
+DIRS.forEach(d => {
+  const ps = pairsFor(d).map(([f, b, w, th]) => ({ r: worst(f, b).r, th, w }));
+  const fails = ps.filter(p => p.r < p.th).length;
+  const text = ps.filter(p => p.th === 4.5).sort((a, b) => a.r - b.r)[0];
+  document.getElementById("sum-" + d.id).textContent =
+    `${ps.length} çiftin ${ps.length - fails} tanesi eşiği geçiyor. Normal yazıdaki en düşük oran ${tr(text.r)} : 1 (${text.w}).`;
+});
+
+/* Fireflies tablosu */
+const hueDistRange = h => (h >= FF_RANGE[0] && h <= FF_RANGE[1]) ? 0 : Math.min(...FF_RANGE.map(f => { const x = Math.abs(h - f) % 360; return x > 180 ? 360 - x : x; }));
+const ffRows = [["Fireflies", "#6C31D9", "kendisi"], ["Fireflies", "#5D37F5", "kendisi"], ["Fireflies", "#4013F2", "kendisi"]];
+let minChromatic = { d: 999 };
+DIRS.forEach(d => {
+  const seen = new Set();
+  const list = [...Object.values(d.g).flatMap(g => g.stops.map(s => s[0])), d.c.pr, d.c.se, d.c.ac, d.c.ne];
+  list.forEach(h => { if (seen.has(h)) return; seen.add(h); ffRows.push([`Yön ${d.id.toUpperCase()}`, h]); });
+});
+document.querySelector("#ffTable tbody").innerHTML = ffRows.map(([who, h, self]) => {
+  const x = hsl(h), dist = hueDistRange(x.h), dark = x.l < 10;
+  if (!self && !dark && dist < minChromatic.d) minChromatic = { d: dist, h, who };
+  const cell = self ? self : dark ? `${Math.round(dist)}° <span class="small">(gözle siyah)</span>` : dist === 0 ? '<span class="bad">aralığın içinde</span>' : `${Math.round(dist)}°`;
+  return `<tr><td>${who}</td><td><span class="dot" style="background:${h}"></span><code>${h}</code></td><td class="n">${Math.round(x.h)}°</td><td class="n">%${Math.round(x.s)}</td><td class="n">%${Math.round(x.l)}</td><td class="n">${cell}</td></tr>`;
+}).join("");
+document.getElementById("ffNote").textContent =
+  `Gözle renkli görünen (açıklığı %10 ve üstü) duraklar arasında Fireflies aralığına en yakın olan ${minChromatic.who} ${minChromatic.h}: ${Math.round(minChromatic.d)}° uzakta. Hiçbir yön Fireflies'ın degradesini ya da duraklarını kullanmıyor.`;
+
+/* Belgenin kendi renkleri */
+const DOC = [["#161A22", "#EDEFF4", "Belge metni", 4.5], ["#4A5263", "#EDEFF4", "Belgedeki açıklamalar", 4.5], ["#4A5263", "#F8F9FB", "Tablo içindeki açıklamalar", 4.5], ["#1F4FA8", "#EDEFF4", "Belgedeki bağlantılar", 4.5], ["#161A22", "#2BCB8E", "\"geçer\" işareti", 4.5], ["#161A22", "#FF5C5C", "\"geçmez\" işareti", 4.5], ["#E9EDF5", "#161A22", "Tema bloğu", 4.5]];
+document.querySelector("#docTable tbody").innerHTML = DOC.map(([f, b, w, th]) => { const r = ratio(f, b); totalPairs++; if (r < th) totalFails++;
+  return `<tr><td><span class="demo" style="color:${f};background:${b}">Ağ Şİ</span>${sw(f)} / ${sw(b)}</td><td>${w}</td><td class="n">${tr(r)} : 1</td><td class="n">${tr(th, 1)} : 1</td><td>${verdict(r, th)}</td></tr>`; }).join("");
+document.body.dataset.pairs = totalPairs; document.body.dataset.fails = totalFails;
+
+/* Menü davranışı: tıklayınca aç/kapa, Esc ve dışarı tıklama kapatır */
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-noop]")) e.preventDefault();
+  const btn = e.target.closest(".nav-item[aria-controls], .menu-btn");
+  document.querySelectorAll(".nav-item[aria-expanded='true']").forEach(b => {
+    if (b !== btn && !b.closest(".dd-demo")) { b.setAttribute("aria-expanded", "false"); document.getElementById(b.getAttribute("aria-controls")).hidden = true; }
+  });
+  if (!btn) return;
+  const open = btn.getAttribute("aria-expanded") !== "true";
+  btn.setAttribute("aria-expanded", String(open));
+  document.getElementById(btn.getAttribute("aria-controls")).hidden = !open;
+});
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  document.querySelectorAll(".nav-item[aria-expanded='true'], .menu-btn[aria-expanded='true']").forEach(b => {
+    if (b.closest(".dd-demo")) return;
+    b.setAttribute("aria-expanded", "false"); document.getElementById(b.getAttribute("aria-controls")).hidden = true; b.focus();
+  });
+});
+
+/* ---------- Türkçe harf denetimi ---------- */
+const TR = "ğĞşŞıİçÇöÖüÜ".split("");
+async function checkFont(el) {
+  const fam = el.dataset.font;
+  try { await document.fonts.load(`400 40px "${fam}"`, TR.join("")); await document.fonts.load(`700 40px "${fam}"`, TR.join("")); } catch (e) {}
+  const cx = document.createElement("canvas").getContext("2d");
+  const has = ch => ["monospace", "serif"].some(base => {
+    cx.font = `40px ${base}`; const w0 = cx.measureText(ch).width;
+    cx.font = `40px "${fam}", ${base}`; return Math.abs(cx.measureText(ch).width - w0) > 0.01;
+  });
+  const missing = TR.filter(ch => !has(ch));
+  const loaded = [...document.fonts].some(f => f.family.replace(/"/g, "") === fam && f.status === "loaded");
+  if (!loaded) el.textContent = `${fam}: yazı tipi yüklenemedi (internet yok ya da Google Fonts erişilemiyor); denetim yapılamadı.`;
+  else if (missing.length === 0) el.textContent = `${fam}: tarayıcıda ölçüldü, ${TR.length} Türkçe harfin (${TR.join(" ")}) hepsi bu yazı tipinden çiziliyor.`;
+  else el.textContent = `${fam}: şu harfler bu yazı tipinde yok, yedekten geliyor: ${missing.join(" ")}`;
+}
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => document.querySelectorAll(".check").forEach(checkFont));
+</script>
+</body>
+</html>
