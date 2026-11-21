@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Briefyn renk paletleri</title>
+<style>
+  :root {
+    --page: #EDEEF0;
+    --page-ink: #1D1F24;
+    --page-ink-2: #555A63;
+    --page-line: #D3D6DB;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--page-ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .intro {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 40px 32px 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: end;
+  }
+  .intro h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.15; letter-spacing: -0.01em; }
+  .intro p { margin: 0; color: var(--page-ink-2); max-width: 62ch; }
+  .intro .note { font-size: 13px; }
+
+  /* Üç sütun; her satır aynı örneği yan yana tutar */
+  .board {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 32px 56px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 20px;
+    row-gap: 0;
+  }
+  .cell {
+    background: var(--bg);
+    color: var(--tx);
+    font-family: var(--fb);
+    padding: 18px 22px;
+    border-left: 1px solid var(--bd);
+    border-right: 1px solid var(--bd);
+  }
+  .cell.first { border-top: 1px solid var(--bd); border-radius: 14px 14px 0 0; padding-top: 24px; }
+  .cell.last { border-bottom: 1px solid var(--bd); border-radius: 0 0 14px 14px; padding-bottom: 24px; }
+  .cell.divide { border-top: 1px solid var(--bd); }
+  .sec {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 12px;
+    color: var(--t2);
+    margin: 0 0 10px;
+  }
+
+  /* Palet başlığı */
+  .pname { font-family: var(--fh); font-size: 26px; line-height: 1.1; margin: 0 0 6px; color: var(--tx); letter-spacing: -0.01em; }
+  .pwhy { margin: 0; color: var(--t2); font-size: 14.5px; max-width: 52ch; }
+  .strip { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 14px; }
+  .strip span { flex: 1; }
+  .strip span.wide { flex: 3; }
+
+  /* Örnek: üst menü */
+  .nav {
+    display: flex; align-items: center; gap: 0.75em;
+    background: var(--sf);
+    border: 1px solid var(--bd);
+    border-radius: 10px;
+    padding: 7px 7px 7px 12px;
+    font-family: var(--fb);
+    font-size: 12.5px;
+  }
+  .logo { font-family: var(--fh); font-weight: 700; color: var(--tx); font-size: 1.2em; display: flex; align-items: center; gap: 6px; margin-right: auto; }
+  .logo i { width: 14px; height: 14px; border-radius: 4px; background: var(--pr); display: inline-block; position: relative; }
+  .logo i::after { content: ""; position: absolute; left: 3px; right: 3px; bottom: 3px; height: 2px; background: var(--on); border-radius: 1px; }
+  .nav a { color: var(--t2); text-decoration: none; white-space: nowrap; }
+  .btn {
+    background: var(--pr); color: var(--on);
+    border: 0; border-radius: 8px;
+    padding: 7px 10px;
+    font: 600 1em/1.2 var(--fb);
+    white-space: nowrap; cursor: pointer;
+  }
+  .btn:focus-visible, .nav a:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+
+  /* Örnek: açılış */
+  .hero h2 { font-family: var(--fh); font-size: 32px; line-height: 1.08; letter-spacing: -0.02em; margin: 6px 0 10px; color: var(--tx); font-weight: 700; }
+  .hero p { margin: 0; color: var(--t2); font-size: 15.5px; line-height: 1.55; max-width: 46ch; }
+
+  /* Örnek: özet kartı */
+  .card { background: var(--sf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px 16px 14px; }
+  .card h3 { font-family: var(--fh); font-size: 17px; margin: 0; color: var(--tx); }
+  .meta { color: var(--t2); font-size: 13px; margin: 2px 0 12px; }
+  .status { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .pill { font: 600 12px/1 var(--fb); padding: 5px 8px; border-radius: 999px; }
+  .ok { color: var(--ok); background: var(--okT); }
+  .wa { color: var(--wa); background: var(--waT); }
+  .er { color: var(--er); background: var(--erT); }
+  .line { margin: 0 0 6px; font-size: 14.5px; line-height: 1.55; }
+  .line b { color: var(--pr); font-weight: 650; }
+  .block { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--bd); }
+  .tag { display: inline-block; font: 650 12px/1 var(--fb); padding: 5px 8px; border-radius: 6px; margin-bottom: 6px; }
+  .tag.karar { color: var(--pr); background: var(--prT); }
+  .tag.is { color: var(--ac); background: var(--acT); }
+  .block p { margin: 0; font-size: 14.5px; line-height: 1.5; }
+  .block small { display: block; color: var(--t2); font-size: 13px; margin-top: 3px; }
+
+  /* Örnek: arşive sor */
+  .chat { display: flex; flex-direction: column; gap: 8px; }
+  .q { align-self: flex-end; max-width: 82%; background: var(--pr); color: var(--on); padding: 9px 12px; border-radius: 14px 14px 4px 14px; font-size: 14.5px; line-height: 1.45; }
+  .a { align-self: flex-start; max-width: 92%; background: var(--acT); color: var(--tx); padding: 10px 12px; border-radius: 14px 14px 14px 4px; font-size: 14.5px; line-height: 1.5; }
+  .a .src { display: block; color: var(--t2); font-size: 12.5px; margin-top: 6px; }
+  .who { font: 600 12px/1 var(--fb); color: var(--t2); }
+  .who.r { align-self: flex-end; }
+
+  /* Örnek: güven rozeti */
+  .badge { display: inline-flex; align-items: center; gap: 8px; background: var(--prT); color: var(--pr); border-radius: 999px; padding: 7px 13px 7px 10px; font: 600 13.5px/1.2 var(--fb); }
+  .badge svg { flex: none; }
+
+  /* Renk rolleri */
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 0; padding: 0; list-style: none; }
+  .roles li { display: flex; align-items: center; gap: 8px; min-width: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 12.5px; color: var(--tx); }
+  .roles .sw { flex: none; width: 26px; height: 26px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); }
+  .roles .rl { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .roles .rl span:last-child { color: var(--t2); font-variant-numeric: tabular-nums; }
+  .tints { margin-top: 10px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 12px; color: var(--t2); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .tints span { display: inline-flex; align-items: center; gap: 5px; }
+  .tints i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,.1); display: inline-block; }
+
+  /* Yazı tipleri */
+  .fonts { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+  .fontrow { margin-bottom: 10px; }
+  .fontrow .spec { font-size: 22px; line-height: 1.2; color: var(--tx); margin-bottom: 2px; }
+  .fontrow .lbl { color: var(--t2); }
+  .fontrow .state { color: var(--t2); font-size: 12px; }
+  .fonts .lic { color: var(--t2); font-size: 12px; margin: 4px 0 0; }
+
+  /* Kontrast tablosu */
+  table { width: 100%; border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 12.5px; }
+  td { padding: 4px 0; border-bottom: 1px solid var(--bd); vertical-align: middle; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 8px; }
+  td .demo { display: inline-block; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: 600; border: 1px solid rgba(0,0,0,.06); }
+  .min { margin: 10px 0 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+  .min strong { font-size: 18px; }
+  .fail { color: #B00020; font-weight: 700; }
+  .dist { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 12.5px; color: var(--t2); margin: 10px 0 0; }
+
+  @media (max-width: 1360px) {
+    .intro { padding-left: 16px; padding-right: 16px; }
+    .board { padding-left: 16px; padding-right: 16px; column-gap: 14px; }
+    .cell { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (max-width: 980px) {
+    .intro { grid-template-columns: 1fr; padding: 28px 16px 20px; gap: 12px; }
+    .board { grid-template-columns: minmax(0, 1fr); padding: 0 16px 40px; }
+    .board .cell.last { margin-bottom: 24px; }
+    .nav { flex-wrap: wrap; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div>
+    <h1>Briefyn için üç renk yönü</h1>
+    <p>Üçü de beyaza yakın zeminli, uzun not okumaya göre kurulu. Her sütunda aynı örnekler var; satırlar yan yana durduğu için menüyü menüyle, kartı kartla karşılaştırabilirsiniz.</p>
+  </div>
+  <p class="note">Kontrast oranları bu sayfanın içindeki küçük bir betikle, WCAG 2 bağıl parlaklık formülüyle hesaplanıyor; tablodaki her çift sayfada gerçekten kullanılan bir yazı ve zemin eşleşmesi. Yazı tipleri dışarıdan yüklenmiyor: bilgisayarınızda kurulu değilse yerine sistem yazısı görünür ve sütunda hangisinin göründüğü yazar.</p>
+</header>
+
+<main class="board" id="board"></main>
+
+<script>
+const PALETTES = [
+  {
+    id: "p1",
+    name: "Mürekkep",
+    why: "Kâğıt beyazı üstünde dolma kalem mavisi: kurumsal ekiplere tanıdık gelen sakin bir mavi; teknoloji hissini küçük dozdaki camgöbeği vurgu veriyor.",
+    fh: "Schibsted Grotesk", fhFallback: "sans",
+    fb: "Source Serif 4", fbFallback: "serif",
+    fhStack: '"Schibsted Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    fbStack: '"Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif',
+    fontWhy: "Uzun döküm ve notlar tırnaklı yazıyla daha rahat okunur; başlıklar sıkı bir grotesk.",
+    t: { bg:"#F7F8FA", sf:"#FFFFFF", tx:"#15203A", t2:"#4D5870", bd:"#DCE1EA", pr:"#1F4E8C", on:"#FFFFFF", ac:"#0B6E80", ok:"#1E7046", wa:"#8F5300", er:"#B42335",
+         prT:"#E8EEF7", acT:"#E2F2F4", okT:"#E5F3EA", waT:"#FBF0DC", erT:"#FBE9EB" }
+  },
+  {
+    id: "p2",
+    name: "Süsen ve grafit",
+    why: "İstenen mor, siyah, beyaz üçlüsü; mor, rakibin parlak menekşesinden maviye doğru çekilip doygunluğu yarıdan aşağı indirilmiş tozlu bir süsen tonu.",
+    fh: "Space Grotesk", fhFallback: "sans",
+    fb: "IBM Plex Sans", fbFallback: "sans",
+    fhStack: '"Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    fbStack: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    fontWhy: "Başlıkta teknik, biraz mühendis çizimi havası; metinde kurumsal ve çok dilli bir aile.",
+    t: { bg:"#F8F7FA", sf:"#FFFFFF", tx:"#1B1A22", t2:"#55546A", bd:"#E2E0EA", pr:"#4F4691", on:"#FFFFFF", ac:"#2D6399", ok:"#1F7046", wa:"#8F5300", er:"#B3261E",
+         prT:"#EEECF7", acT:"#E7EFF8", okT:"#E5F3EA", waT:"#FBF0DC", erT:"#FBE8E7" }
+  },
+  {
+    id: "p3",
+    name: "Petrol ve buz",
+    why: "Buz beyazı zemin, derin petrol mavisi ve küçük bir mor dokunuş: mor ve düz maviden ayrışan, hem teknik hem güven veren üçüncü yol.",
+    fh: "Sora", fhFallback: "sans",
+    fb: "Atkinson Hyperlegible Next", fbFallback: "sans",
+    fhStack: '"Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    fbStack: '"Atkinson Hyperlegible Next", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+    fontWhy: "Başlıkta geniş, geometrik ve fütüristik; metinde harfleri birbirinden kolay ayrılan, okunurluk için çizilmiş bir aile.",
+    t: { bg:"#F4F8F8", sf:"#FFFFFF", tx:"#0F2427", t2:"#465A5D", bd:"#D5E0E1", pr:"#0D5C63", on:"#FFFFFF", ac:"#5A4E9E", ok:"#2B6E2F", wa:"#8F5300", er:"#B42318",
+         prT:"#E3F0F1", acT:"#EEECF7", okT:"#E7F2E7", waT:"#FBF0DC", erT:"#FBE9E7" }
+  }
+];
+
+const ROLES = [
+  ["bg","Zemin"],["sf","Yüzey, kart"],["tx","Ana metin"],["t2","İkincil metin"],
+  ["bd","Kenar çizgisi"],["pr","Ana renk, düğme"],["on","Düğme üstü yazı"],["ac","Vurgu"],
+  ["ok","Başarı"],["wa","Uyarı"],["er","Hata"]
+];
+const TINTS = [["prT","ana renk"],["acT","vurgu"],["okT","başarı"],["waT","uyarı"],["erT","hata"]];
+
+// Sayfada gerçekten kullanılan yazı / zemin çiftleri
+const PAIRS = [
+  ["tx","bg","Ana metin / zemin"],
+  ["tx","sf","Ana metin / kart"],
+  ["t2","bg","İkincil metin / zemin"],
+  ["t2","sf","İkincil metin / kart"],
+  ["on","pr","Düğme yazısı / düğme"],
+  ["pr","sf","Ana renk yazı / kart"],
+  ["ac","sf","Vurgu yazı / kart"],
+  ["ac","bg","Vurgu yazı / zemin"],
+  ["pr","prT","Karar etiketi, rozet"],
+  ["ac","acT","Yapılacak etiketi"],
+  ["tx","acT","Cevap baloncuğu metni"],
+  ["t2","acT","Cevaptaki kaynak satırı"],
+  ["ok","okT","Başarı etiketi"],
+  ["wa","waT","Uyarı etiketi"],
+  ["er","erT","Hata etiketi"],
+  ["ok","sf","Başarı yazı / kart"],
+  ["wa","sf","Uyarı yazı / kart"],
+  ["er","sf","Hata yazı / kart"]
+];
+
+// WCAG 2.x bağıl parlaklık ve kontrast oranı
+function lum(hex) {
+  const c = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255)
+    .map(v => v <= 0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+  return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
+}
+function ratio(a,b) {
+  const x = lum(a), y = lum(b);
+  return (Math.max(x,y)+0.05) / (Math.min(x,y)+0.05);
+}
+function hsl(hex) {
+  const [r,g,b] = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255);
+  const mx = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx+mn)/2, d = mx-mn;
+  let h = 0, s = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2*l - 1));
+    h = mx === r ? ((g-b)/d) % 6 : mx === g ? (b-r)/d + 2 : (r-g)/d + 4;
+    h = Math.round(h*60); if (h < 0) h += 360;
+  }
+  return { h, s: Math.round(s*100), l: Math.round(l*100) };
+}
+const fmt = n => n.toFixed(2).replace(".", ",");
+
+// Yazı tipi bu bilgisayarda kurulu mu? Genişlik karşılaştırmasıyla bakılır.
+const ctx = document.createElement("canvas").getContext("2d");
+function installed(name) {
+  const s = "Ğğ Şş Iı İi Öö Üü Çç Briefyn 0123";
+  return ["monospace","serif","sans-serif"].some(base => {
+    ctx.font = `40px ${base}`; const w0 = ctx.measureText(s).width;
+    ctx.font = `40px "${name}", ${base}`; return ctx.measureText(s).width !== w0;
+  });
+}
+function fallbackName(kind) {
+  const mac = /Mac/.test(navigator.platform);
+  if (kind === "serif") return mac ? "Iowan Old Style" : "Georgia";
+  return mac ? "San Francisco (Mac sistem yazısı)" : "Segoe UI ya da sistem yazısı";
+}
+
+const shield = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5 2.75 3.5v4c0 3.1 2.2 5.6 5.25 7 3.05-1.4 5.25-3.9 5.25-7v-4L8 1.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m5.6 8 1.7 1.7 3.2-3.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const SECTIONS = [
+  { key: "head", render: p => `
+      <h2 class="pname">${p.name}</h2>
+      <p class="pwhy">${p.why}</p>
+      <div class="strip" aria-hidden="true">
+        <span class="wide" style="background:${p.t.pr}"></span><span style="background:${p.t.ac}"></span>
+        <span style="background:${p.t.tx}"></span><span style="background:${p.t.prT}"></span><span style="background:${p.t.bg};box-shadow:inset 0 0 0 1px ${p.t.bd}"></span>
+      </div>` },
+  { key: "nav", label: "Üst menü", render: () => `
+      <nav class="nav" aria-label="Örnek menü">
+        <span class="logo"><i></i>Briefyn</span>
+        <a href="#" onclick="return false">Ürün</a>
+        <a href="#" onclick="return false">Çözümler</a>
+        <a href="#" onclick="return false">Fiyatlandırma</a>
+        <a href="#" onclick="return false">Giriş</a>
+        <button class="btn" type="button">Kayıt yükle</button>
+      </nav>` },
+  { key: "hero", label: "Açılış", render: () => `
+      <div class="hero">
+        <h2>Toplantı biter, notlar hazır olur.</h2>
+        <p>Kaydı yükleyin; Briefyn kimin ne dediğini yazıya döker, alınan kararları ve yapılacak işleri ayrı ayrı çıkarır.</p>
+      </div>` },
+  { key: "card", label: "Toplantı özeti kartı", render: () => `
+      <article class="card">
+        <h3>Haftalık ürün toplantısı</h3>
+        <p class="meta">12 Kasım, 42 dakika, 4 kişi</p>
+        <div class="status">
+          <span class="pill ok">Yazıya döküldü</span>
+          <span class="pill wa">Bir konuşmacının adı yok</span>
+          <span class="pill er">2 dakika ses anlaşılmadı</span>
+        </div>
+        <p class="line"><b>Elif Şahin:</b> Ödeme sayfasını cuma günü yayına alabiliriz.</p>
+        <p class="line"><b>Burak Yıldız:</b> Önce iade adımlarını bir kez baştan sona denemek istiyorum.</p>
+        <div class="block">
+          <span class="tag karar">Karar</span>
+          <p>Ödeme sayfası pazartesi yayına girecek.</p>
+        </div>
+        <div class="block">
+          <span class="tag is">Yapılacak</span>
+          <p>İade adımlarını baştan sona dene.</p>
+          <small>Sorumlu: Burak Yıldız, son gün perşembe</small>
+        </div>
+      </article>` },
+  { key: "chat", label: "Arşive sor", render: () => `
+      <div class="chat">
+        <span class="who r">Siz</span>
+        <div class="q">Ekimde fiyat artışı için ne karar vermiştik?</div>
+        <span class="who">Briefyn</span>
+        <div class="a">Artışın ocak ayına ertelenmesine karar verildi. Gerekçe, yıl sonu sözleşmelerinin eski fiyatla yenilenmesiydi.
+          <span class="src">Kaynak: Satış planlama toplantısı, 3 Ekim</span></div>
+      </div>` },
+  { key: "badge", label: "Güven rozeti", render: () => `
+      <span class="badge">${shield}Verileriniz yapay zekâ eğitiminde kullanılmaz</span>` },
+  { key: "roles", label: "Renk rolleri", render: p => `
+      <ul class="roles">${ROLES.map(([k,n]) => `
+        <li><span class="sw" style="background:${p.t[k]}"></span><span class="rl"><span>${n}</span><span>${p.t[k]}</span></span></li>`).join("")}
+      </ul>
+      <div class="tints">Etiket zeminleri: ${TINTS.map(([k,n]) => `<span><i style="background:${p.t[k]}"></i>${n} ${p.t[k]}</span>`).join("")}</div>` },
+  { key: "fonts", label: "Yazı tipi çifti", render: p => {
+      const hOk = installed(p.fh), bOk = installed(p.fb);
+      const st = (ok, kind) => ok ? "Bu bilgisayarda kurulu, gerçek hâli görünüyor." : `Bu bilgisayarda kurulu değil; örneklerde yerine ${fallbackName(kind)} görünüyor.`;
+      return `<div class="fonts">
+        <div class="fontrow"><div class="spec" style="font-family:${p.fhStack.replace(/"/g,"'")};font-weight:700">${p.fh}</div>
+          <div class="lbl">Başlık. Ğ ğ Ş ş I ı İ i Ö ö Ü ü Ç ç</div><div class="state">${st(hOk, p.fhFallback)}</div></div>
+        <div class="fontrow"><div class="spec" style="font-family:${p.fbStack.replace(/"/g,"'")}">${p.fb}</div>
+          <div class="lbl">Metin. Ğ ğ Ş ş I ı İ i Ö ö Ü ü Ç ç</div><div class="state">${st(bOk, p.fbFallback)}</div></div>
+        <p class="lic">${p.fontWhy} İkisi de SIL Open Font License 1.1; kendi sunucumuzdan sunulabilir.</p>
+      </div>`; } },
+  { key: "contrast", label: "Kontrast oranları (AA eşiği 4,5)", render: p => {
+      const rows = PAIRS.map(([f,b,n]) => ({ f, b, n, r: ratio(p.t[f], p.t[b]) }));
+      const min = rows.reduce((a,c) => c.r < a.r ? c : a);
+      const h = hsl(p.t.pr), ff = hsl("#5D37F5");
+      return `<table><tbody>${rows.map(r => `
+          <tr><td><span class="demo" style="color:${p.t[r.f]};background:${p.t[r.b]}">Ağ</span>${r.n}</td>
+          <td class="n ${r.r < 4.5 ? "fail" : ""}">${fmt(r.r)} : 1</td></tr>`).join("")}
+        </tbody></table>
+        <p class="min">En düşük: <strong>${fmt(min.r)} : 1</strong> (${min.n.toLowerCase()})${min.r < 4.5 ? ' <span class="fail">AA altında</span>' : ", tüm çiftler AA'yı geçiyor."}</p>
+        <p class="min" style="color:var(--t2);font-size:12.5px">Kenar çizgisi yalnız kart sınırını çizer, üstünde yazı yok; zemine oranı ${fmt(ratio(p.t.bd,p.t.bg))} : 1.</p>
+        <p class="dist">Rakibin düğme moru #5D37F5: ton ${ff.h}°, doygunluk %${ff.s}. Bu paletin ana rengi ${p.t.pr}: ton ${h.h}°, doygunluk %${h.s}, açıklık %${h.l}.</p>`; } }
+];
+
+const board = document.getElementById("board");
+SECTIONS.forEach((sec, si) => {
+  PALETTES.forEach((p, pi) => {
+    const cell = document.createElement("section");
+    cell.className = "cell" + (si === 0 ? " first" : "") + (si === SECTIONS.length - 1 ? " last" : "") + (sec.key === "roles" ? " divide" : "");
+    cell.style.cssText = Object.entries(p.t).map(([k,v]) => `--${k}:${v}`).join(";") + `;--fh:${p.fhStack};--fb:${p.fbStack}`;
+    cell.style.setProperty("order", "0");
+    cell.dataset.order = pi * 100 + si;
+    cell.innerHTML = (sec.label ? `<p class="sec">${sec.label}</p>` : "") + sec.render(p);
+    board.appendChild(cell);
+  });
+});
+// Dar ekranda paletler alt alta: hücreleri palet sırasına diz
+const mq = matchMedia("(max-width: 980px)");
+const reorder = () => board.querySelectorAll(".cell").forEach(c => c.style.order = mq.matches ? c.dataset.order : 0);
+mq.addEventListener("change", reorder); reorder();
+// Menü örneği dar sütuna sığmazsa yazıyı biraz küçült (en az 10,5 px)
+function fitNav() {
+  document.querySelectorAll(".nav").forEach(n => {
+    let fs = 12.5; n.style.fontSize = fs + "px";
+    while (n.scrollWidth > n.clientWidth && fs > 10.5) { fs -= 0.25; n.style.fontSize = fs + "px"; }
+  });
+}
+fitNav(); addEventListener("resize", fitNav);
+if (document.fonts) document.fonts.ready.then(fitNav);
+</script>
+</body>
+</html>

@@ -27,13 +27,14 @@ Yapılacak her iş burada, tek listede, önem sırasıyla. Sıradaki iş en üst
    - renkli ve canlı görünüm: koyu tema yok, zemin bembeyaz değil, petrol/camgöbeği mavisi tonları;
    - logo A (ses dalgası not satırına dönüşüyor);
    - tanıtım adresleri `/tr/...` önekli, sayfa adları İngilizce;
-   - sırayla gidilir, önce masaüstü ana sayfa (scroll-craft); menüdeki alt sayfalar "yakında" sayfası olarak açılır;
+   - sırayla gidilir, önce ana sayfa (scroll-craft); menüdeki alt sayfalar "yakında" sayfası olarak açılır;
+   - her sayfa masaüstü ve mobil hâliyle birlikte biter;
    - ana sayfadaki güven sözü belgelere dayanır:
      - "toplantılarınız yapay zekâ eğitiminde kullanılmaz" denebilir. Groq'un sözleşmesi girdi ve çıktıyla eğitimi yasaklıyor (madde 4.2);
      - "hiç saklanmaz" denmez, çünkü döküm bizde şifreli saklanıyor (ADR-0002) ve Groq 30 güne kadar kayıt tutabiliyor;
      - doğru söz: ses analizden sonra silinir, döküm şifreli saklanır.
    
-   Ana sayfadan sonra sıradakiler: arşive sor sohbet ekranı, ardından konuşmacı adlarıyla toplantı sayfası. Masaüstü ana sayfa bitince **mobil görünüm** ele alınır; Ulaş'a hatırlatılır. Araştırma notu: Beyin `knowledge/concepts/briefyn-fireflies-arastirmasi.md`.
+   İlk adım `SPEC.md`. Ana sayfadan sonra sıradakiler: arşive sor sohbet ekranı, ardından konuşmacı adlarıyla toplantı sayfası. Araştırma notu: Beyin `knowledge/concepts/briefyn-fireflies-arastirmasi.md`.
 5. **Dış araçlara aktarma** (`/spec` ile başlar): takvim adımı bitti (e-postayla takvim daveti, ADR-0015). Kalanlar: Slack/Teams'e özet; Trello/Jira'ya aksiyon kullanıcı isteyince; Microsoft Graph ile takvim hesabı bağlama yayından sonra (kurumsal hesapta yönetici onayı istiyor). Takvim için açık kalan: Gmail / Google Takvim'de davet ve takvim dosyası denenmedi (`docs/raporlar/2026-11-20-takvim-daveti-deneme.md`). Takvim spec'inin 6. ölçütü (indirilen dosyanın Outlook web ve Google Takvim'de açılması) de denenmedi.
 6. **Arşive soru sor doğruluğu:**
    - kararı sonradan değişen konuda arama eski kararı öne alabiliyor (altın soru Q06);
