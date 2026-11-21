@@ -29,7 +29,7 @@ public sealed class SiteCatalog
         new("product", "Paylaş", "calendar", "Takvim daveti", "Tarihi olan yapılacaklar takvim daveti olarak e-postanıza gelir.", true),
         new("product", "Paylaş", "share", "E-postayla paylaşma", "Toplantının özetini ekip arkadaşlarınıza e-postayla gönderin.", true),
         new("product", "Paylaş", "workspaces", "Ekip çalışma alanı", "Ekibinizi davet edin, toplantılarınızı ortak bir alanda tutun.", true),
-        new("solutions", null, "leadership", "Yönetim ve liderler", "Bütün toplantıların kararlarını ve açık işlerini tek yerden görün.", true),
+        new("solutions", null, "leadership", "Yönetim ve liderler", "Toplantı serilerinin kararlarını ve açık işlerini tek yerden görün.", true),
         new("solutions", null, "project-teams", "Proje ve yazılım ekipleri", "Toplantıdan çıkan işleri kaçırmadan sahiplerine atayın.", true),
         new("solutions", null, "sales", "Satış ve müşteri görüşmeleri", "Müşteriyle ne konuşulduğunu ve ne söz verildiğini kayıt altında tutun.", true),
         new("solutions", null, "hr", "İnsan kaynakları ve işe alım", "Not tutmayı bırakın, görüşmenin kendisine odaklanın.", true),
