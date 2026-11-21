@@ -267,6 +267,7 @@ try
         o.Limits.MaxRequestBodySize = (c.GetValue("Upload:MaxMegabytes", 300) + 5) * 1024L * 1024L);
 
     builder.Services.AddSignalR();
+    builder.Services.AddSingleton<MeetingWeb.Services.PublicSite.SiteCatalog>();
     builder.Services.AddRazorPages();
 
     var app = builder.Build();

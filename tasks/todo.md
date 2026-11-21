@@ -18,7 +18,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: yok. İşçi: Opus alt ajanı (`frontend-design`), Beyin notunun palet turları brifte.
   - Dosyalar: `docs/brand/onizleme-1.html`, `docs/brand/logo-a.svg`, `docs/brand/logo-a-isaret-16.svg`.
 
-- [ ] **Görev 3: Katalog ve "yakında" sayfaları** (M)
+- [x] **Görev 3: Katalog ve "yakında" sayfaları** (M) · bitti 2026-11-21: 28 kayıt, odaklı testler 98/98. Görünüm dosyaları şimdilik sınıfsız, anlamsal HTML (Codex); görsel kodu plana göre Görev 5-6'da Opus yazar. Katalog cümleleri koddaki özelliklere bakılarak yazıldı (takvim: e-postayla .ics daveti; Google takvim bağlama yok).
   - Kabul: `SiteCatalog` spec'teki sayfa haritasının hepsini tutuyor (bölüm, grup, adres adı, başlık, açıklama, var mı). `/tr/{section}/{slug}`, `/tr/enterprise`, `/tr/pricing` 200 dönüyor; sayfada başlık, açıklama, "Bu sayfa hazırlanıyor", "Kayıt yükle" (`/Upload`), ana sayfa bağlantısı ve `noindex` var. Katalogda olmayan adres 404. Sayfa `_PublicLayout` kullanıyor (en sade hâli: logo yazısı, boş menü yeri, alt bilgi), `bootstrap.min.css` ve dış adres yüklemiyor. Görünen metinde uzun tire yok. Yeni handler `WorkspaceBoundaryTests`'te.
   - Doğrula: odaklı test (katalogdaki her adres döngüyle); `WorkspaceBoundaryTests`.
   - Bağımlılık: 1.
