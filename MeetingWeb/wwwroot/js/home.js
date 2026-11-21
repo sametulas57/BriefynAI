@@ -412,6 +412,11 @@
   hero.querySelector(".hh-panel").setAttribute("data-sc-parallax", small.matches ? "-1.1" : "0.5");
   journey.setAttribute("data-sc-act", "pin");
   journey.setAttribute("data-sc-span", small.matches ? "4.4" : "5");
+  const closing = document.querySelector("[data-home-closing]");
+  if (closing) {
+    closing.setAttribute("data-sc-act", "pin");
+    closing.setAttribute("data-sc-span", small.matches ? "1.2" : "1.3");
+  }
 
   const sceneHost = journey.querySelector("[data-hj-scene]");
   const mount = () => {
@@ -428,6 +433,28 @@
     window.addEventListener("scroll", request, { passive: true });
     window.addEventListener("resize", request, { passive: true });
     update();
+
+    // Kapanış: işaretin çizimi CSS'te (--sc-p). Doğrulama aracı için boyanan değer ve son çeyrekteki yazılmış bekleme yayınlanır.
+    if (closing) {
+      const mark = closing.querySelector("[data-hc-mark]");
+      const cta = closing.querySelector("[data-hc-cta]");
+      const publish = () => {
+        const p = parseFloat(closing.style.getPropertyValue("--sc-p")) || 0;
+        mark.setAttribute("data-sc-verify-state", clamp01(p / 0.75).toFixed(2));
+        mark.setAttribute("data-sc-verify-hold", p >= 0.75 ? "true" : "false");
+      };
+      publish();
+      window.addEventListener("scroll", () => requestAnimationFrame(publish), { passive: true });
+      // Klavyeyle "Kayıt yükle"ye gelindiğinde pinli bölüm, çağrının görünür olduğu yere getirilir (verify.md: motor pinli bölümde bunu yapamaz).
+      cta.addEventListener("focus", () => {
+        const cue = cta.closest("[data-sc-cue]");
+        if (parseFloat(getComputedStyle(cue).opacity) > 0.85) return;
+        const top = closing.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: top + (closing.offsetHeight - window.innerHeight) * 0.5, behavior: "instant" });
+        // Motorun kendi focusin işleyicisi bundan sonra çalışır; ipucunun açıldığını görsün diye durum hemen okunur.
+        if (main && main.read) main.read();
+      });
+    }
     // Pencere telefon ve masaüstü genişliği arasında geçerse sahne o düzene göre yeniden kurulur.
     small.addEventListener("change", () => {
       scenes.splice(scenes.indexOf(scene), 1);

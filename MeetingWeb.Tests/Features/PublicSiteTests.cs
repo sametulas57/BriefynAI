@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using MeetingWeb.Services.PublicSite;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using static MeetingWeb.Tests.Infrastructure.FormHelpers;
 
@@ -149,6 +150,107 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.DoesNotContain("<img", strip);
         foreach (var meeting in new[] { "Sprint planlama", "Müşteri görüşmesi", "Birebir görüşme" })
             Assert.Contains(meeting, strip);
+    }
+
+    // Ana sayfa (Görev 10): kimler için, güven, sık sorulanlar, kapanış. SPEC "Ana sayfa içeriği" 4-7, BRIEF.md 5. ve 9. bölümler.
+    private const string NotUsedForTraining = "Toplantılarınız yapay zekâ eğitiminde kullanılmaz.";
+    private const string AudioDeletedTranscriptEncrypted = "Ses analizden sonra silinir, döküm şifreli saklanır.";
+
+    [Fact]
+    public async Task Home_sections_come_in_the_planned_order()
+    {
+        var html = await HomeHtmlAsync();
+        var markers = new[] { "data-home-hero", "data-home-strip", "data-home-journey", "data-home-audience", "data-home-trust", "data-home-faq", "data-home-closing" };
+
+        var positions = markers.Select(marker => html.IndexOf(marker, StringComparison.Ordinal)).ToList();
+
+        Assert.DoesNotContain(-1, positions);
+        Assert.Equal(positions.Order(), positions);
+    }
+
+    [Fact]
+    public async Task Audience_lists_the_five_solutions_exactly_as_the_catalog_says()
+    {
+        var solutions = _app.Services.GetRequiredService<SiteCatalog>().Entries.Where(entry => entry.Section == "solutions").ToList();
+        var audience = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-audience"));
+        var roles = Regex.Match(audience, "<ul[^>]*>(.*?)</ul>", RegexOptions.Singleline).Value;
+
+        Assert.Equal(5, solutions.Count);
+        Assert.Equal(5, Regex.Matches(roles, "<li[\\s>]").Count);
+        foreach (var solution in solutions)
+        {
+            Assert.Matches(new Regex("<h3[^>]*>\\s*" + Regex.Escape(solution.Title) + "\\s*</h3>"), roles);
+            Assert.Contains(solution.Summary, roles);
+        }
+        // Rollerin "yakında" sayfaları boş; satırlar çağrıdan uzaklaştırmasın diye bağlantı değil (BRIEF 5. bölüm).
+        Assert.DoesNotContain("<a ", roles);
+    }
+
+    [Fact]
+    public async Task Trust_section_uses_only_the_two_allowed_sentences()
+    {
+        var html = WebUtility.HtmlDecode(await HomeHtmlAsync());
+        var trust = SectionHtml(html, "data-home-trust");
+        var said = Regex.Matches(trust, "<p(?:\\s[^>]*)?>(.*?)</p>", RegexOptions.Singleline)
+            .Select(match => Regex.Replace(match.Groups[1].Value, "<[^>]+>", "").Trim())
+            .Where(text => text.Length > 0)
+            .ToList();
+
+        Assert.Equal(new[] { NotUsedForTraining, AudioDeletedTranscriptEncrypted }, said);
+        Assert.DoesNotContain("hiç saklanmaz", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("sertifika", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Faq_uses_native_details_and_answers_data_like_the_trust_section()
+    {
+        var faq = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-faq"));
+        var items = Regex.Matches(faq, "<details[^>]*>(.*?)</details>", RegexOptions.Singleline).Select(match => match.Value).ToList();
+
+        Assert.InRange(items.Count, 4, 5);
+        Assert.All(items, item => Assert.Contains("<summary", item));
+        var data = Assert.Single(items, item => item.Contains("Verilerim ne oluyor?"));
+        Assert.Contains(NotUsedForTraining, data);
+        Assert.Contains(AudioDeletedTranscriptEncrypted, data);
+        Assert.Contains(items, item => item.Contains("ücretli mi?") && item.Contains("Şimdilik her şey ücretsiz."));
+    }
+
+    [Fact]
+    public async Task Faq_file_types_and_size_limit_come_from_the_upload_settings()
+    {
+        // Test sunucusu Upload:MaxMegabytes = 1 veriyor (BriefynFactory); sayfa elle yazılmış 300'ü değil ayarı göstermeli.
+        var limit = _app.Services.GetRequiredService<IConfiguration>().GetValue<int>("Upload:MaxMegabytes");
+        var faq = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-faq"));
+        var files = Assert.Single(Regex.Matches(faq, "<details[^>]*>(.*?)</details>", RegexOptions.Singleline).Select(match => match.Value),
+            item => item.Contains("Hangi dosyaları"));
+
+        Assert.Equal(1, limit);
+        foreach (var extension in UploadRules.Extensions)
+            Assert.Contains(extension, files);
+        Assert.Contains("en fazla " + limit + " MB", files);
+        Assert.DoesNotContain("300", files);
+    }
+
+    [Fact]
+    public async Task Faq_zoom_answer_promises_a_one_click_import_not_an_automatic_one()
+    {
+        var faq = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-faq"));
+        var zoom = Assert.Single(Regex.Matches(faq, "<details[^>]*>(.*?)</details>", RegexOptions.Singleline).Select(match => match.Value),
+            item => item.Contains("Zoom"));
+
+        Assert.Contains("tek tıkla aktarın", zoom);
+        Assert.DoesNotContain("kendiliğinden", zoom, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("otomatik", zoom, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Closing_invites_an_upload()
+    {
+        var closing = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-closing"));
+
+        Assert.Contains("href=\"/Upload\"", closing);
+        Assert.Contains("Kayıt yükle", closing);
+        Assert.Contains("<h2", closing);
     }
 
     [Theory]
