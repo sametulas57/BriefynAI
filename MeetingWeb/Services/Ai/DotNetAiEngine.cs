@@ -14,8 +14,19 @@ public sealed class DotNetAiEngine(ILlmClientFactory llms, ILogger<DotNetAiEngin
     public Task<AiApiResponse?> ProcessMeetingAsync(string audioPath, string? speakersPath, CancellationToken ct = default) =>
         throw new NotSupportedException("Görev 7'de taşınacak");
 
-    public Task<AiSummaryData?> SummarizeAsync(string transcript, CancellationToken ct = default) =>
-        throw new NotSupportedException("Görev 4'te taşınacak");
+    public async Task<AiSummaryData?> SummarizeAsync(string transcript, CancellationToken ct = default)
+    {
+        try
+        {
+            return await new MeetingSummarizer(llms.Create(LlmTask.Summary), logger).SummarizeAsync(transcript, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex)
+        {
+            logger.LogError("Summarization failed: {Error}", ex.GetType().Name);
+            throw new HttpRequestException("AI engine summary failed", null, HttpStatusCode.InternalServerError);
+        }
+    }
 
     public async Task<JsonElement> AnswerAsync(string question, IReadOnlyList<AiAnswerPassage> passages, CancellationToken ct = default)
     {

@@ -31,9 +31,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 1, 2.
   - Dosyalar: `MeetingWeb/Services/Ai/ArchiveAnswerer.cs`, `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb.Tests/Ai/ArchiveAnswererTests.cs`, `MeetingWeb.Tests/Infrastructure/GoldSet.cs`, `MeetingWeb.Tests/Features/AskMeasurement.cs`, `MeetingWeb.Tests/Altin/*`.
 
-- [ ] **Görev 4: Toplantı özeti .NET'te** (M)
+- [x] **Görev 4: Toplantı özeti .NET'te** (M)
   - Kabul: `MeetingSummarizer` `groq_summarizer.py`'yi birebir taşıyor: istem, şema, `split_text` (12.000 karakter), parçaları birleştirme istemi (`MERGE_INSTRUCTION`), `to_backend_format` (aksiyon satırı biçimi dahil). `DotNetAiEngine.SummarizeAsync` hazır; özet hatasında günlüğe döküm yazılmıyor.
   - Doğrula: `test_providers.py`'deki özet testleri C#'ta; uzun döküm parçalara bölünüp birleştiriliyor; istem metinleri Python'la karakter karakter aynı.
+  - Not (2026-11-22): `SYSTEM`, `MERGE_INSTRUCTION`, şema, `split_text` çıktısı, birleştirme içeriği ve `to_backend_format` çıktısı Python'dan üretilip `MeetingWeb.Tests/Ai/Golden/summarizer_*`'a yazıldı; C# bunlarla bayt bayt aynı. Tek fark: model listelerden birini `null` döndürürse Python özeti `null` alanla geçiriyordu, C# özet hatası sayıyor (katı şema bunu zaten engelliyor).
   - Bağımlılık: 2.
   - Dosyalar: `MeetingWeb/Services/Ai/MeetingSummarizer.cs`, `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb.Tests/Ai/MeetingSummarizerTests.cs`.
 
