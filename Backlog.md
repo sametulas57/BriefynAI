@@ -38,3 +38,10 @@ Yapılacak her iş burada, tek listede, önem sırasıyla. Sıradaki iş en üst
    - ücretsiz ve ücretli planın ayrımı;
    - "Kayıt yükle"ye basınca dosya seçilmeden önce bir plan tablosu çıkar. Tabloda bütün özellikler satır satır yazar: Ücretsiz sütununda ✓/✗, Ücretli sütununda hepsi ✓. Ana seçenek "Ücretsiz devam et", yanında ücretli plana geçiş;
    - Fiyatlandırma sayfası. O zamana kadar menüdeki Fiyatlandırma "yakında" sayfasıdır.
+9. **Python servisini kaldırma** (Ulaş, 2026-11-22; ADR-0018): yapay zekâ hattı .NET içine taşınır, `ai_engine` ve Python araçları silinir. Plan ve görevler `tasks/python-kaldirma/`. Azure konuşmacı ayırma da taşınır (Ulaş, 2026-11-22; plandaki Görev 10); varsayılanı değiştirme kararı madde 2'de kalır.
+10. **Barındırma ve veritabanı kararı** (`/spec` ile başlar; hedef: ücretsiz ya da çok ucuz, Ulaş 2026-11-22). 2026-11-22'de belgelerden bakılanlar:
+    - Vercel .NET'i doğrudan çalıştırmıyor (Docker imajı çalıştırma desteği var); Hobby planı yalnız kişisel ve ticari olmayan kullanım için, istek gövdesi 4,5 MB, en uzun süre 300 sn;
+    - Cloudflare Workers .NET çalıştırmıyor, Containers yalnız ayda 5 dolarlık ücretli planda; R2 10 GB'a kadar ücretsiz, dışarı aktarım ücretsiz;
+    - Supabase ücretsiz projeyi bir hafta kullanılmayınca durduruyor, otomatik yedek yok; Pro ayda 25 dolardan;
+    - Render ücretsiz sunucu 15 dakika istek gelmezse uyuyor, diske yazılan siliniyor.
+    Uygulamanın gereği: sürekli açık bir süreç (Hangfire'da toplantı işleme ve 6 günlük iş, SignalR). Barındırma seçilince yapılacaklar: ses kayıtları ve profil fotoğrafları kalıcı depoya (R2 ya da benzeri); Data Protection anahtarları veritabanına; dosya günlüğü (`logs/`) kaldırılır; yayın imajı (Backlog madde 1); SQL Server'dan PostgreSQL'e geçiş (Npgsql, Hangfire.PostgreSql, Serilog hedefi, `db/` betikleri, `rowversion`, migration'lar baştan). Ayrıca `AudioStorage`'daki eski `wwwroot/uploads` yolu ve `Program.cs`'teki `/uploads` koruması kullanılmıyor (bu makinede orada yalnız `avatars` var); yayından önce silinebilir.

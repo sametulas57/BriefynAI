@@ -19,3 +19,4 @@ Her dosya tek bir mimari karar: bağlam, karar, sonuçlar, kaynak. Karar değiş
 - [ADR-0015: Görevleri takvime aktarma: e-postayla takvim daveti](0015-takvim-daveti.md)
 - [ADR-0016: Şifremi unuttum: Identity'nin sıfırlama kodu, güvenilir adresle bağlantı](0016-sifre-sifirlama.md)
 - [ADR-0017: Herkese açık sitenin temeli: Tailwind + daisyUI (npm), ayrı çerçeve, `/tr` adresleri, tek katalog](0017-arayuz-temeli.md)
+- [ADR-0018: Yapay zekâ hattı .NET içinde; Python servisi kaldırılır](0018-yapay-zeka-hatti-dotnet-icinde.md)
