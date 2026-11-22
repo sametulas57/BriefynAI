@@ -59,9 +59,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 2, 5, 6 (mono FLAC ve süre için `IAudioTools`; sıra: Görev 6'dan sonra, Görev 7'den önce; Görev 7 iki yolu birden kurar).
   - Dosyalar: `MeetingWeb/Services/Ai/AzureTranscriber.cs`, `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb.Tests/Ai/AzureTranscriberTests.cs`.
 
-- [ ] **Görev 7: Kaydın tamamı .NET'te: `ProcessMeetingAsync`** (S-M)
+- [x] **Görev 7: Kaydın tamamı .NET'te: `ProcessMeetingAsync`** (S-M)
   - Kabul: `DotNetAiEngine.ProcessMeetingAsync` `api_server.py`'deki `process_meeting` sırasını izliyor: VTT varsa Groq (ve Zoom adları), yoksa `TRANSCRIBER` ayarı (`groq` varsayılan, `azure` Görev 10'daki sınıf); döküm boşsa ya da yalnız uydurma altyazıysa "konuşma yok"; konuşmacı önerisi yalnız VTT yokken; özet hata verirse döküm özetsiz döner. `AiEngine:Mode=dotnet` ile üç işin hepsi .NET'te çalışıyor.
   - Doğrula: `test_api_security.py`'deki `process-meeting` davranış testleri (no_speech, özetsiz döküm, VTT boyutu) C#'ta, sahte sağlayıcılarla; servisler arası anahtar ve yol testleri gereksiz, nedeni görev notunda.
+  - Not (2026-11-23): `TranscriberFactory` `build_transcriber`'ın karşılığı; `AiEngine:Mode` artık `python` ve `dotnet` kabul ediyor, varsayılan `python`. `test_api_security.py`'deki `process-meeting` davranış testleri ve `test_azure_transcriber.py`'deki fabrika testleri `DotNetAiEngineProcessTests` ve `TranscriberFactoryTests`'te. Taşınmayanlar: servisler arası anahtar testleri (.NET içinde anahtar yok), yükleme boyutu ve istemci dosya adı testleri (yükleme web tarafında; motor `AudioStorage`'daki GUID adlı dosyayı okuyor). Farklar: Python'un HTTP 413/500'ü yerine `InvalidDataException` (konuşmacı dosyası 2 MB'tan büyük) ve iç istisnasız `InvalidOperationException` (Hangfire'ın kaydına yalnız genel mesaj gider); boş `AZURE_SPEECH_MAX_SPEAKERS` 10 sayılıyor.
   - Bağımlılık: 3, 4, 5, 6, 10.
   - Dosyalar: `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb/Program.cs`, `MeetingWeb.Tests/Ai/DotNetAiEngineTests.cs`.
 

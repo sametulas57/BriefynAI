@@ -46,7 +46,7 @@ Ayrıntılı kabul ölçütleri `todo.md`'de.
 - [x] Görev 5: Döküm temizleme ve konuşmacı önerisi .NET'te (M)
 - [x] Görev 6: Ses işleme (ffmpeg) ve Groq yazıya dökme .NET'te (M)
 - [x] Görev 10: Azure konuşmacı ayırma .NET'te (S-M); numarası eski, sırası burası
-- [ ] Görev 7: Kaydın tamamı .NET'te: `ProcessMeetingAsync` (S-M)
+- [x] Görev 7: Kaydın tamamı .NET'te: `ProcessMeetingAsync` (S-M)
 
 ### Kontrol B: iki yolun karşılaştırması
 - [ ] Aynı kayıt iki yoldan geçti, fark yazıldı; Ulaş onayladı

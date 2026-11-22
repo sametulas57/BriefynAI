@@ -19,7 +19,7 @@ public class DotNetAiEngineSummaryTests
         using var logs = new LoggerFactory([capture]);
         var llm = new FakeLlm();
         var factory = new FakeFactory(llm);
-        var engine = new DotNetAiEngine(factory, logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(factory, null!, logs.CreateLogger<DotNetAiEngine>());
 
         var result = Assert.IsType<AiSummaryData>(await engine.SummarizeAsync(transcript));
 
@@ -48,7 +48,7 @@ public class DotNetAiEngineSummaryTests
     {
         var llm = new FakeLlm { Reply = _ => "{}" };
         using var logs = new LoggerFactory();
-        var result = Assert.IsType<AiSummaryData>(await new DotNetAiEngine(new FakeFactory(llm), logs.CreateLogger<DotNetAiEngine>()).SummarizeAsync(Transcript));
+        var result = Assert.IsType<AiSummaryData>(await new DotNetAiEngine(new FakeFactory(llm), null!, logs.CreateLogger<DotNetAiEngine>()).SummarizeAsync(Transcript));
         Assert.Equal("", result.ToplantiKonusu);
         Assert.Empty(result.GorusulenKonular);
         Assert.Empty(result.AlinanKararlar);
@@ -70,7 +70,7 @@ public class DotNetAiEngineSummaryTests
             Reply = _ => failure == "json" ? """{"toplanti_konusu":null}""" : Partial
         };
         var factory = new FakeFactory(llm) { Error = failure == "key" ? new InvalidOperationException(Transcript + Partial) : null };
-        var engine = new DotNetAiEngine(factory, logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(factory, null!, logs.CreateLogger<DotNetAiEngine>());
 
         var error = await Assert.ThrowsAsync<HttpRequestException>(() => engine.SummarizeAsync(Transcript));
 
@@ -93,7 +93,7 @@ public class DotNetAiEngineSummaryTests
         var llm = new FakeLlm { Error = original };
         var capture = new CapturingLoggerProvider();
         using var logs = new LoggerFactory([capture]);
-        var engine = new DotNetAiEngine(new FakeFactory(llm), logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(new FakeFactory(llm), null!, logs.CreateLogger<DotNetAiEngine>());
         if (cancelled)
         {
             var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => engine.SummarizeAsync(Transcript, source.Token));

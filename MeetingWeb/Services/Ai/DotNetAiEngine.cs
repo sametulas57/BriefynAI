@@ -1,18 +1,79 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MeetingWeb.Models;
 
 namespace MeetingWeb.Services.Ai;
 
-// Görev 7'ye kadar DI'a kayıtlı değil; yalnız testler ve AskMeasurement kurar (ADR-0018).
-public sealed class DotNetAiEngine(ILlmClientFactory llms, ILogger<DotNetAiEngine> logger) : IAiEngine
+// AiEngine:Mode=dotnet selects the in-process pipeline (ADR-0018); python remains the default.
+public sealed class DotNetAiEngine(ILlmClientFactory llms, ITranscriberFactory transcribers, ILogger<DotNetAiEngine> logger) : IAiEngine
 {
     private static readonly Regex PartId = new(@"^T\d{1,9}-[KRBAD]\d{1,4}\z");
     private static readonly Regex Date = new(@"^\d{4}-\d{2}-\d{2}\z");
 
-    public Task<AiApiResponse?> ProcessMeetingAsync(string audioPath, string? speakersPath, CancellationToken ct = default) =>
-        throw new NotSupportedException("Görev 7'de taşınacak");
+    public async Task<AiApiResponse?> ProcessMeetingAsync(string audioPath, string? speakersPath, CancellationToken ct = default)
+    {
+        var speakersTooLarge = false;
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            logger.LogInformation("Received audio for processing.");
+            logger.LogInformation("Initializing Speech-to-Text engine...");
+            string? speakersVtt = null;
+            if (speakersPath != null)
+            {
+                const int speakerLimit = 2 * 1024 * 1024;
+                var data = new byte[speakerLimit + 1];
+                await using var file = File.OpenRead(speakersPath);
+                var count = await file.ReadAtLeastAsync(data, data.Length, throwOnEndOfStream: false, cancellationToken: ct);
+                if (count > speakerLimit)
+                {
+                    speakersTooLarge = true;
+                    throw new InvalidDataException("Speaker file is too large.");
+                }
+                try { speakersVtt = new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(data, 0, count); }
+                catch (DecoderFallbackException) { /* Ignore invalid UTF-8, like Python; ParseVtt handles the BOM. */ }
+            }
+
+            var hasVtt = !string.IsNullOrEmpty(speakersVtt);
+            var transcriber = transcribers.Create(hasVtt ? "groq" : null);
+            var text = await transcriber.TranscribeAsync(audioPath, hasVtt ? speakersVtt : null, ct);
+            HashSet<string> speakerNames = hasVtt
+                ? TranscriptText.ParseVtt(speakersVtt!).Where(cue => !string.IsNullOrEmpty(cue.Speaker))
+                    .Select(cue => cue.Speaker!).ToHashSet(StringComparer.Ordinal)
+                : [];
+            if (string.IsNullOrEmpty(text) || TranscriptText.IsOnlyHallucinatedCaptions(text, speakerNames))
+                throw new NoSpeechException();
+
+            logger.LogInformation("Transcription completed successfully.");
+            Dictionary<string, AiSpeakerSuggestion> suggestions = hasVtt ? [] : await SuggestSpeakerNamesAsync(text, ct);
+            logger.LogInformation("Executing LLM summarization pipeline...");
+            AiSummaryData? summary;
+            try
+            {
+                summary = await new MeetingSummarizer(llms.Create(LlmTask.Summary), logger).SummarizeAsync(text, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                logger.LogError("Summarization failed; returning the transcript without a summary: {Error}", ex.GetType().Name);
+                summary = null;
+            }
+            return new AiApiResponse { Success = summary != null, Transkript = text, Summary = summary, KonusmaciOnerileri = suggestions };
+        }
+        catch (NoSpeechException) { throw; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (InvalidDataException) when (speakersTooLarge) { throw; }
+        catch (Exception ex)
+        {
+            // Transcription/audio errors (GroqException, AzureSpeechException, AudioToolException) carry
+            // status/exit codes or fixed diagnostics, never a transcript or provider response body.
+            logger.LogError(ex, "Meeting processing failed.");
+            // No inner exception: Hangfire persists this error to its database.
+            throw new InvalidOperationException("AI engine processing failed.");
+        }
+    }
 
     public async Task<AiSummaryData?> SummarizeAsync(string transcript, CancellationToken ct = default)
     {

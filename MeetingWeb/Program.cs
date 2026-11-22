@@ -91,10 +91,14 @@ try
 
     // --- 4. Python API Communication ---
     builder.Services.AddOptions<AiEngineOptions>().Bind(builder.Configuration.GetSection("AiEngine"))
-        .Validate(o => string.Equals(o.Mode?.Trim(), "python", StringComparison.OrdinalIgnoreCase),
-            "AiEngine:Mode must be 'python'; the .NET engine is not ready yet.")
+        .Validate(o => string.Equals(o.Mode?.Trim(), "python", StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(o.Mode?.Trim(), "dotnet", StringComparison.OrdinalIgnoreCase),
+            "AiEngine:Mode must be 'python' or 'dotnet'.")
         .ValidateOnStart();
-    builder.Services.AddScoped<IAiEngine, PythonAiEngine>();
+    builder.Services.AddScoped<IAiEngine>(sp =>
+        string.Equals(sp.GetRequiredService<IOptions<AiEngineOptions>>().Value.Mode.Trim(), "dotnet", StringComparison.OrdinalIgnoreCase)
+            ? ActivatorUtilities.CreateInstance<DotNetAiEngine>(sp)
+            : ActivatorUtilities.CreateInstance<PythonAiEngine>(sp));
     // ADR-0018: Groq client for the .NET engine; not used until the engine is switched on (AiEngine:Mode).
     builder.Services.AddGroqAi(builder.Configuration);
     builder.Services.AddHttpClient(PythonAiEngine.HttpClientName, (sp, client) =>

@@ -19,7 +19,7 @@ public class DotNetAiEngineAnswerTests
         var llm = new FakeLlm();
         var factory = new FakeFactory(llm);
         using var logs = new LoggerFactory();
-        var engine = new DotNetAiEngine(factory, logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(factory, null!, logs.CreateLogger<DotNetAiEngine>());
         EqualJson(Good, await engine.AnswerAsync(" \n" + Question + "\t ", Parts));
         Assert.Equal(LlmTask.Answer, Assert.Single(factory.Tasks));
         using var payload = JsonDocument.Parse(Assert.Single(llm.Messages!).Content);
@@ -54,7 +54,7 @@ public class DotNetAiEngineAnswerTests
     {
         var factory = new FakeFactory(new FakeLlm());
         using var logs = new LoggerFactory();
-        var engine = new DotNetAiEngine(factory, logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(factory, null!, logs.CreateLogger<DotNetAiEngine>());
         var error = await Assert.ThrowsAsync<HttpRequestException>(() => engine.AnswerAsync(question, parts));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, error.StatusCode);
         Assert.Equal("AI engine rejected the request", error.Message);
@@ -79,7 +79,7 @@ public class DotNetAiEngineAnswerTests
     {
         var llm = new FakeLlm();
         using var logs = new LoggerFactory();
-        await new DotNetAiEngine(new FakeFactory(llm), logs.CreateLogger<DotNetAiEngine>()).AnswerAsync(question, parts);
+        await new DotNetAiEngine(new FakeFactory(llm), null!, logs.CreateLogger<DotNetAiEngine>()).AnswerAsync(question, parts);
         Assert.Equal(1, llm.Calls);
     }
 
@@ -93,7 +93,7 @@ public class DotNetAiEngineAnswerTests
         var llm = new FakeLlm { Error = new IOException(Question + Parts[1].Metin + Good) };
         var factory = new FakeFactory(llm) { Error = missingKey ? new InvalidOperationException(Question + Good) : null };
         var error = await Assert.ThrowsAsync<HttpRequestException>(() =>
-            new DotNetAiEngine(factory, logs.CreateLogger<DotNetAiEngine>()).AnswerAsync(Question, Parts));
+            new DotNetAiEngine(factory, null!, logs.CreateLogger<DotNetAiEngine>()).AnswerAsync(Question, Parts));
         Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
         Assert.Equal("AI engine answer failed", error.Message);
         Assert.Null(error.InnerException);
@@ -106,7 +106,7 @@ public class DotNetAiEngineAnswerTests
     {
         var capture = new CapturingLoggerProvider();
         using var logs = new LoggerFactory([capture]);
-        EqualJson(Good, await new DotNetAiEngine(new FakeFactory(new FakeLlm()), logs.CreateLogger<DotNetAiEngine>()).AnswerAsync(Question, Parts));
+        EqualJson(Good, await new DotNetAiEngine(new FakeFactory(new FakeLlm()), null!, logs.CreateLogger<DotNetAiEngine>()).AnswerAsync(Question, Parts));
         AssertPrivateAbsent(capture);
         Assert.Empty(capture.Lines);
     }
@@ -121,7 +121,7 @@ public class DotNetAiEngineAnswerTests
         var llm = new FakeLlm { Error = new OperationCanceledException("private", source.Token) };
         var capture = new CapturingLoggerProvider();
         using var logs = new LoggerFactory([capture]);
-        var engine = new DotNetAiEngine(new FakeFactory(llm), logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(new FakeFactory(llm), null!, logs.CreateLogger<DotNetAiEngine>());
         if (cancelled)
         {
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => engine.AnswerAsync(Question, Parts, source.Token));
@@ -140,7 +140,7 @@ public class DotNetAiEngineAnswerTests
         var capture = new CapturingLoggerProvider();
         using var logs = new LoggerFactory([capture]);
         var llm = new FakeLlm { Error = failure ? new IOException(Question + Good) : null };
-        var engine = new DotNetAiEngine(new FakeFactory(llm), logs.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(new FakeFactory(llm), null!, logs.CreateLogger<DotNetAiEngine>());
         var settings = Options.Create(new AskOptions());
         var ask = new AskService(new FakeSearch(), new AskRateLimiter(TimeProvider.System, settings), engine, settings, logs.CreateLogger<AskService>());
         var result = await ask.AskAsync("user", 1, new AskRequest(Question));
