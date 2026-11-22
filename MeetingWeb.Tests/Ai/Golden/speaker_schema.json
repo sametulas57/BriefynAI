@@ -1,0 +1,1 @@
+{"type": "object", "required": ["oneriler"], "additionalProperties": false, "properties": {"oneriler": {"type": "array", "items": {"type": "object", "required": ["konusmaci", "ad", "gerekce"], "additionalProperties": false, "properties": {"konusmaci": {"type": "string"}, "ad": {"type": ["string", "null"]}, "gerekce": {"type": "string"}}}}}}
