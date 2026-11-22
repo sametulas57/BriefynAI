@@ -108,23 +108,36 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.Single(Regex.Matches(html, "fetchpriority=\"high\""));
     }
 
-    [Theory]
-    [InlineData("Yükleme", "Kaydı yükleyin ya da Zoom'dan tek tıkla aktarın.")]
-    [InlineData("Yazıya dökme", "Konuşulan her şey okunabilir bir metne dönüşür.")]
-    [InlineData("Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.")]
-    [InlineData("Özet, kararlar, yapılacaklar", "Özet, kararlar ve yapılacaklar tek sayfada toplanır; işler kişilere atanır.")]
-    [InlineData("Arşive sor", "Geçmiş toplantılarınıza soru sorun; cevap, geldiği toplantıyla birlikte gelir.")]
-    [InlineData("Takvim ve paylaşma", "Tarihi olan işler takvim daveti olarak gelir; özeti ekibinize e-postayla gönderin.")]
-    public async Task Journey_steps_are_written_in_the_page_itself(string step, string sentence)
+    // 2026-11-22: yolculuk bölümü adım adım süreç anlatmıyor; tek büyük özet sayfası gösteriyor (Ulaş'ın isteği).
+    [Fact]
+    public async Task Journey_shows_one_summary_page_instead_of_a_step_list()
     {
         var journey = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-journey"));
-        var steps = Regex.Match(journey, "<ol[^>]*>(.*?)</ol>", RegexOptions.Singleline);
+        var said = Regex.Replace(journey, "<[^>]+>", " ");
 
-        Assert.True(steps.Success, "yolculuk adımları bir liste değil");
-        Assert.Equal(6, Regex.Matches(steps.Value, "<li[\\s>]").Count);
-        Assert.Matches(new Regex("<h3[^>]*>\\s*" + Regex.Escape(step) + "\\s*</h3>"), steps.Value);
-        // Cümlenin içinde satır bölünmesini önleyen etiket olabilir; okunan metin etiketsiz karşılaştırılır.
-        Assert.Contains(sentence, Regex.Replace(steps.Value, "<[^>]+>", ""));
+        Assert.Matches(new Regex("<h2[^>]*>\\s*Kayıt girer, özet çıkar\\.\\s*</h2>"), journey);
+        Assert.Matches(new Regex("<h3[^>]*>\\s*Haftalık ürün toplantısı\\s*</h3>"), journey);
+        foreach (var part in new[] { "Özet", "Kararlar", "Yapılacaklar" })
+            Assert.Matches(new Regex("<h4[^>]*>\\s*" + part + "\\s*</h4>"), journey);
+        Assert.Contains("Lansman, ödeme ekranı bitince yapılacak.", said);
+        Assert.Contains("Ödeme ekranını bitirmek", said);
+        // Süreç anlatımı ve konuşmacı adımı yok: adım listesi, küçük önizlemeler, "Konuşmacı" sözü.
+        Assert.DoesNotContain("<ol", journey);
+        Assert.DoesNotContain("data-hj-mini", journey);
+        Assert.DoesNotContain("Konuşmacı", said, StringComparison.OrdinalIgnoreCase);
+        // Özet sayfanın kendi metni (betik yokken de okunur); süs olan ses dalgası ekran okuyucudan gizli.
+        Assert.Matches(new Regex("<svg class=\"hj-wave\"[^>]*aria-hidden=\"true\""), journey);
+    }
+
+    [Fact]
+    public async Task Home_lede_and_description_no_longer_promise_speaker_separation()
+    {
+        var html = WebUtility.HtmlDecode(await HomeHtmlAsync());
+        var lede = "Kaydı yükleyin; yazıya dökülsün, özet, kararlar ve yapılacaklar tek sayfada toplansın.";
+
+        Assert.Contains("<meta name=\"description\" content=\"" + lede + "\"", html);
+        Assert.Contains(lede, SectionHtml(html, "data-home-hero"));
+        Assert.DoesNotContain("konuşmacılar ayrılsın", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -133,7 +146,6 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         var journey = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-journey"));
 
         Assert.Contains("Örnek toplantı", journey);
-        Assert.Contains("Bir toplantının yolculuğu", journey);
     }
 
     [Fact]
@@ -385,11 +397,11 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         var catalog = _app.Services.GetRequiredService<SiteCatalog>();
         var entries = catalog.Entries;
 
-        Assert.Equal(28, entries.Count);
+        Assert.Equal(27, entries.Count);
         Assert.Equal(entries, catalog.Sections.SelectMany(section => section.Entries));
         Assert.Equal(new Dictionary<string, int>
         {
-            ["product"] = 11,
+            ["product"] = 10,
             ["solutions"] = 5,
             ["integrations"] = 6,
             ["resources"] = 4,
@@ -454,18 +466,20 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.DoesNotMatch(new Regex("(src|href)\\s*=\\s*\"(https?:)?//"), html);
     }
 
+    // Ana sayfanın menüsü koyu zeminde (2026-11-22): orada logonun koyu zemin sürümü; öbür sayfalarda açık menü ve normal logo.
     [Theory]
-    [InlineData("/tr")]
-    [InlineData("/tr/product/ask-archive")]
-    [InlineData("/tr/integrations/teams")]
-    public async Task Public_pages_show_the_logo_and_tab_icon(string path)
+    [InlineData("/tr", "logo-a-acik.svg", true)]
+    [InlineData("/tr/product/ask-archive", "logo-a.svg", false)]
+    [InlineData("/tr/integrations/teams", "logo-a.svg", false)]
+    public async Task Public_pages_show_the_logo_and_tab_icon(string path, string logo, bool darkChrome)
     {
         using var client = AnonymousClient();
 
         var html = await client.GetStringAsync(path);
 
         Assert.Contains("<link rel=\"icon\" type=\"image/svg+xml\" href=\"/img/brand/favicon.svg\"", html);
-        Assert.Matches(new Regex("<a href=\"/tr\"[^>]*>\\s*<img src=\"/img/brand/logo-a\\.svg\"[^>]*alt=\"Briefyn\""), html);
+        Assert.Matches(new Regex("<a href=\"/tr\"[^>]*>\\s*<img src=\"/img/brand/" + Regex.Escape(logo) + "\"[^>]*alt=\"Briefyn\""), html);
+        Assert.Equal(darkChrome, html.Contains("data-chrome=\"koyu\""));
     }
 
     // Test sunucusu geçici bir wwwroot kullanıyor; dosyalar projenin kendi wwwroot'unda aranır.
@@ -473,10 +487,9 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
     [InlineData("img/brand/favicon.svg")]
     [InlineData("img/brand/logo-a.svg")]
     [InlineData("img/brand/logo-a-acik.svg")]
-    [InlineData("fonts/bricolage-grotesque/BricolageGrotesque.woff2")]
-    [InlineData("fonts/bricolage-grotesque/OFL.txt")]
-    [InlineData("fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext.woff2")]
-    [InlineData("fonts/atkinson-hyperlegible-next/OFL.txt")]
+    [InlineData("fonts/ibm-plex-sans/IBMPlexSansVar-Roman-Latin1.woff2")]
+    [InlineData("fonts/ibm-plex-sans/IBMPlexSansVar-Roman-Latin2.woff2")]
+    [InlineData("fonts/ibm-plex-sans/OFL.txt")]
     public void Brand_files_live_in_our_own_web_root(string relativePath)
     {
         var file = new FileInfo(Path.Combine(ProjectWebRoot(), relativePath));
@@ -564,7 +577,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         var nav = MainNavHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr")));
         var menuPaths = TrHrefs(nav).Distinct(StringComparer.Ordinal).ToList();
 
-        Assert.Equal(28, menuPaths.Count);
+        Assert.Equal(27, menuPaths.Count);
         Assert.Equal(catalogPaths.Order(StringComparer.Ordinal), menuPaths.Order(StringComparer.Ordinal));
         foreach (var path in menuPaths)
         {

@@ -21,7 +21,6 @@ public sealed class SiteCatalog
         new("product", "Kaydet", "upload", "Dosya yükleme", "Toplantı kaydınızı .mp3, .wav ya da .m4a olarak yükleyin, gerisini Briefyn yapsın.", true),
         new("product", "Kaydet", "zoom", "Zoom'dan aktarma", "Zoom hesabınızı bağlayın, bulut kayıtlarınızı tek tıkla aktarın.", true),
         new("product", "Anla", "transcription", "Yazıya dökme", "Toplantıda konuşulan her şey okunabilir bir metne dönüşür.", true),
-        new("product", "Anla", "speakers", "Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.", true),
         new("product", "Anla", "summary", "Özet ve kararlar", "Toplantının özeti, kararları ve konuşulan başlıklar tek sayfada toplanır.", true),
         new("product", "Anla", "action-items", "Yapılacaklar", "Toplantıdan çıkan işler kişilere atanır ve takip edilir.", true),
         new("product", "Bul", "ask-archive", "Arşive sor", "Geçmiş toplantılarınıza soru sorun, cevabı kendi toplantılarınızdan alın.", true),

@@ -2,6 +2,8 @@
 @model MeetingWeb.Pages.Public.HomeModel
 @{
     ViewData["Title"] = "Toplantıyı siz yapın, notları Briefyn çıkarsın";
+    // Ana sayfanın bütün zeminleri koyu (2026-11-22, Ulaş): menü ve sayfa zemini de koyu çerçeveye geçer (_PublicLayout, app.css).
+    ViewData["Chrome"] = "koyu";
     // Kayan şerit: Briefyn her toplantının ses kaydını aynı yoldan işler; türe özel bir iddia yok (BRIEF 9. bölüm, satır 5).
     string[] meetings =
     [
@@ -10,23 +12,11 @@
     ];
     // Açılıştaki durgun ses dalgası (süs): çubuk boyları elle seçildi, konuşma gibi inip çıkıyor.
     int[] heroBars = [14, 30, 22, 48, 70, 40, 92, 58, 108, 76, 44, 96, 64, 110, 84, 52, 100, 68, 36, 80, 56, 28, 42, 18];
-    // Yolculuğun adımları. Her cümlenin dayandığı özellik BRIEF.md 9. bölümdeki tabloda (satır 7-12).
-    // "End", adımın bittiği kaydırma payı: home.js sahnenin o anki hâlini bu değerden hesaplar.
-    (string Name, string Sentence, string Cue, string End)[] steps =
-    [
-        // İpucu pencereleri art arda: biri sönerken öteki gelmez, iki metin üst üste binmez (her geçiş yaklaşık 0,03 pay).
-        ("Yükleme", "Kaydı yükleyin ya da Zoom'dan tek tıkla aktarın.", "0.09 0.23 0.1 0.1", "0.22"),
-        ("Yazıya dökme", "Konuşulan her şey okunabilir bir metne dönüşür.", "0.23 0.425 0.08 0.06", "0.40"),
-        ("Konuşmacılar", "Konuşmacılar birbirinden ayrılır, her birine adını siz verirsiniz.", "0.425 0.55 0.1 0.1", "0.54"),
-        ("Özet, kararlar, yapılacaklar", "Özet, kararlar ve yapılacaklar tek sayfada toplanır; işler kişilere atanır.", "0.55 0.70 0.09 0.09", "0.70"),
-        ("Arşive sor", "Geçmiş toplantılarınıza soru sorun; cevap, geldiği toplantıyla birlikte gelir.", "0.70 0.86 0.09 0.09", "0.86"),
-        // Son adım sönmez (pencere 1'in ötesine uzanır, ramp out 0): sahne kayarak çıkarken başlık yalnız kalmasın (Görev 11).
-        // Metin sahnenin içinde, sahneyle birlikte yukarı çıkar; sonraki bölümün üstüne binmez.
-        ("Takvim ve paylaşma", "Tarihi olan işler takvim daveti olarak gelir; özeti ekibinize e-postayla gönderin.", "0.86 1.2 0.08 0", "1")
-    ];
+    // Özet bölümündeki ses dalgası (süs, yalnız hareketli düzende): açılıştaki dalganın boyları, iki tur.
+    int[] summaryBars = heroBars.Concat(Enumerable.Reverse(heroBars)).ToArray();
 }
 @section Head {
-    <meta name="description" content="Kaydı yükleyin; yazıya dökülsün, konuşmacılar ayrılsın, özet, kararlar ve yapılacaklar tek sayfada toplansın." />
+    <meta name="description" content="Kaydı yükleyin; yazıya dökülsün, özet, kararlar ve yapılacaklar tek sayfada toplansın." />
     @* scroll-craft motorunun stili en alttaki katmanda: Tailwind'in bütün katmanları onu geçer, menü ve alt bilgi öbür sayfalarla aynı kalır. *@
     <style>@@layer scrollcraft; @@import url("/lib/scrollcraft/scrollcraft.css") layer(scrollcraft);</style>
     @* Hareket yalnız "hareketi azalt" kapalıysa ve ekran en az 500 piksel yüksekse açılır ("sc-on").
@@ -49,7 +39,7 @@
         <div class="hh-copy">
             @* Açılış metni hep görünür ("0 1 0 0"); ipucu olması yalnız doğrulama aracının kontrastı ölçmesi için. *@
             <h1 id="hh-title" class="hh-title" data-sc-cue="0 1 0 0">Toplantıyı siz yapın, notları Briefyn çıkarsın.</h1>
-            <p class="hh-lede" data-sc-cue="0 1 0 0">Kaydı yükleyin; yazıya dökülsün, konuşmacılar ayrılsın, özet, kararlar ve yapılacaklar tek sayfada toplansın.</p>
+            <p class="hh-lede" data-sc-cue="0 1 0 0">Kaydı yükleyin; yazıya dökülsün, özet, kararlar ve yapılacaklar tek sayfada toplansın.</p>
             <a href="/Upload" class="btn btn-grad mt-8 h-13 px-7 text-lg font-bold focus-visible:outline-hero-title">Kayıt yükle</a>
             <p class="hh-note" data-sc-cue="0 1 0 0">Şimdilik ücretsiz.</p>
         </div>
@@ -104,33 +94,58 @@
     </button>
 </section>
 
-@* Zirve. Temel HTML durağan bir adım listesi (betik yokken ve "hareketi azalt" açıkken bu okunur);
-   home.js hareket izinliyse onu kaydırmayla ilerleyen pinli sahneye yükseltir. *@
-<section class="hj" id="yolculuk" data-home-journey data-sc-act="flow" data-sc-span="5" aria-labelledby="hj-title">
+@* Zirve: kayıt girer, özet çıkar. Özet sayfanın kendi metni (betik yokken ve "hareketi azalt" açıkken de okunur).
+   Hareket izinliyse home.js bölümü kısa bir pinli sahneye çevirir: kaydın ses dalgası yatıp söner, özet yerine gelir. *@
+<section class="hj" id="yolculuk" data-home-journey data-sc-act="flow" aria-labelledby="hj-title">
     <div class="hj-stage" data-sc-stage>
         <div class="hj-grid">
-            <h2 id="hj-title" class="hj-title">Bir toplantının yolculuğu</h2>
-            <figure class="hj-object">
-                <figcaption class="hj-label"><span class="hj-label-dot" aria-hidden="true"></span>Örnek toplantı: Haftalık ürün toplantısı</figcaption>
-                <div class="hj-sheet" data-hj-scene aria-hidden="true"></div>
-            </figure>
-            <div class="hj-cues">
-                <p class="hj-quiet" data-sc-cue="0 0.09 0 0.25">Bir toplantı bitti. Elinizde yalnız kaydı var.</p>
-                <ol class="hj-steps">
-                    @foreach (var step in steps)
-                    {
-                        <li class="hj-step">
-                            <div class="hj-step-text" data-sc-cue="@step.Cue">
-                                <h3 class="hj-step-name">@step.Name</h3>
-                                @* "e-posta" satır sonunda tireden bölünmesin. *@
-                                @{ var cut = step.Sentence.IndexOf("e-posta", StringComparison.Ordinal); }
-                                <p class="hj-step-sentence">@if (cut < 0) { @step.Sentence } else { @(step.Sentence[..cut])<span class="whitespace-nowrap">e-posta</span>@(step.Sentence[(cut + 7)..]) }</p>
-                            </div>
-                            <div class="hj-mini" data-hj-mini="@step.End" aria-hidden="true"></div>
-                        </li>
-                    }
-                </ol>
+            <div class="hj-head">
+                <h2 id="hj-title" class="hj-title">Kayıt girer, özet çıkar.</h2>
+                <p class="hj-lede">Toplantı bittiğinde elinizde okunması kolay tek bir sayfa olur.</p>
             </div>
+            <figure class="hj-card" aria-labelledby="hj-card-title" data-hj-card>
+                <div class="hj-card-top">
+                    <figcaption class="hj-card-label">Örnek toplantı</figcaption>
+                    <h3 id="hj-card-title" class="hj-card-title">Haftalık ürün toplantısı</h3>
+                    <p class="hj-card-meta">32 dakikalık kayıt, 3 kişi</p>
+                </div>
+                <div class="hj-card-body">
+                    <svg class="hj-wave" viewBox="0 0 960 200" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                        <defs>
+                            <linearGradient id="hj-wave-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="960" y2="0">
+                                <stop offset="0" stop-color="#00D3E6" />
+                                <stop offset="1" stop-color="#1E9BFF" />
+                            </linearGradient>
+                        </defs>
+                        <g fill="none" stroke="url(#hj-wave-ink)" stroke-width="7" stroke-linecap="round">
+                            @for (var i = 0; i < summaryBars.Length; i++)
+                            {
+                                var x = 12 + i * (936 / (summaryBars.Length - 1.0));
+                                var half = summaryBars[i] * 0.82;
+                                <path class="@(i % 2 == 1 ? "hj-wave-odd" : null)" style="--i: @i" d="M@(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) @((100 - half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))V@((100 + half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))" vector-effect="non-scaling-stroke" />
+                            }
+                        </g>
+                    </svg>
+                    @* Üç bölüm dalganın söndüğü yerden sırayla gelir ve kalır (tek değerli ipucu). *@
+                    <div class="hj-block hj-block-sum" data-sc-cue="0.18">
+                        <h4 class="hj-block-name">Özet</h4>
+                        <p class="hj-block-text">Lansman tarihi ve ödeme ekranı konuşuldu. Müşteri geri bildirimlerinin çoğu ödeme ekranındaki kart bilgisi adımıyla ilgili. Fiyat konusu gelecek haftaya kaldı.</p>
+                    </div>
+                    <div class="hj-block" data-sc-cue="0.25">
+                        <h4 class="hj-block-name">Kararlar</h4>
+                        <ul class="hj-list">
+                            <li>Lansman, ödeme ekranı bitince yapılacak.</li>
+                        </ul>
+                    </div>
+                    <div class="hj-block" data-sc-cue="0.32">
+                        <h4 class="hj-block-name">Yapılacaklar</h4>
+                        <ul class="hj-list hj-todos">
+                            <li><span>Ödeme ekranını bitirmek</span><span class="hj-who">Mert, cuma</span></li>
+                            <li><span>Müşterilere duyuru metnini hazırlamak</span><span class="hj-who">Burak</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </figure>
         </div>
     </div>
 </section>
@@ -158,30 +173,33 @@
     </div>
 </section>
 
-@* Güven: yalnız iki izinli cümle (SPEC "Ana sayfa içeriği" 5). Şeritte ses çubukları soldan sağa silinir, altındaki satırlar kalır. *@
+@* Güven: yalnız iki izinli cümle (SPEC "Ana sayfa içeriği" 5). Şeritte ses çubukları soldan sağa silinir, altındaki satırlar kalır.
+   Hareketli düzende bölüm, çizgiler tamamen açılana kadar ekranda sabit kalır (home.js pinler); sonra sayfa akmaya devam eder. *@
 <section class="ht" data-home-trust data-sc-act="flow" aria-labelledby="ht-title">
-    <div class="ht-inner">
-        <div class="ht-band" aria-hidden="true">
-            <svg class="ht-bars" viewBox="0 0 960 112" preserveAspectRatio="none" focusable="false">
-                <g fill="none" stroke="#0697B4" stroke-width="7" stroke-linecap="round">
-                    @for (var i = 0; i < 48; i++)
-                    {
-                        var x = 8 + i * (944 / 47.0);
-                        var half = heroBars[i % heroBars.Length] * 0.46;
-                        <path class="@(i % 2 == 1 ? "ht-bar-odd" : null)" d="M@(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) @((56 - half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))V@((56 + half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))" vector-effect="non-scaling-stroke" />
-                    }
-                </g>
-            </svg>
-            <div class="ht-lines" data-sc-reveal="left" data-sc-reveal-at="0.25 0.6">
-                <span class="ht-line ht-line-1"></span>
-                <span class="ht-line ht-line-2"></span>
-                <span class="ht-line-end"><span class="ht-line ht-line-3"></span><span class="ht-lock">@await Html.PartialAsync("_Icons", "lock")</span></span>
+    <div class="ht-stage" data-sc-stage>
+        <div class="ht-inner">
+            <div class="ht-band" aria-hidden="true">
+                <svg class="ht-bars" viewBox="0 0 960 112" preserveAspectRatio="none" focusable="false">
+                    <g fill="none" stroke="#2BB8D6" stroke-width="7" stroke-linecap="round">
+                        @for (var i = 0; i < 48; i++)
+                        {
+                            var x = 8 + i * (944 / 47.0);
+                            var half = heroBars[i % heroBars.Length] * 0.46;
+                            <path class="@(i % 2 == 1 ? "ht-bar-odd" : null)" d="M@(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) @((56 - half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))V@((56 + half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))" vector-effect="non-scaling-stroke" />
+                        }
+                    </g>
+                </svg>
+                <div class="ht-lines" data-sc-reveal="left" data-sc-reveal-at="0.1 0.7">
+                    <span class="ht-line ht-line-1"></span>
+                    <span class="ht-line ht-line-2"></span>
+                    <span class="ht-line-end"><span class="ht-line ht-line-3"></span><span class="ht-lock">@await Html.PartialAsync("_Icons", "lock")</span></span>
+                </div>
             </div>
+            <h2 id="ht-title" class="ht-title">Verileriniz ne oluyor?</h2>
+            <p class="ht-claim">Toplantılarınız yapay zekâ eğitiminde kullanılmaz.</p>
+            <p class="ht-claim">Ses analizden sonra silinir, döküm şifreli saklanır.</p>
+            <a href="/Privacy" class="ht-link">Gizlilik</a>
         </div>
-        <h2 id="ht-title" class="ht-title">Verileriniz ne oluyor?</h2>
-        <p class="ht-claim">Toplantılarınız yapay zekâ eğitiminde kullanılmaz.</p>
-        <p class="ht-claim">Ses analizden sonra silinir, döküm şifreli saklanır.</p>
-        <a href="/Privacy" class="ht-link">Gizlilik</a>
     </div>
 </section>
 

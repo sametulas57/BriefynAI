@@ -8,23 +8,26 @@
   themes: false;
 }
 
-/* Yazı tipleri kendi sunucumuzdan (wwwroot/fonts, SIL Open Font License). İkisi de değişken yazı tipi;
-   aralıklar dosyaların kendi eksenlerinden: Bricolage wght 200-800, wdth 75-100, opsz 12-96; Atkinson wght 200-800. */
+/* Yazı tipi kendi sunucumuzdan (wwwroot/fonts/ibm-plex-sans, SIL Open Font License): IBM Plex Sans Var, IBM'nin resmî deposunun
+   sabit commit'inden (2e90fe36) yalnız Latin alt kümeleri. Türkçe harflerin ı'sı Latin1'de, ğ, ş ve İ Latin2'de; tarayıcı
+   ikinci dosyayı yalnız o harfler sayfada varsa indirir. Değişken yazı tipi, kalınlık aralığı dosyanın ekseninden: 100-700.
+   2026-11-22: Bricolage Grotesque ve Atkinson Hyperlegible Next'in yerine (Ulaş: daha ciddi bir yazı tipi; ADR-0017 notu). */
 @font-face {
-  font-family: "Bricolage Grotesque";
-  src: url("/fonts/bricolage-grotesque/BricolageGrotesque.woff2") format("woff2");
-  font-weight: 200 800;
-  font-stretch: 75% 100%;
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/ibm-plex-sans/IBMPlexSansVar-Roman-Latin1.woff2") format("woff2");
+  font-weight: 100 700;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+FB01-FB02;
 }
 
 @font-face {
-  font-family: "Atkinson Hyperlegible Next";
-  src: url("/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext.woff2") format("woff2");
-  font-weight: 200 800;
+  font-family: "IBM Plex Sans";
+  src: url("/fonts/ibm-plex-sans/IBMPlexSansVar-Roman-Latin2.woff2") format("woff2");
+  font-weight: 100 700;
   font-style: normal;
   font-display: swap;
+  unicode-range: U+0100-0101, U+0104-0130, U+0132-0151, U+0154-017F, U+018F, U+0192, U+01A0-01A1, U+01AF-01B0, U+01FA-01FF, U+0218-021B, U+0237, U+0259, U+1E80-1E85, U+1E9E, U+20A1, U+20A4, U+20A6, U+20A8-20AA, U+20AD-20AE, U+20B1-20B2, U+20B4-20B5, U+20B8-20BA, U+20BD, U+20BF;
 }
 
 /* Onaylı tema: önizleme 2, Yön C "Derin su" (docs/brand/onizleme-2.html). */
@@ -65,8 +68,8 @@
 
 /* daisyUI dışında: yazı tipleri, ikincil metin ve koyu açılışın yazı renkleri. */
 @theme {
-  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Bricolage Grotesque", "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --color-muted: #0E4458;
   --color-hero-title: #FFFFFF;
   --color-hero-text: #CFE8FF;
@@ -84,9 +87,9 @@
 @layer base {
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-stretch: 92%;
-    letter-spacing: -0.01em;
-    line-height: 1.12;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    line-height: 1.15;
   }
 
   :where(a, button, summary):focus-visible {
@@ -273,6 +276,26 @@ html:not(.js) [data-nav-toggle] {
   display: none;
 }
 
+/* Koyu çerçeve (yalnız ana sayfa: _PublicLayout'ta data-chrome="koyu", Home.cshtml koyar; 2026-11-22, Ulaş).
+   Menü kendi sınıflarını ve daisyUI renklerini kullanmaya devam eder; yalnız menünün içinde tema renkleri koyu değerlerle
+   yeniden tanımlanır. Kontrast (en açık menü zemini #0B2A55 üstünde): yazı #EAF4FF 12,8:1, grup başlıkları #A9C7E8 8,1:1,
+   "Giriş yap" ve odak #7FE6F2 9,8:1 (koyu #04121F üstünde 13:1). Katmansız: daisyUI ve Tailwind katmanlarını geçer. */
+html[data-chrome="koyu"],
+html[data-chrome="koyu"] body {
+  background-color: #04121F;
+}
+
+html[data-chrome="koyu"] .pn-header {
+  --color-base-100: #04121F;
+  --color-base-200: #0B2A55;
+  --color-base-300: rgb(169 199 232 / 0.24);
+  --color-base-content: #EAF4FF;
+  --color-muted: #A9C7E8;
+  --color-secondary: #7FE6F2;
+  --color-secondary-content: #04121F;
+  color: var(--color-base-content);
+}
+
 /* ========================================================================
    Ana sayfa (/tr, Pages/Public/Home.cshtml, wwwroot/js/home.js). BRIEF: ~/scrollcraft/builds/briefyn/BRIEF.md.
    scroll-craft motoru (wwwroot/lib/scrollcraft, değiştirilmez) sayfada en alttaki "scrollcraft" katmanına
@@ -285,8 +308,8 @@ html:not(.js) [data-nav-toggle] {
   --sc-ink-soft: #0E4458;
   --sc-accent: #005E86;
   --sc-accent-ink: #F0FBFF;
-  --sc-font-display: "Bricolage Grotesque", "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
-  --sc-font-text: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --sc-font-display: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --sc-font-text: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   /* Motorun gövde yazısı ayarları menü ve alt bilgiyi öbür sayfalardan farklı gösterirdi; sitenin değerleri. */
   --sc-t-base: 1rem;
   --sc-leading-body: 1.5;
@@ -364,11 +387,10 @@ html:not(.js) [data-nav-toggle] {
 
   .hh-title {
     max-width: 19ch;
-    font-size: clamp(2.25rem, 0.9rem + 3.6vw, 4.125rem);
-    font-weight: 750;
-    font-stretch: 86%;
-    line-height: 1.02;
-    letter-spacing: -0.025em;
+    font-size: clamp(2.25rem, 0.9rem + 3.6vw, 4rem);
+    font-weight: 600;
+    line-height: 1.06;
+    letter-spacing: -0.022em;
     text-wrap: balance;
     color: var(--color-hero-title);
   }
@@ -378,7 +400,6 @@ html:not(.js) [data-nav-toggle] {
     max-width: 40ch;
     font-size: clamp(1.05rem, 0.98rem + 0.3vw, 1.2rem);
     line-height: 1.55;
-    letter-spacing: 0.005em;
     text-wrap: pretty;
     color: var(--color-hero-text);
   }
@@ -386,7 +407,6 @@ html:not(.js) [data-nav-toggle] {
   .hh-note {
     margin-top: 0.875rem;
     font-size: 0.95rem;
-    letter-spacing: 0.005em;
     color: var(--color-hero-text);
   }
 
@@ -449,6 +469,32 @@ html:not(.js) [data-nav-toggle] {
     }
   }
 
+  /* ---- Açılıştan sonraki bölümlerin ortak renkleri (2026-11-22, Ulaş: açık zeminlerin hepsi açılışın koyu lacivertine).
+     Zeminler açılış degradesinin iki tonu sırayla: lacivert (#06224A) ve derin (#04121F); aralarında ince bir çizgi.
+     Yazı ve odak renklerinin en kötü kontrastı (en açık zemin, özet kartı #0B2A55 üstünde): başlık #FFFFFF 13,8:1,
+     metin #CFE8FF 11,3:1, ikincil metin #A9C7E8 8,1:1, vurgu/bağlantı/odak #7FE6F2 9,8:1, düğme kenarı #6A9BCE 4,7:1 (en az 3:1). ---- */
+  .hstrip,
+  .hj,
+  .ha,
+  .ht,
+  .hf,
+  .hc {
+    --hd-deep: #04121F;
+    --hd-navy: #06224A;
+    --hd-card: #0B2A55;
+    --hd-title: #FFFFFF;
+    --hd-text: #CFE8FF;
+    --hd-ink: #EAF4FF;
+    --hd-muted: #A9C7E8;
+    --hd-accent: #7FE6F2;
+    --hd-control: #6A9BCE;
+    --hd-line: rgb(169 199 232 / 0.2);
+
+    & :focus-visible {
+      outline-color: var(--hd-accent);
+    }
+  }
+
   /* ---- 2. Kayan şerit: toplantı türleri sabit hızla sağa akar. Açılışın alt kenarına biner. ---- */
   .hstrip {
     position: relative;
@@ -457,8 +503,8 @@ html:not(.js) [data-nav-toggle] {
     align-items: center;
     height: 4rem;
     margin-top: -1.75rem;
-    border-block: 1px solid var(--color-base-300);
-    background-color: var(--color-base-100);
+    border-block: 1px solid var(--hd-line);
+    background-color: var(--hd-navy);
   }
 
   .hstrip-viewport {
@@ -487,13 +533,13 @@ html:not(.js) [data-nav-toggle] {
     white-space: nowrap;
     font-size: 1.05rem;
     font-weight: 500;
-    color: var(--color-muted);
+    color: var(--hd-text);
   }
 
   .hstrip-mark {
     width: 1.25rem;
     height: 1rem;
-    color: var(--color-secondary);
+    color: var(--hd-accent);
   }
 
   .hstrip:hover .hstrip-track,
@@ -510,15 +556,15 @@ html:not(.js) [data-nav-toggle] {
     height: 2.75rem;
     margin-inline: 0.25rem 1rem;
     /* Düğmenin kenarı zeminden en az 3:1 ayrılır (WCAG 1.4.11). */
-    border: 1.5px solid #3D8BA3;
+    border: 1.5px solid var(--hd-control);
     border-radius: 999px;
-    background-color: var(--color-base-100);
-    color: var(--color-base-content);
+    background-color: var(--hd-navy);
+    color: var(--hd-title);
     cursor: pointer;
     transition: background-color 0.15s ease-out, transform 0.12s ease-out;
 
     &:hover {
-      background-color: var(--color-base-200);
+      background-color: var(--hd-card);
     }
 
     &:active {
@@ -554,112 +600,185 @@ html:not(.js) [data-nav-toggle] {
     }
   }
 
-  /* ---- 3. Toplantının yolculuğu (zirve). Temel düzen durağan adım listesi; "sc-on" iken pinli sahne. ---- */
+  /* ---- 3. Kayıt girer, özet çıkar (zirve). Tek büyük özet sayfası; ara adım yok (2026-11-22, Ulaş).
+     Temel düzen durağan: başlık, tek cümle ve özetin tamamı. "sc-on" iken kısa pinli sahne: kaydın ses dalgası
+     soldan sağa yatıp söner (--sc-p 0,05-0,33), özetin üç parçası dalganın söndüğü yerden sırayla gelir ve kalır
+     (ipuçları 0,18 / 0,25 / 0,32, her biri 0,18 payda açılır; 0,5'ten sonrası okuma payı). ---- */
   .hj {
     position: relative;
-    background-color: var(--color-base-100);
+    border-top: 1px solid var(--hd-line);
+    background-color: var(--hd-deep);
+    color: var(--hd-title);
   }
 
   .hj-grid {
     display: grid;
+    gap: 2rem;
     width: 100%;
-    max-width: 72rem;
+    max-width: 76rem;
     margin-inline: auto;
     padding: 4.5rem 1.75rem 5.5rem;
   }
 
   .hj-title {
-    font-size: clamp(2rem, 1.3rem + 2.2vw, 2.875rem);
-    font-weight: 750;
-    font-stretch: 88%;
+    font-size: clamp(2rem, 1.3rem + 2.2vw, 3rem);
     letter-spacing: -0.02em;
     text-wrap: balance;
+    color: var(--hd-title);
   }
 
-  .hj-object {
-    margin-top: 1.25rem;
-  }
-
-  .hj-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--color-muted);
-  }
-
-  .hj-label-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    background-color: var(--color-secondary);
-  }
-
-  .hj-sheet {
-    display: none;
-  }
-
-  .hj-quiet {
+  .hj-lede {
     margin-top: 0.75rem;
-    max-width: 30ch;
-    font-family: var(--font-display);
-    font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.625rem);
-    font-weight: 500;
-    line-height: 1.3;
-    text-wrap: balance;
-    color: var(--color-muted);
-  }
-
-  .hj-steps {
-    display: grid;
-    gap: 2rem;
-    margin-top: 2.5rem;
-  }
-
-  .hj-step {
-    display: grid;
-    gap: 1rem;
-    padding-top: 1.75rem;
-    border-top: 1px solid var(--color-base-300);
-  }
-
-  .hj-step-name {
-    font-size: clamp(1.375rem, 1.15rem + 0.7vw, 1.875rem);
-    font-weight: 700;
-  }
-
-  .hj-step-sentence {
-    margin-top: 0.5rem;
-    max-width: 34ch;
-    font-size: 1.125rem;
+    max-width: 44ch;
+    font-size: clamp(1.125rem, 1.05rem + 0.3vw, 1.3125rem);
     line-height: 1.5;
     text-wrap: pretty;
-    color: var(--color-muted);
+    color: var(--hd-text);
   }
 
-  .hj-mini {
-    padding: 0.75rem;
-    border-radius: 1rem;
-    background-color: var(--color-base-200);
+  /* Özet sayfası. İçindeki boylar em: dar ve kısa ekranda home.js sayfayı sığdırmak için yalnız bunu küçültür. */
+  .hj-card {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    margin: 0;
+    padding: clamp(1.375rem, 0.9rem + 1.6vw, 2.75rem);
+    border: 1px solid var(--hd-line);
+    border-radius: 1.25rem;
+    background-color: var(--hd-card);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 28px 56px -28px rgb(0 0 0 / 0.65);
+    font-size: 1rem;
+    color: var(--hd-ink);
   }
 
-  .hj-mini:empty,
-  html:not(.js) .hj-object {
-    display: none;
+  .hj-card-top {
+    display: grid;
+    gap: 0.25em;
+    padding-bottom: 1.25em;
+    border-bottom: 1px solid var(--hd-line);
   }
 
-  @media (width >= 48rem) {
-    .hj-step {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      gap: 2.5rem;
-      align-items: start;
+  .hj-card-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.9375em;
+    font-weight: 600;
+    color: var(--hd-accent);
+
+    &::before {
+      content: "";
+      width: 0.5em;
+      height: 0.5em;
+      border-radius: 999px;
+      background-color: currentColor;
     }
   }
 
-  /* Pinli sahne. Bölümün yüksekliğini motor da yazar (data-sc-span); burada önceden verilir ki sayfa bağlanırken kaymasın. */
+  .hj-card-title {
+    font-size: clamp(1.5em, 1.1em + 1.4vw, 2.5em);
+    letter-spacing: -0.015em;
+    color: var(--hd-title);
+  }
+
+  .hj-card-meta {
+    font-size: 0.9375em;
+    color: var(--hd-muted);
+  }
+
+  .hj-card-body {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 1.75em 3.5em;
+    padding-top: 1.5em;
+  }
+
+  .hj-block-name {
+    font-family: var(--font-sans);
+    font-size: clamp(1em, 0.92em + 0.25vw, 1.125em);
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--hd-accent);
+  }
+
+  .hj-block-text {
+    max-width: 40ch;
+    margin-top: 0.5em;
+    font-size: clamp(1.125em, 0.95em + 0.6vw, 1.5em);
+    line-height: 1.55;
+    text-wrap: pretty;
+  }
+
+  .hj-list {
+    display: grid;
+    gap: 0.75em;
+    margin-top: 0.625em;
+    font-size: clamp(1.0625em, 0.95em + 0.45vw, 1.375em);
+    line-height: 1.45;
+  }
+
+  /* Her maddenin başında logodaki not satırlarından kısa bir çizgi. */
+  .hj-list li {
+    position: relative;
+    padding-left: 1.25em;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.68em;
+      width: 0.625em;
+      height: 0.2em;
+      border-radius: 999px;
+      background-image: var(--grad-mark);
+    }
+  }
+
+  .hj-todos li {
+    display: grid;
+    gap: 0.125em;
+  }
+
+  .hj-who {
+    font-size: 0.85em;
+    color: var(--hd-muted);
+  }
+
+  .hj-wave {
+    display: none;
+  }
+
+  /* Geniş ekranda tek cümle başlığın yanında: özet sayfasına daha çok yükseklik kalır. */
+  @media (width >= 64rem) {
+    .hj-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: end;
+      column-gap: 3rem;
+    }
+
+    .hj-lede {
+      justify-self: end;
+      max-width: 34ch;
+      margin-top: 0;
+      padding-bottom: 0.25rem;
+    }
+  }
+
+  @media (width >= 48rem) {
+    .hj-card-body {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    }
+
+    .hj-block-sum {
+      grid-row: span 2;
+    }
+  }
+
+  /* Pinli sahne. Bölümün yüksekliğini motor da yazar (data-sc-span, home.js); burada önceden verilir ki sayfa bağlanırken kaymasın. */
   .sc-on .hj {
-    height: 500vh;
+    height: 240vh;
   }
 
   .sc-on .hj-stage {
@@ -667,458 +786,134 @@ html:not(.js) [data-nav-toggle] {
     height: 100svh;
   }
 
+  /* Başlık ve özet sayfası birlikte dikeyde ortalı; sayfanın satırı içeriği kadar, sığmazsa kalan yükseklik kadar (minmax 0). */
   .sc-on .hj-grid {
     height: 100%;
-    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 3rem;
-    padding: calc(var(--nav-h) + 2rem) 1.75rem 2rem;
-  }
-
-  .sc-on .hj-title {
-    grid-area: 1 / 1;
-  }
-
-  .sc-on .hj-cues {
-    display: grid;
-    grid-area: 2 / 1;
+    grid-template-rows: auto minmax(0, max-content);
     align-content: center;
-    padding-bottom: 3rem;
+    gap: 1.5rem;
+    padding: calc(var(--nav-h) + 1.75rem) 1.75rem 1.75rem;
   }
 
-  .sc-on .hj-steps {
-    display: contents;
-  }
-
-  .sc-on .hj-quiet,
-  .sc-on .hj-step {
-    grid-area: 1 / 1;
-    margin: 0;
-  }
-
-  .sc-on .hj-step {
-    display: block;
-    padding: 0;
-    border: 0;
-  }
-
-  .sc-on .hj-quiet {
-    max-width: 20ch;
-    font-size: clamp(1.375rem, 1.1rem + 0.8vw, 1.75rem);
-  }
-
-  .sc-on .hj-step-name {
-    font-size: clamp(1.625rem, 1.3rem + 1vw, 2.25rem);
-  }
-
-  .sc-on .hj-step-sentence {
-    margin-top: 0.75rem;
-    font-size: clamp(1.125rem, 1.05rem + 0.25vw, 1.25rem);
-  }
-
-  .sc-on .hj-mini {
-    display: none;
-  }
-
-  .sc-on .hj-object {
-    display: flex;
-    flex-direction: column;
-    grid-area: 1 / 2 / 3 / 3;
-    align-self: center;
-    height: 100%;
-    max-height: 46rem;
-    min-height: 0;
-    margin: 0;
-    padding: 0.875rem 1rem 1rem;
-    border-radius: 1rem;
-    background-color: var(--color-base-200);
-  }
-
-  .sc-on .hj-sheet {
-    display: block;
-    flex: 1;
-    min-height: 0;
-    margin-top: 0.75rem;
-    border-radius: 1rem;
-    background-color: var(--color-base-100);
-    box-shadow: 0 1px 2px rgb(3 32 43 / 0.08), 0 10px 24px -10px rgb(3 32 43 / 0.22);
-  }
-
-  @media (width <= 860px) {
-    .sc-on .hj {
-      height: 440vh;
-    }
-
-    .sc-on .hj-grid {
-      grid-template-columns: minmax(0, 1fr);
-      /* Adım bandı yalnız en uzun adım metni kadar yer alır; kalan yüksekliğin tamamı levhanın (brief %56 / %44 diyordu;
-         sabit oran iOS Safari'de bandın altında ekranın üçte birini boş bırakıyordu). */
-      grid-template-rows: minmax(0, 1fr) auto auto;
-      row-gap: 0.625rem;
-      padding: calc(var(--nav-h) + 0.75rem) 1rem 1rem;
-    }
-
-    .sc-on .hj-object {
-      grid-area: 1 / 1;
-      padding: 0.625rem 0.625rem 0.625rem;
-    }
-
-    .sc-on .hj-sheet {
-      margin-top: 0.5rem;
-    }
-
-    .sc-on .hj-label {
-      font-size: 0.85rem;
-    }
-
-    .sc-on .hj-title {
-      grid-area: 2 / 1;
-      font-size: 1.125rem;
-      letter-spacing: -0.01em;
-    }
-
-    .sc-on .hj-cues {
-      grid-area: 3 / 1;
-      align-content: start;
-      padding-bottom: 0;
-    }
-
-    .sc-on .hj-quiet {
-      font-size: 1.25rem;
-    }
-
-    .sc-on .hj-step-name {
-      font-size: 1.375rem;
-    }
-
-    .sc-on .hj-step-sentence {
-      margin-top: 0.375rem;
-      font-size: 1.05rem;
-    }
-  }
-
-  /* Örnek toplantının levhası (home.js çizer). Metin HTML; çubuk ve çizgiler SVG. Hepsi süs, ekran okuyucuya gösterilmez. */
-  .hs {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    height: 100%;
-    padding: 1.25rem 1.5rem;
-    font-size: 1rem; /* Levhanın içindeki yazı boyları em: dar ekranda home.js levhayı sığdırmak için bunu küçültebilir. */
-    line-height: 1.4;
-    color: var(--color-base-content);
-  }
-
-  .hs-file {
-    display: inline-flex;
-    align-items: center;
-    justify-self: start;
-    gap: 0.5rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: var(--radius-field);
-    background-color: var(--color-base-200);
-    font-size: 0.9em;
-    font-weight: 700;
-    color: var(--color-muted);
-  }
-
-  .hs-icon {
-    flex: none;
-    width: 1.125rem;
-    height: 1.125rem;
-  }
-
-  .hs-icon-lg {
-    width: 1.75rem;
-    height: 1.75rem;
-    color: var(--color-secondary);
-  }
-
-  .hs-doc {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
-    margin-top: 1.25rem;
-  }
-
-  .hs-rows,
-  .hs-sum {
-    grid-area: 1 / 1;
+  /* Sayfa içeriği kadar uzun: dalga, özetin kapladığı yerin üstünde durur; özet gelince boş bant kalmaz.
+     Sığmazsa en fazla kalan yükseklik kadar olur; home.js o zaman yazıyı küçültür. */
+  .sc-on .hj-card {
     align-self: start;
-  }
-
-  .hs-row {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding-bottom: 1.125rem;
-  }
-
-  .hs-tag {
-    display: grid;
-    flex: none;
-    width: 5.75rem;
-    font-size: 0.85em;
-    font-weight: 700;
-    color: var(--color-muted);
-  }
-
-  .hs-tag > span {
-    grid-area: 1 / 1;
-    opacity: 0;
-  }
-
-  .hs-text {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    opacity: 0;
-  }
-
-  .hs-sum {
-    display: grid;
-  }
-
-  .hs-h {
-    margin-top: 0.5rem;
-    font-family: var(--font-display);
-    font-size: 0.85em;
-    font-weight: 700;
-    color: var(--color-muted);
-    opacity: 0;
-  }
-
-  .hs-h:first-child {
-    margin-top: 0;
-  }
-
-  .hs-item {
-    padding-bottom: 1.125rem;
-    font-weight: 500;
-    opacity: 0;
-  }
-
-  .hs-item.is-found {
-    font-weight: 700;
-  }
-
-  .hs-tools {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 6.75rem;
-    margin-top: 0.75rem;
-  }
-
-  .hs-tools > * {
-    grid-area: 1 / 1;
-    opacity: 0;
-  }
-
-  .hs-ask {
-    display: grid;
-    align-content: end;
-    gap: 0.5rem;
-  }
-
-  .hs-q {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 2.75rem;
-    padding: 0.5rem 0.875rem;
-    border: 1px solid var(--color-base-300);
-    border-radius: 999px;
-    background-color: #F7FEFF;
-    font-size: 0.95em;
+    max-height: 100%;
+    min-height: 0;
     overflow: hidden;
   }
 
-  .hs-q-text {
-    white-space: pre;
-  }
-
-  .hs-ch {
-    opacity: 0;
-  }
-
-  .hs-a {
-    padding-inline: 0.875rem;
-  }
-
-  .hs-a-text {
-    font-weight: 700;
-  }
-
-  .hs-src {
-    margin-top: 0.125rem;
-    font-size: 0.85em;
-    font-weight: 700;
-    color: var(--color-secondary);
-  }
-
-  .hs-invite {
-    display: flex;
-    align-items: center;
-    align-self: end;
-    justify-self: end;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-base-300);
-    border-radius: 0.75rem;
-    background-color: #F7FEFF;
-    box-shadow: 0 2px 4px rgb(3 32 43 / 0.08), 0 12px 24px -12px rgb(3 32 43 / 0.35);
-  }
-
-  .hs-invite-body {
-    display: grid;
-    line-height: 1.3;
-  }
-
-  .hs-invite-label,
-  .hs-invite-meta {
-    font-size: 0.8em;
-    color: var(--color-muted);
-  }
-
-  .hs-invite-label {
-    font-weight: 700;
-  }
-
-  .hs-invite-body strong {
-    font-size: 0.95em;
-  }
-
-  .hs-mail {
-    display: inline-flex;
-    align-items: center;
-    align-self: end;
-    justify-self: start;
-    gap: 0.5rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: 999px;
-    background-color: var(--color-base-200);
-    font-size: 0.85em;
-    font-weight: 700;
-    color: var(--color-muted);
-  }
-
-  .hs-ink {
+  /* Kaydın ses dalgası: özetin yerinde durur, sırası gelen çubuk yatay bir çizgiye iner ve söner. */
+  .sc-on .hj-wave {
+    display: block;
     position: absolute;
-    inset: 0;
+    left: 0;
+    top: calc(50% + 0.75em);
+    width: 100%;
+    height: min(13rem, 70%);
+    translate: 0 -50%;
     overflow: visible;
     pointer-events: none;
   }
 
-  .hs-ink path {
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .sc-on .hj-wave path {
+    --t: clamp(0, (var(--sc-p, 0) - 0.05 - var(--i) * 0.0035) / 0.11, 1);
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scaleY(calc(1 - 0.96 * var(--t)));
+    opacity: calc(1 - var(--t));
   }
 
-  .hs-bar-b {
-    opacity: 0;
+  @media (width <= 860px) {
+    .hj-grid {
+      gap: 1.5rem;
+      padding: 3.5rem 1rem 4rem;
+    }
+
+    .hj-title {
+      font-size: clamp(1.75rem, 1.4rem + 1.6vw, 2.25rem);
+    }
+
+    .hj-lede {
+      margin-top: 0.5rem;
+      font-size: 1.0625rem;
+    }
+
+    .hj-card {
+      border-radius: 1rem;
+    }
+
+    .hj-card-top {
+      padding-bottom: 1em;
+    }
+
+    .hj-card-body {
+      gap: 1.25em;
+      padding-top: 1.125em;
+    }
+
+    .sc-on .hj {
+      height: 220vh;
+    }
+
+    .sc-on .hj-grid {
+      gap: 1rem;
+      padding: calc(var(--nav-h) + 1rem) 1rem 1rem;
+    }
+
+    .sc-on .hj-wave {
+      height: min(9rem, 50%);
+    }
+
+    .hj-wave-odd {
+      display: none;
+    }
   }
 
-  /* Dar levha (telefon ve durağan adım listesi): konuşmacı adı satırın üstünde küçük. */
-  .hs--narrow {
-    padding: 0.875rem 1rem;
-    font-size: 0.9rem;
-  }
+  /* Kısa ekranda (iOS Safari araç çubuklarıyla, alçak dizüstü pencereleri) sabit sahne sıkılaşır: tek cümle çıkar,
+     başlık ve boşluklar küçülür; özet sayfasına yer kalsın. */
+  @media (height <= 720px) {
+    .sc-on .hj-lede {
+      display: none;
+    }
 
-  .hs--narrow .hs-doc {
-    margin-top: 0.75rem;
-  }
+    .sc-on .hj-grid {
+      gap: 0.875rem;
+      padding-top: calc(var(--nav-h) + 1rem);
+      padding-bottom: 1rem;
+    }
 
-  .hs--narrow .hs-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding-bottom: 0.875rem;
-  }
+    .sc-on .hj-title {
+      font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.25rem);
+    }
 
-  .hs--narrow .hs-tag {
-    width: auto;
-    font-size: 0.833em;
-    line-height: 1.2;
-  }
+    .sc-on .hj-card {
+      padding: 1.25rem 1.5rem;
+    }
 
-  .hs--narrow .hs-item {
-    padding-bottom: 0.875rem;
-  }
+    .sc-on .hj-card-top {
+      padding-bottom: 0.875em;
+    }
 
-  .hs--narrow .hs-h {
-    margin-top: 0.25rem;
-    font-size: 0.833em;
-  }
-
-  .hs--narrow .hs-tools {
-    min-height: 0;
-    grid-template-rows: auto auto;
-  }
-
-  .hs--narrow .hs-ask {
-    grid-area: 1 / 1 / 3 / 2;
-  }
-
-  .hs--narrow .hs-invite {
-    grid-area: 1 / 1;
-    justify-self: stretch;
-    padding: 0.625rem 0.75rem;
-  }
-
-  .hs--narrow .hs-mail {
-    grid-area: 2 / 1;
-    margin-top: 0.5rem;
-  }
-
-  /* Pinli telefon levhası: soru ve davet alanı, konuşma satırlarıyla aynı yerin alt kısmını paylaşır (ikisi aynı anda görünmez).
-     Özetle üst üste binmemesini home.js'teki fitScene sağlar: sığmazsa satır çıkarır, yetmezse levhanın yazısını küçültür. */
-  .hj-sheet .hs--narrow {
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .hj-sheet .hs--narrow .hs-doc,
-  .hj-sheet .hs--narrow .hs-tools {
-    grid-area: 2 / 1;
-  }
-
-  .hj-sheet .hs--narrow .hs-tools {
-    align-self: end;
-  }
-
-  /* Soru iki satıra sarabilir. */
-
-  .hs--narrow .hs-q {
-    border-radius: 1.25rem;
-  }
-
-  .hs--narrow .hs-q-text {
-    white-space: pre-wrap;
-  }
-
-  .hs--mini {
-    height: auto;
-    border-radius: 0.75rem;
-    background-color: var(--color-base-100);
-  }
-
-  .hs--mini .hs-tools[hidden] {
-    display: none;
+    .sc-on .hj-card-body {
+      padding-top: 1em;
+      row-gap: 1.25em;
+    }
   }
 }
 
-/* ---- 4-7. Kimler için, güven, sık sorulanlar, kapanış (Görev 10). Zeminler bölüm bölüm, sert kenarla değişir. ---- */
+/* ---- 4-7. Kimler için, güven, sık sorulanlar, kapanış (Görev 10). Zeminler koyu, iki ton sırayla (renkler 2. bölümün üstündeki ortak değişkenlerde). ---- */
 @layer components {
   .ha,
+  .ht,
   .hc {
     --nav-h: calc(4rem + 1px);
   }
 
   @media (width >= 40rem) {
     .ha,
+    .ht,
     .hc {
       --nav-h: calc(4.25rem + 1px);
     }
@@ -1128,15 +923,16 @@ html:not(.js) [data-nav-toggle] {
   .ht-title,
   .hf-title {
     font-size: clamp(2rem, 1.3rem + 2.2vw, 2.875rem);
-    font-weight: 750;
-    font-stretch: 88%;
     letter-spacing: -0.02em;
     text-wrap: balance;
+    color: var(--hd-title);
   }
 
   /* 4. Kimler için: başlık ve fotoğraf solda, beş rol sağda alt alta; kart yok, ince çizgi var. */
   .ha {
-    background-color: var(--color-base-200);
+    border-top: 1px solid var(--hd-line);
+    background-color: var(--hd-navy);
+    color: var(--hd-title);
   }
 
   /* Pinli yolculuktan hemen sonra geldiği için üst boşluk az (devices.md 8: sahne bir ekran boyunca kayarak çıkıyor). */
@@ -1159,18 +955,17 @@ html:not(.js) [data-nav-toggle] {
   }
 
   .ha-roles {
-    border-top: 1px solid var(--color-base-300);
+    border-top: 1px solid var(--hd-line);
   }
 
   .ha-role {
     padding-block: 1.375rem 1.5rem;
-    border-bottom: 1px solid var(--color-base-300);
+    border-bottom: 1px solid var(--hd-line);
   }
 
   .ha-role-name {
     font-size: clamp(1.375rem, 1.15rem + 0.7vw, 1.625rem);
-    font-weight: 650;
-    font-stretch: 92%;
+    color: var(--hd-title);
   }
 
   .ha-role-text {
@@ -1179,7 +974,7 @@ html:not(.js) [data-nav-toggle] {
     font-size: 1.0625rem;
     line-height: 1.5;
     text-wrap: pretty;
-    color: var(--color-muted);
+    color: var(--hd-muted);
   }
 
   @media (width > 860px) {
@@ -1203,7 +998,9 @@ html:not(.js) [data-nav-toggle] {
 
   /* 5. Güven: sayfanın en sakin yeri, tek ortalı bölüm. */
   .ht {
-    background-color: var(--color-base-100);
+    border-top: 1px solid var(--hd-line);
+    background-color: var(--hd-deep);
+    color: var(--hd-title);
   }
 
   .ht-inner {
@@ -1230,7 +1027,7 @@ html:not(.js) [data-nav-toggle] {
     height: 100%;
   }
 
-  /* Satır katmanı zeminle aynı renkte ve opak: soldan sağa açıldıkça altındaki çubukları örter ("ses silinir, döküm kalır"). */
+  /* Satır katmanı zeminle aynı renkte (aynı değişken) ve opak: soldan sağa açıldıkça altındaki çubukları örter ("ses silinir, döküm kalır"). */
   .ht-lines {
     position: absolute;
     inset: 0;
@@ -1238,7 +1035,7 @@ html:not(.js) [data-nav-toggle] {
     align-content: center;
     gap: 0.875rem;
     padding-inline: 0.25rem;
-    background-color: var(--color-base-100);
+    background-color: var(--hd-deep);
   }
 
   .ht-line {
@@ -1269,7 +1066,7 @@ html:not(.js) [data-nav-toggle] {
 
   .ht-lock {
     display: inline-flex;
-    color: var(--color-secondary);
+    color: var(--hd-accent);
   }
 
   .ht-claim {
@@ -1277,10 +1074,11 @@ html:not(.js) [data-nav-toggle] {
     margin-top: 1.25rem;
     font-family: var(--font-display);
     font-size: clamp(1.5rem, 1.15rem + 1.1vw, 2.125rem);
-    font-weight: 600;
-    line-height: 1.2;
+    font-weight: 500;
+    line-height: 1.25;
     letter-spacing: -0.01em;
     text-wrap: balance;
+    color: var(--hd-ink);
   }
 
   .ht-title + .ht-claim {
@@ -1293,8 +1091,8 @@ html:not(.js) [data-nav-toggle] {
     min-height: 2.75rem;
     margin-top: 1.5rem;
     padding-inline: 0.5rem;
-    font-weight: 700;
-    color: var(--color-secondary);
+    font-weight: 600;
+    color: var(--hd-accent);
     text-decoration: underline;
     text-underline-offset: 0.2em;
     border-radius: var(--radius-field);
@@ -1310,9 +1108,52 @@ html:not(.js) [data-nav-toggle] {
     }
   }
 
+  /* Pinli güven bölümü (home.js, pay 2): çizgiler --sc-p 0,1'den 0,7'ye açılır, kalan pay bekleme; sonra sayfa akar.
+     Bölümün tamamı (çizgiler, başlık, iki cümle, bağlantı) menünün altında tek ekrana sığar. */
+  .sc-on .ht {
+    height: 200vh;
+  }
+
+  .sc-on .ht-stage {
+    height: 100vh;
+    height: 100svh;
+  }
+
+  .sc-on .ht-inner {
+    height: 100%;
+    align-content: center;
+    padding: calc(var(--nav-h) + 1.5rem) 1.75rem 1.5rem;
+  }
+
+  @media (height <= 760px) {
+    .sc-on .ht-band {
+      height: 4.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .sc-on .ht-title {
+      font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.25rem);
+    }
+
+    .sc-on .ht-claim {
+      margin-top: 0.875rem;
+      font-size: clamp(1.25rem, 1.05rem + 0.8vw, 1.625rem);
+    }
+
+    .sc-on .ht-title + .ht-claim {
+      margin-top: 1.25rem;
+    }
+
+    .sc-on .ht-link {
+      margin-top: 0.75rem;
+    }
+  }
+
   /* 6. Sık sorulanlar: sola dayalı, sıkıştırılmış, yerel <details>. */
   .hf {
-    background-color: var(--color-base-200);
+    border-top: 1px solid var(--hd-line);
+    background-color: var(--hd-navy);
+    color: var(--hd-title);
   }
 
   .hf-inner {
@@ -1325,11 +1166,11 @@ html:not(.js) [data-nav-toggle] {
   .hf-list {
     max-width: 48rem;
     margin-top: 2rem;
-    border-top: 1px solid var(--color-base-300);
+    border-top: 1px solid var(--hd-line);
   }
 
   .hf-item {
-    border-bottom: 1px solid var(--color-base-300);
+    border-bottom: 1px solid var(--hd-line);
   }
 
   .hf-q {
@@ -1342,7 +1183,8 @@ html:not(.js) [data-nav-toggle] {
     list-style: none;
     cursor: pointer;
     font-size: 1.125rem;
-    font-weight: 700;
+    font-weight: 600;
+    color: var(--hd-title);
     border-radius: var(--radius-field);
 
     &::-webkit-details-marker {
@@ -1352,7 +1194,7 @@ html:not(.js) [data-nav-toggle] {
     & svg {
       width: 1rem;
       height: 1rem;
-      color: var(--color-secondary);
+      color: var(--hd-accent);
       transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1);
     }
   }
@@ -1366,7 +1208,7 @@ html:not(.js) [data-nav-toggle] {
     max-width: 62ch;
     font-size: 1.0625rem;
     line-height: 1.55;
-    color: var(--color-muted);
+    color: var(--hd-text);
   }
 
   .hf-a p + p {
@@ -1382,6 +1224,7 @@ html:not(.js) [data-nav-toggle] {
   /* 7. Kapanış: koyu levha (alt bilginin degradesinin başı); işaret yerine çizilir, çağrı tutulur. */
   .hc {
     position: relative;
+    border-top: 1px solid var(--hd-line);
     background-image: var(--grad-foot);
     color: var(--color-hero-title);
   }
@@ -1405,9 +1248,7 @@ html:not(.js) [data-nav-toggle] {
   .hc-title {
     max-width: 21ch;
     font-size: clamp(2rem, 1.2rem + 2.4vw, 3.25rem);
-    font-weight: 750;
-    font-stretch: 88%;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.022em;
     line-height: 1.06;
     text-wrap: balance;
     color: var(--color-hero-title);
