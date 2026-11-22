@@ -5,7 +5,7 @@ using MeetingWeb.Models;
 
 namespace MeetingWeb.Tests.Infrastructure
 {
-    // The made-up meetings and questions of ai_engine/tests/altin (format in its README), loaded into the test database
+    // The made-up meetings and questions of MeetingWeb.Tests/Altin (format in its README), loaded into the test database
     // the way the app stores an analysed meeting: title = summary topic, points and tasks from the summary, transcript lines.
     public class GoldSet
     {
@@ -134,14 +134,14 @@ namespace MeetingWeb.Tests.Infrastructure
         public static string Norm(string text) =>
             Regex.Replace(text.Replace("İ", "i").Replace("I", "ı").ToLowerInvariant(), @"\s+", " ").Trim();
 
-        private static string FindDirectory()
+        internal static string FindDirectory()
         {
             for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
             {
-                var candidate = Path.Combine(dir.FullName, "ai_engine", "tests", "altin");
+                var candidate = Path.Combine(dir.FullName, "MeetingWeb.Tests", "Altin");
                 if (Directory.Exists(candidate)) return candidate;
             }
-            throw new DirectoryNotFoundException("ai_engine/tests/altin bulunamadı");
+            throw new DirectoryNotFoundException("MeetingWeb.Tests/Altin bulunamadı");
         }
     }
 }

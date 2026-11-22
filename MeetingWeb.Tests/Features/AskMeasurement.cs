@@ -1,8 +1,12 @@
 using System.Diagnostics;
 using System.Text.Json;
+using MeetingWeb.Services.Ai;
 using MeetingWeb.Services.ArchiveSearch;
+using MeetingWeb.Models;
 using MeetingWeb.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace MeetingWeb.Tests.Features;
 
@@ -16,9 +20,11 @@ public class AskMeasurement
     public async Task Run_model_measurement_when_configured()
     {
         var url = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_URL");
-        if (string.IsNullOrWhiteSpace(url)) return;
+        var dotnet = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_MOTOR") == "dotnet";
+        if (!dotnet && string.IsNullOrWhiteSpace(url)) return;
+        if (dotnet && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GROQ_API_KEY"))) return;
 
-        var model = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_MODEL") ?? "model";
+        var model = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_MODEL") ?? Environment.GetEnvironmentVariable("AI_ANSWER_MODEL") ?? "openai/gpt-oss-20b";
         var output = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_CIKTI") ?? Path.Combine(Directory.GetCurrentDirectory(), "olcum-sonuc");
         var delaySeconds = int.TryParse(Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_ARALIK_SN"), out var delay) ? Math.Max(0, delay) : 45;
         Directory.CreateDirectory(output);
@@ -32,9 +38,26 @@ public class AskMeasurement
         foreach (var doc in previous) doc.Dispose();
 
         using var app = new BriefynFactory { ExtraSettings = { ["Ask:QuestionsPerHour"] = "100000", ["Ask:TimeoutSeconds"] = "180" } };
-        app.PythonApi.ForwardTo = new Uri(url.EndsWith('/') ? url : url + "/");
-        app.PythonApi.ForwardApiKey = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_API_KEY");
+        RecordingAiEngine? recording = null;
+        if (dotnet)
+        {
+            app.ExtraServices = services =>
+            {
+                services.RemoveAll<IAiEngine>();
+                services.AddSingleton<IAiEngine>(provider => recording = new RecordingAiEngine(new DotNetAiEngine(
+                    provider.GetRequiredService<ILlmClientFactory>(), provider.GetRequiredService<ILogger<DotNetAiEngine>>())));
+            };
+        }
+        else
+        {
+            app.PythonApi.ForwardTo = new Uri(url!.EndsWith('/') ? url : url + "/");
+            app.PythonApi.ForwardApiKey = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_API_KEY");
+        }
         await app.InitializeAsync();
+        if (dotnet) _ = app.Services.GetRequiredService<IAiEngine>();
+        int CallCount() => dotnet ? recording!.CallCount : app.PythonApi.CallCount;
+        string? RawAnswer() => dotnet ? recording!.LastRawAnswer : app.PythonApi.LastResponseBody;
+        int BodyCharacters() => dotnet ? recording!.LastBodyCharacters : app.PythonApi.LastBody?.Length ?? 0;
         var gold = app.WithDb(GoldSet.Load);
         var busyStreak = 0;
         var previousCallCount = 0;
@@ -48,7 +71,7 @@ public class AskMeasurement
             int bodyChars = 0;
             for (var attempt = 0; attempt < 3; attempt++)
             {
-                var beforeCalls = app.PythonApi.CallCount;
+                var beforeCalls = CallCount();
                 var timer = Stopwatch.StartNew();
                 using (var scope = app.Services.CreateScope())
                 {
@@ -70,10 +93,10 @@ public class AskMeasurement
                 }
                 timer.Stop();
                 elapsed += timer.ElapsedMilliseconds;
-                if (app.PythonApi.CallCount > beforeCalls)
+                if (CallCount() > beforeCalls)
                 {
-                    raw = app.PythonApi.LastResponseBody;
-                    if (app.PythonApi.LastBody != null) bodyChars = app.PythonApi.LastBody.Length;
+                    raw = RawAnswer();
+                    bodyChars = BodyCharacters();
                 }
                 if (result.Status != AskStatus.Busy) break;
                 if (attempt < 2) await Task.Delay(TimeSpan.FromSeconds(65));
@@ -87,8 +110,8 @@ public class AskMeasurement
             completed.Add(question.Id);
             await WriteRows(path, rows.Values);
 
-            var called = app.PythonApi.CallCount > previousCallCount;
-            previousCallCount = app.PythonApi.CallCount;
+            var called = CallCount() > previousCallCount;
+            previousCallCount = CallCount();
             if (result.Status == AskStatus.Busy)
             {
                 busyStreak++;
@@ -100,6 +123,66 @@ public class AskMeasurement
 
         await WriteRows(path, rows.Values);
         await File.WriteAllTextAsync(Path.Combine(output, safeModel + "-ozet.md"), BuildSummary(gold, rows.Values));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Recording_engine_counts_calls_and_clears_previous_raw_answer_on_failure(bool failSecondCall)
+    {
+        var inner = new MeasurementFakeEngine();
+        var recording = new RecordingAiEngine(inner);
+        AiAnswerPassage[] passages = [new("T1-R1", "Türkçe", "2026-11-22", "karar", "Bir karar.")];
+        var answer = await recording.AnswerAsync("Soru?", passages);
+        Assert.Equal(1, recording.CallCount);
+        Assert.Equal(answer.GetRawText(), recording.LastRawAnswer);
+        Assert.Equal(JsonSerializer.Serialize(new
+        {
+            soru = "Soru?",
+            parcalar = new[] { new { id = "T1-R1", toplanti = "Türkçe", tarih = "2026-11-22", tur = "karar", metin = "Bir karar." } }
+        }, JsonSerializerOptions.Web).Length, recording.LastBodyCharacters);
+        inner.Fail = failSecondCall;
+        if (failSecondCall)
+            await Assert.ThrowsAsync<HttpRequestException>(() => recording.AnswerAsync("İkinci?", passages));
+        else
+            await recording.AnswerAsync("İkinci?", passages);
+        Assert.Equal(2, recording.CallCount);
+        Assert.Equal(failSecondCall ? null : answer.GetRawText(), recording.LastRawAnswer);
+    }
+
+    private sealed class RecordingAiEngine(IAiEngine inner) : IAiEngine
+    {
+        public int CallCount { get; private set; }
+        public string? LastRawAnswer { get; private set; }
+        public int LastBodyCharacters { get; private set; }
+
+        public Task<AiApiResponse?> ProcessMeetingAsync(string audioPath, string? speakersPath, CancellationToken ct = default) =>
+            inner.ProcessMeetingAsync(audioPath, speakersPath, ct);
+
+        public Task<AiSummaryData?> SummarizeAsync(string transcript, CancellationToken ct = default) => inner.SummarizeAsync(transcript, ct);
+
+        public async Task<JsonElement> AnswerAsync(string question, IReadOnlyList<AiAnswerPassage> passages, CancellationToken ct = default)
+        {
+            CallCount++;
+            LastRawAnswer = null;
+            LastBodyCharacters = JsonSerializer.Serialize(new
+            {
+                soru = question,
+                parcalar = passages.Select(p => new { id = p.Id, toplanti = p.Toplanti, tarih = p.Tarih, tur = p.Tur, metin = p.Metin })
+            }, JsonSerializerOptions.Web).Length;
+            var answer = await inner.AnswerAsync(question, passages, ct);
+            LastRawAnswer = answer.GetRawText();
+            return answer;
+        }
+    }
+
+    private sealed class MeasurementFakeEngine : IAiEngine
+    {
+        public bool Fail { get; set; }
+        public Task<AiApiResponse?> ProcessMeetingAsync(string audioPath, string? speakersPath, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<AiSummaryData?> SummarizeAsync(string transcript, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<JsonElement> AnswerAsync(string question, IReadOnlyList<AiAnswerPassage> passages, CancellationToken ct = default) =>
+            Fail ? throw new HttpRequestException("failure") : Task.FromResult(JsonSerializer.Deserialize<JsonElement>("{\"yeterli_bilgi\":false}"));
     }
 
     private static async Task WriteRows(string path, IEnumerable<Row> rows)
