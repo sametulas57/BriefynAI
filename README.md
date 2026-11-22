@@ -23,14 +23,14 @@ flowchart LR
     U[Browser] --> W[ASP.NET Core web app]
     Z[Zoom] -->|webhooks| W
     W --> D[(SQL Server)]
-    W -->|Hangfire jobs| A[FastAPI AI service]
-    A --> G[Groq: Whisper and LLMs]
+    W -->|Hangfire jobs| G[Groq: Whisper and LLMs]
+    W -->|Optional transcription| A[Azure Speech]
+    W -->|Audio preparation| F[ffmpeg]
     W -->|SignalR| U
 ```
 
 - `MeetingWeb/`: ASP.NET Core Razor Pages app with Identity, EF Core, Hangfire, and SignalR.
-- `ai_engine/`: Python FastAPI service for transcription, summaries, and answers.
-- `MeetingWeb.Tests/`, `ai_engine/tests/`: xUnit and pytest suites.
+- `MeetingWeb.Tests/`: xUnit suite.
 - `docs/decisions/`: architecture decision records (in Turkish).
 
 ## Getting started
@@ -72,11 +72,6 @@ The app runs at http://127.0.0.1:8080.
 dotnet test MeetingWeb.Tests
 ```
 
-```bash
-pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt
-python -m pytest ai_engine/tests
-```
-
-`scripts/verify.sh` runs everything at once (CSS build, lint, types, .NET and Python tests); the pre-commit hook and CI run the same script.
+`scripts/verify.sh` runs everything at once (CSS build, format, .NET build and tests); the pre-commit hook and CI run the same script.
 
 Tests run on every push with GitHub Actions.

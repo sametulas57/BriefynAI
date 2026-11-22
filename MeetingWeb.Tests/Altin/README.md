@@ -1,6 +1,6 @@
 # Deneme soru seti (altın set)
 
-Arşive soru sor için ölçüm verisi (PRD iç proje notu §7, ADR-0014). Bütün toplantılar uydurmadır; gerçek toplantı, kişi ya da şirket buraya girmez. Tutarlılığı `ai_engine/tests/test_altin_set.py` denetler; C# arama testleri aynı dosyaları okur.
+Arşive soru sor için ölçüm verisi (PRD iç proje notu §7, ADR-0014). Bütün toplantılar uydurmadır; gerçek toplantı, kişi ya da şirket buraya girmez. Tutarlılığı, Python sürümündeki `test_altin_set.py` testlerinden taşınan C# testleri denetler; C# arama testleri aynı dosyaları okur.
 
 ## `toplantilar.json`
 - `ekipler`: `A` (Kuzey Yazılım, Pusula uygulaması) ve `B` (Ege Lojistik). Sızıntı testleri için iki ayrı ekip.

@@ -15,19 +15,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: ai_engine/requirements*.txt
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
       - name: Install CSS tools
         run: npm ci
-      - name: Install dependencies
-        run: python -m venv ai_engine/.venv && ai_engine/.venv/bin/python -m pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: scripts/verify.sh
@@ -37,4 +30,3 @@ jobs:
           if grep -Eq '\b(High|Critical)\b' audit.txt; then
             exit 1
           fi
-          ai_engine/.venv/bin/python -m pip install pip-audit==2.10.1 && ai_engine/.venv/bin/python -m pip_audit -r ai_engine/requirements.txt
