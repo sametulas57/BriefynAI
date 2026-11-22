@@ -72,7 +72,7 @@ public class SpeakerSuggesterTests
             Reply = _ => """{"oneriler":[{"konusmaci":"Konuşmacı 2","ad":"Murat","gerekce":"ipucu"}]}"""
         };
         var factory = new FakeFactory { Client = fake };
-        var engine = new DotNetAiEngine(factory, NullLogger<DotNetAiEngine>.Instance);
+        var engine = new DotNetAiEngine(factory, null!, NullLogger<DotNetAiEngine>.Instance);
         var result = await engine.SuggestSpeakerNamesAsync(Transcript);
         Assert.Equal("Murat", Assert.Single(result).Value.Ad);
         Assert.Equal(new[] { LlmTask.Speakers }, factory.Tasks);
@@ -88,7 +88,7 @@ public class SpeakerSuggesterTests
         var factory = new FakeFactory { Client = fake, Error = factoryFails ? error : null };
         using var logs = new CapturingLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logs));
-        var engine = new DotNetAiEngine(factory, loggerFactory.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(factory, null!, loggerFactory.CreateLogger<DotNetAiEngine>());
         Assert.Empty(await engine.SuggestSpeakerNamesAsync(Transcript));
         Assert.Equal("Speaker name suggestions failed; continuing without proposals. ", Assert.Single(logs.Lines));
     }
@@ -99,7 +99,7 @@ public class SpeakerSuggesterTests
     [InlineData("42")]
     public async Task Engine_returns_empty_for_non_object_model_results(string reply)
     {
-        var engine = new DotNetAiEngine(new FakeFactory { Client = new MeetingSummarizerTests.FakeLlm { Reply = _ => reply } }, NullLogger<DotNetAiEngine>.Instance);
+        var engine = new DotNetAiEngine(new FakeFactory { Client = new MeetingSummarizerTests.FakeLlm { Reply = _ => reply } }, null!, NullLogger<DotNetAiEngine>.Instance);
         Assert.Empty(await engine.SuggestSpeakerNamesAsync(Transcript));
     }
 
@@ -118,7 +118,7 @@ public class SpeakerSuggesterTests
         };
         using var logs = new CapturingLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder.AddProvider(logs));
-        var engine = new DotNetAiEngine(factory, loggerFactory.CreateLogger<DotNetAiEngine>());
+        var engine = new DotNetAiEngine(factory, null!, loggerFactory.CreateLogger<DotNetAiEngine>());
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => engine.SuggestSpeakerNamesAsync(Transcript, source.Token));
         Assert.Empty(logs.Lines);
     }
@@ -127,7 +127,7 @@ public class SpeakerSuggesterTests
     public async Task Engine_treats_unrequested_cancellation_as_optional_failure()
     {
         var factory = new FakeFactory { Client = new MeetingSummarizerTests.FakeLlm { Error = new OperationCanceledException(Transcript) } };
-        var engine = new DotNetAiEngine(factory, NullLogger<DotNetAiEngine>.Instance);
+        var engine = new DotNetAiEngine(factory, null!, NullLogger<DotNetAiEngine>.Instance);
         Assert.Empty(await engine.SuggestSpeakerNamesAsync(Transcript));
     }
 
@@ -148,7 +148,7 @@ public class SpeakerSuggesterTests
     public async Task Engine_rejects_python_whitespace_only_question()
     {
         var factory = new FakeFactory { Client = new MeetingSummarizerTests.FakeLlm() };
-        var engine = new DotNetAiEngine(factory, NullLogger<DotNetAiEngine>.Instance);
+        var engine = new DotNetAiEngine(factory, null!, NullLogger<DotNetAiEngine>.Instance);
         await Assert.ThrowsAsync<HttpRequestException>(() => engine.AnswerAsync("\x1c\x1f", []));
         Assert.Empty(factory.Tasks);
     }

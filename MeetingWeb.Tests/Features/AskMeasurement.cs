@@ -45,7 +45,7 @@ public class AskMeasurement
             {
                 services.RemoveAll<IAiEngine>();
                 services.AddSingleton<IAiEngine>(provider => recording = new RecordingAiEngine(new DotNetAiEngine(
-                    provider.GetRequiredService<ILlmClientFactory>(), provider.GetRequiredService<ILogger<DotNetAiEngine>>())));
+                    provider.GetRequiredService<ILlmClientFactory>(), provider.GetRequiredService<ITranscriberFactory>(), provider.GetRequiredService<ILogger<DotNetAiEngine>>())));
             };
         }
         else

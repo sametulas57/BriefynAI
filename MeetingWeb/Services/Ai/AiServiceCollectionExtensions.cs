@@ -10,6 +10,9 @@ public static class AiServiceCollectionExtensions
             c.BaseAddress = new Uri("https://api.groq.com/openai/v1/");
             c.Timeout = TimeSpan.FromSeconds(300);
         });
+        services.AddHttpClient("AzureSpeech", c => c.Timeout = TimeSpan.FromSeconds(900));
+        services.AddSingleton<IAudioTools, FfmpegAudioTools>();
+        services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
         services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
         return services;
     }
