@@ -41,7 +41,7 @@ Ayrıntılı kabul ölçütleri `todo.md`'de.
 - [ ] `verify.sh` GEÇTİ; davranış değişmedi (Python yolu varsayılan)
 
 ### Aşama 2: Dilimler
-- [ ] Görev 3: Arşive soru sor .NET'te, altın set veri taşıması (M)
+- [x] Görev 3: Arşive soru sor .NET'te, altın set veri taşıması (M)
 - [ ] Görev 4: Toplantı özeti .NET'te (M)
 - [ ] Görev 5: Döküm temizleme ve konuşmacı önerisi .NET'te (M)
 - [ ] Görev 6: Ses işleme (ffmpeg) ve Groq yazıya dökme .NET'te (M)

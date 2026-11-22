@@ -24,9 +24,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 2: Dilimler
 
-- [ ] **Görev 3: Arşive soru sor .NET'te, altın set verisi taşınır** (M)
+- [x] **Görev 3: Arşive soru sor .NET'te, altın set verisi taşınır** (M)
   - Kabul: `ArchiveAnswerer` `answerer.py`'nin istemini, şemasını, `_checked` doğrulamasını ve `NOT_FOUND` cevabını birebir taşıyor. İstek sınırları `api_server.py`'deki gibi (40 parça, 24.000 karakter, kimlik deseni, 500 karakter soru, boş soru reddi). Hata olursa günlüğe yalnız hata türü yazılıyor, sonuç "meşgul". `DotNetAiEngine.AnswerAsync` bunu kullanıyor. `DotNetAiEngine` Görev 7'ye kadar yalnız testlerde kuruluyor; uygulama `AiEngine:Mode=dotnet` ile açılmayı reddediyor (yarım yol kullanıcıya ulaşmaz). `ai_engine/tests/altin` `MeetingWeb.Tests/Altin/`'e taşındı, `GoldSet.cs` ve `test_altin_set.py` yeni yeri okuyor. `AskMeasurement` `BRIEFYN_OLCUM_URL` yerine doğrudan `DotNetAiEngine` ile ölçebiliyor (anahtar yoksa koşmuyor).
   - Doğrula: `test_answer.py` (13) ve `test_api_security.py`'deki cevap sınırı testleri C#'ta; `test_altin_set.py` (6) C#'a taşındı; günlükte soru, parça ya da cevap geçmediğini `CapturingLoggerProvider` ile sınayan test; istem ve şema metni Python dosyasıyla karakter karakter aynı (tek seferlik betik çıktısı görev notuna yazılır).
+  - Not (2026-11-22): `SYSTEM` ve `json.dumps(SCHEMA, ensure_ascii=False)` Python'dan üretilip `MeetingWeb.Tests/Ai/Golden/`'a yazıldı; C# sabitleri bunlarla bayt bayt aynı (test + elle karşılaştırma). `test_answer_endpoint_needs_the_key` taşınmadı: .NET içinde servisler arası anahtar yok. Ölçüm: `BRIEFYN_OLCUM_MOTOR=dotnet` + `GROQ_API_KEY`.
   - Bağımlılık: 1, 2.
   - Dosyalar: `MeetingWeb/Services/Ai/ArchiveAnswerer.cs`, `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb.Tests/Ai/ArchiveAnswererTests.cs`, `MeetingWeb.Tests/Infrastructure/GoldSet.cs`, `MeetingWeb.Tests/Features/AskMeasurement.cs`, `MeetingWeb.Tests/Altin/*`.
 

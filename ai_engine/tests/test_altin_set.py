@@ -5,7 +5,7 @@ import pathlib
 import re
 from collections import Counter
 
-ALTIN = pathlib.Path(__file__).resolve().parent / "altin"
+ALTIN = pathlib.Path(__file__).resolve().parents[2] / "MeetingWeb.Tests" / "Altin"
 DATA = json.loads((ALTIN / "toplantilar.json").read_text(encoding="utf-8"))
 QUESTIONS = json.loads((ALTIN / "sorular.json").read_text(encoding="utf-8"))
 MEETINGS = {m["id"]: m for m in DATA["toplantilar"]}

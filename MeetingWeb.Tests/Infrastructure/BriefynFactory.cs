@@ -21,6 +21,8 @@ namespace MeetingWeb.Tests.Infrastructure
         private readonly SqliteConnection _connection = new("DataSource=:memory:");
         private readonly string _tempRoot = Path.Combine(Path.GetTempPath(), "briefyn-tests-" + Guid.NewGuid().ToString("N"));
 
+        public Action<IServiceCollection>? ExtraServices { get; set; }
+
         public FakeBackgroundJobClient Jobs { get; } = new();
         public StubPythonApiHandler PythonApi { get; } = new();
         public StubZoomHandler Zoom { get; } = new();
@@ -128,6 +130,7 @@ namespace MeetingWeb.Tests.Infrastructure
                         o.DefaultChallengeScheme = TestAuthHandler.SchemeName;
                     });
                 }
+                ExtraServices?.Invoke(services);
             });
         }
 
