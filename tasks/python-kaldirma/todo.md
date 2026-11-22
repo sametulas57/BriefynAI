@@ -52,9 +52,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 2, 5.
   - Dosyalar: `MeetingWeb/Services/Ai/AudioTools.cs`, `MeetingWeb/Services/Ai/GroqTranscriber.cs`, `MeetingWeb.Tests/Ai/AudioToolsTests.cs`, `MeetingWeb.Tests/Ai/GroqTranscriberTests.cs`, `MeetingWeb/Dockerfile`, `.github/workflows/test.yml`, `README.md`.
 
-- [ ] **Görev 10: Azure konuşmacı ayırma .NET'te** (S-M) · Ulaş'ın kararı (2026-11-22): taşınır, varsayılan Groq kalır
+- [x] **Görev 10: Azure konuşmacı ayırma .NET'te** (S-M) · Ulaş'ın kararı (2026-11-22): taşınır, varsayılan Groq kalır
   - Kabul: `AzureTranscriber` `azure_transcriber.py`'yi taşıyor (mono FLAC, 5 saat sınırı, `diarization` tanımı, 429/5xx yeniden deneme, `Konuşmacı N` etiketleri, tek konuşmacıda düz metin). `TRANSCRIBER=azure` yalnız yüklenen dosyalarda; Zoom kayıtları her durumda Groq.
   - Doğrula: `test_azure_transcriber.py` (12) C#'ta.
+  - Not (2026-11-23): `test_azure_transcriber.py`'nin ilk dokuz testi `AzureTranscriberTests`'te (33 vaka); fabrika ve `process_meeting` testleri Görev 7'de. Ortak `ITranscriber` arayüzü eklendi (`GroqTranscriber` ve `AzureTranscriber`). Bilinen farklar: konuşmacı kimliği ham JSON metniyle tutuluyor (Python `2` ile `2.0`'ı aynı sayardı; Azure tam sayı döndürüyor); `AZURE_SPEECH_MAX_SPEAKERS` sayıya fabrikada çevriliyor.
   - Bağımlılık: 2, 5, 6 (mono FLAC ve süre için `IAudioTools`; sıra: Görev 6'dan sonra, Görev 7'den önce; Görev 7 iki yolu birden kurar).
   - Dosyalar: `MeetingWeb/Services/Ai/AzureTranscriber.cs`, `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb.Tests/Ai/AzureTranscriberTests.cs`.
 

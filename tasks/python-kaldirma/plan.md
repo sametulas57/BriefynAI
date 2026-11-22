@@ -45,7 +45,7 @@ Ayrıntılı kabul ölçütleri `todo.md`'de.
 - [x] Görev 4: Toplantı özeti .NET'te (M)
 - [x] Görev 5: Döküm temizleme ve konuşmacı önerisi .NET'te (M)
 - [x] Görev 6: Ses işleme (ffmpeg) ve Groq yazıya dökme .NET'te (M)
-- [ ] Görev 10: Azure konuşmacı ayırma .NET'te (S-M); numarası eski, sırası burası
+- [x] Görev 10: Azure konuşmacı ayırma .NET'te (S-M); numarası eski, sırası burası
 - [ ] Görev 7: Kaydın tamamı .NET'te: `ProcessMeetingAsync` (S-M)
 
 ### Kontrol B: iki yolun karşılaştırması
