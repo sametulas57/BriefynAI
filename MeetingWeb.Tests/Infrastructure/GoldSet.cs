@@ -130,7 +130,7 @@ namespace MeetingWeb.Tests.Infrastructure
             return gold;
         }
 
-        // Same normalisation as ai_engine/tests/test_altin_set.py: Turkish lower case, single spaces.
+        // Same normalisation as test_altin_set.py in the former Python version: Turkish lower case, single spaces.
         public static string Norm(string text) =>
             Regex.Replace(text.Replace("İ", "i").Replace("I", "ı").ToLowerInvariant(), @"\s+", " ").Trim();
 

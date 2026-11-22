@@ -53,7 +53,7 @@ Ayrıntılı kabul ölçütleri `todo.md`'de.
 
 ### Aşama 3: Python'u kaldırma
 - [x] Görev 8: Varsayılan `dotnet`, testler sahte `IAiEngine` ile (M)
-- [ ] Görev 9: `ai_engine`, Python araçları ve servis silinir (M)
+- [x] Görev 9: `ai_engine`, Python araçları ve servis silinir (M)
 
 ### Kontrol C: bitti
 - [ ] `verify.sh` GEÇTİ, CI yeşil, temiz `docker compose up` ile uçtan uca deneme

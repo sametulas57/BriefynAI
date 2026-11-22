@@ -83,9 +83,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: Kontrol B.
   - Dosyalar: `MeetingWeb/Program.cs`, `MeetingWeb/appsettings.json`, `MeetingWeb/Services/Ai/PythonAiEngine.cs` (silinir), `MeetingWeb.Tests/Infrastructure/StubPythonApiHandler.cs` → `FakeAiEngine.cs`, `MeetingWeb.Tests/Infrastructure/BriefynFactory.cs`, `MeetingWeb.Tests/Security/AiEngineClientTests.cs` (silinir), stub'ı kullanan 10 test dosyası.
 
-- [ ] **Görev 9: `ai_engine`, Python araçları ve servis silinir** (M)
+- [x] **Görev 9: `ai_engine`, Python araçları ve servis silinir** (M)
   - Kabul: `ai_engine/`, `pyproject.toml` silindi. `docker-compose.yml`'da `ai_engine` servisi yok; `GROQ_KEY`, `TRANSCRIBER`, `AZURE_*`, `ANSWERER`, `AI_*_MODEL` `web` servisine geçti; `AI_ENGINE_API_KEY` her yerden kalktı (`.env.example` dahil). `scripts/verify.sh`'te `.venv` kontrolü, ruff, mypy, pytest yok; son satır yalnız .NET sayısını yazıyor. `test.yml`'da Python kurulumu ve `pip-audit` yok; `codeql.yml`'da `python` dili yok. README'deki mimari çizim ve kurulum adımları güncel. `.gitignore`'daki Python satırları duruyor (zararsız) ya da temizlendi, hangisi seçildiyse yazıldı.
   - Doğrula: `scripts/verify.sh` GEÇTİ; `docker compose down && docker compose up --build` ile yığın ayağa kalkıyor, `briefyn-ai` konteyneri yok.
+  - Not (2026-11-23): `ai_engine/` ve `pyproject.toml` silindi; yapay zekâ ayarları `web` servisinde; `AI_ENGINE_API_KEY` kalktı; `verify.sh`, CI, CodeQL ve dependabot'ta Python yok. `.gitignore`'daki Python satırları temizlendi (Python kodu kalmadı). `MeetingWeb.Tests/Ai/Golden` Python'dan üretilmiş sabit veri olarak kalıyor. Docker yığını Kontrol C'de denendi.
   - Bağımlılık: 8.
   - Dosyalar: `ai_engine/` (silinir), `pyproject.toml`, `docker-compose.yml`, `.env.example`, `scripts/verify.sh`, `.github/workflows/test.yml`, `.github/workflows/codeql.yml`, `README.md`.
 
