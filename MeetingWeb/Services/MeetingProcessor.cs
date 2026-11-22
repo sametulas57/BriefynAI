@@ -1,14 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Hangfire;
-using System.Net.Http.Headers;
-using System.Net;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.SignalR;
 using MeetingWeb.Hubs;
+using MeetingWeb.Services.Ai;
 
 namespace MeetingWeb.Services
 {
@@ -24,12 +21,8 @@ namespace MeetingWeb.Services
 
     public class MeetingProcessor : IMeetingProcessor
     {
-        // Named HttpClient for the AI engine, configured in Program.cs (base address, API key).
-        public const string PythonApiClient = "PythonApi";
-
         private readonly ApplicationDbContext _context;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IConfiguration _configuration;
+        private readonly IAiEngine _aiEngine;
         private readonly ILogger<MeetingProcessor> _logger;
         private readonly IHubContext<MeetingHub> _hubContext;
         private readonly IAudioStorage _audioStorage;
@@ -37,15 +30,13 @@ namespace MeetingWeb.Services
         // Constructor injection for required dependencies.
         public MeetingProcessor(
             ApplicationDbContext context,
-            IHttpClientFactory httpClientFactory,
-            IConfiguration configuration,
+            IAiEngine aiEngine,
             ILogger<MeetingProcessor> logger,
             IHubContext<MeetingHub> hubContext,
             IAudioStorage audioStorage)
         {
             _context = context;
-            _httpClientFactory = httpClientFactory;
-            _configuration = configuration;
+            _aiEngine = aiEngine;
             _logger = logger;
             _hubContext = hubContext;
             _audioStorage = audioStorage;
@@ -242,18 +233,7 @@ namespace MeetingWeb.Services
             }
         }
 
-        private async Task<AiSummaryData?> RequestSummaryAsync(string transcript)
-        {
-            var client = _httpClientFactory.CreateClient(PythonApiClient);
-            var endpoint = _configuration["PythonApiSettings:SummarizeEndpoint"] ?? "api/summarize";
-
-            var response = await client.PostAsJsonAsync(endpoint, new { transkript = transcript });
-            if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException($"Python API Error: {response.StatusCode}");
-
-            var ai = await response.Content.ReadFromJsonAsync<AiApiResponse>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            return ai is { Success: true } ? ai.Summary : null;
-        }
+        private Task<AiSummaryData?> RequestSummaryAsync(string transcript) => _aiEngine.SummarizeAsync(transcript);
 
         // S3: resolve recipients from current workspace membership at send time (not from hub groups),
         // so a member removed from the workspace stops receiving notifications immediately.
@@ -267,7 +247,7 @@ namespace MeetingWeb.Services
             await _hubContext.Clients.Users(memberIds).SendAsync("MeetingProcessed", meetingId);
         }
 
-        // Handles secure HTTP multipart/form-data communication with the external Python API.
+        // Resolve the stored recording and optional speaker sidecar before calling the engine.
         private async Task<AiApiResponse?> RunPythonPipelineAsync(string storedName)
         {
             var audioPath = _audioStorage.GetPath(storedName);
@@ -277,64 +257,8 @@ namespace MeetingWeb.Services
                 throw new FileNotFoundException($"Uploaded audio file not found! Path: {audioPath}");
             }
 
-            // Create an HttpClient instance using the configured factory to prevent socket exhaustion.
-            var client = _httpClientFactory.CreateClient(PythonApiClient);
-            var endpoint = _configuration["PythonApiSettings:ProcessEndpoint"];
-
-            // Utilize 'using var' to ensure unmanaged memory resources are disposed immediately.
-            using var form = new MultipartFormDataContent();
-            using var fileStream = new FileStream(audioPath, FileMode.Open, FileAccess.Read);
-            using var streamContent = new StreamContent(fileStream);
-
-            streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
-            form.Add(streamContent, "file", Path.GetFileName(audioPath));
             var sidecarPath = _audioStorage.GetSidecarPath(storedName);
-            using var sidecarStream = sidecarPath == null ? null : new FileStream(sidecarPath, FileMode.Open, FileAccess.Read);
-            if (sidecarStream != null)
-                form.Add(new StreamContent(sidecarStream), "speakers", Path.GetFileName(sidecarPath!));
-
-            try
-            {
-                _logger.LogInformation("Executing POST request to {Endpoint}", endpoint);
-
-                HttpResponseMessage response = await client.PostAsync(endpoint, form);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation("Received 200 OK from Python API. Deserializing payload...");
-                    string jsonResponse = await response.Content.ReadAsStringAsync();
-
-                    // Deserialize the JSON response into a safe Data Transfer Object (DTO).
-                    var aiResponse = JsonSerializer.Deserialize<AiApiResponse>(jsonResponse, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
-
-                    return aiResponse;
-                }
-
-                string errorDetail = await response.Content.ReadAsStringAsync();
-                if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
-                {
-                    try
-                    {
-                        using var error = JsonDocument.Parse(errorDetail);
-                        if (error.RootElement.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String
-                            && detail.GetString() == "no_speech")
-                            throw new NoSpeechException();
-                    }
-                    catch (JsonException) { /* Keep malformed API responses on the general error path. */ }
-                }
-                _logger.LogError("Python API responded with status code: {StatusCode}. Details: {ErrorDetail}", response.StatusCode, errorDetail);
-                throw new HttpRequestException($"Python API Error: {response.StatusCode} - {errorDetail}");
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "Failed to connect to the Python API server.");
-                throw new Exception("Unable to reach the Python server. Please verify that the API is running.");
-            }
+            return await _aiEngine.ProcessMeetingAsync(audioPath, sidecarPath);
         }
-
-        private sealed class NoSpeechException : Exception;
     }
 }
