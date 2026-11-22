@@ -121,7 +121,7 @@ Katalogda olmayan bir adres 404 verir.
 | Menü | Grup | Sayfa (Türkçe başlık → adres) |
 |---|---|---|
 | Ürün | Kaydet | Dosya yükleme → `/tr/product/upload` · Zoom'dan aktarma → `/tr/product/zoom` |
-| | Anla | Yazıya dökme → `/tr/product/transcription` · Konuşmacılar → `/tr/product/speakers` · Özet ve kararlar → `/tr/product/summary` · Yapılacaklar → `/tr/product/action-items` |
+| | Anla | Yazıya dökme → `/tr/product/transcription` · Özet ve kararlar → `/tr/product/summary` · Yapılacaklar → `/tr/product/action-items` |
 | | Bul | Arşive sor → `/tr/product/ask-archive` · Toplantı serileri → `/tr/product/series` |
 | | Paylaş | Takvim daveti → `/tr/product/calendar` · E-postayla paylaşma → `/tr/product/share` · Ekip çalışma alanı → `/tr/product/workspaces` |
 | Çözümler | | Yönetim ve liderler → `/tr/solutions/leadership` · Proje ve yazılım ekipleri → `/tr/solutions/project-teams` · Satış ve müşteri görüşmeleri → `/tr/solutions/sales` · İnsan kaynakları ve işe alım → `/tr/solutions/hr` · Danışmanlık ve ajanslar → `/tr/solutions/agencies` |

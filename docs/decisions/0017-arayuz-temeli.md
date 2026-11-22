@@ -52,6 +52,15 @@ Ana sayfa Bootstrap ile yapılmıştı ve şablon gibi görünüyordu. Amaç, pa
   - `/History` ve `/Upload` önceki görüntüleriyle piksel piksel aynı.
   Ayrıntı `docs/raporlar/2026-11-21-arayuz-yenileme-1-dogrulama.md` (yerel).
 
+## Güncelleme (2026-11-22, Ulaş'ın isteği)
+- **Yazı tipi:** Bricolage Grotesque ve Atkinson Hyperlegible Next bırakıldı; başlık ve metin tek ailede, IBM Plex Sans (değişken, kalınlık 100-700). Gerekçe: Ulaş eskisini ciddi bulmadı; Plex kurumsal ve sade, Türkçe harflerin hepsi var, OFL 1.1.
+  - IBM'nin resmî deposunun (`github.com/IBM/plex`) sabit commit'inden (`2e90fe36`) yalnız Latin1 ve Latin2 alt kümeleri bir kez indirildi: `wwwroot/fonts/ibm-plex-sans/` (68 KB + 44 KB, lisansıyla). npm paketi yok. Eski iki yazı tipinin dosyaları silindi.
+  - `app.css` yalnız herkese açık sayfalarda yüklendiği için uygulama içi (Bootstrap) sayfalar etkilenmez.
+- **Palet (ana sayfa):** "sayfa açık zeminli" kararı ana sayfa için kalktı. Açılıştan sonraki bölümlerin hepsi açılışın koyu lacivertinde (#06224A ve #04121F sırayla, aralarında ince çizgi). Menü de ana sayfada koyu (`data-chrome="koyu"`); alt bilgi ve öbür sayfalar değişmedi. Renk değerleri ve kontrast oranları `Styles/app.css`'te bölüm 2'nin üstündeki yorumda.
+- **Ana sayfa yolculuk bölümü:** altı adımlı süreç anlatımı kalktı; yerine tek büyük örnek özet sayfası ("Kayıt girer, özet çıkar.").
+- **Konuşmacılar:** ana sayfadan ve menüden ("Ürün > Anla") çıktı; müşteriye anlatılacak bir şey değil. `/tr/product/speakers` sayfası yok.
+- **Güven bölümü:** hareket izinliyse çizgiler tamamen açılana kadar ekranda sabit kalır (pinli, pay 2).
+
 ## Kaynak
 - `SPEC.md`, `tasks/plan.md`, `tasks/todo.md` (2026-11-21)
 - `docs/brand/onizleme-2.html` (onaylı palet, Yön C)
