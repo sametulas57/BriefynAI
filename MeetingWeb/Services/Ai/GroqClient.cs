@@ -123,7 +123,8 @@ public sealed class GroqClient : ITranscriptionClient
         if (model.StartsWith("qwen/", StringComparison.Ordinal))
             body["reasoning_format"] = "hidden"; // qwen3 thinks first; keep only the answer
 
-        HttpContent Content() => new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
+        // Same bytes as Python's httpx (raw UTF-8, compact), not System.Text.Json's \uXXXX escapes.
+        HttpContent Content() => new StringContent(PythonJson.Dumps(body, compact: true), Encoding.UTF8, "application/json");
         var response = await PostAsync("chat/completions", Content, ct);
         if ((int)response.StatusCode == 400)
         {
@@ -176,14 +177,15 @@ public static class RetryAfter
 
 public static class PythonJson
 {
-    public static string Dumps(JsonNode node)
+    // compact = httpx's request encoding: json.dumps(ensure_ascii=False, separators=(",", ":")).
+    public static string Dumps(JsonNode node, bool compact = false)
     {
         var result = new StringBuilder();
-        Write(node, result);
+        Write(node, result, compact ? "," : ", ", compact ? ":" : ": ");
         return result.ToString();
     }
 
-    private static void Write(JsonNode? node, StringBuilder result)
+    private static void Write(JsonNode? node, StringBuilder result, string itemSeparator, string keySeparator)
     {
         switch (node)
         {
@@ -195,11 +197,11 @@ public static class PythonJson
                 var first = true;
                 foreach (var (key, value) in obj)
                 {
-                    if (!first) result.Append(", ");
+                    if (!first) result.Append(itemSeparator);
                     first = false;
                     WriteString(key, result);
-                    result.Append(": ");
-                    Write(value, result);
+                    result.Append(keySeparator);
+                    Write(value, result, itemSeparator, keySeparator);
                 }
                 result.Append('}');
                 break;
@@ -207,8 +209,8 @@ public static class PythonJson
                 result.Append('[');
                 for (var i = 0; i < array.Count; i++)
                 {
-                    if (i > 0) result.Append(", ");
-                    Write(array[i], result);
+                    if (i > 0) result.Append(itemSeparator);
+                    Write(array[i], result, itemSeparator, keySeparator);
                 }
                 result.Append(']');
                 break;

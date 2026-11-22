@@ -105,6 +105,27 @@ public class GroqClientTests
     }
 
     [Fact]
+    public async Task Chat_body_bytes_match_python_httpx()
+    {
+        // Golden from the Python GroqClient through httpx.MockTransport: raw UTF-8, compact separators.
+        using var fake = new ClientFixture((_, _) => ChatReply("{\"a\": 1}"));
+        var schema = new JsonObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JsonObject
+            {
+                ["söz"] = new JsonObject { ["type"] = "string", ["description"] = "\"tırnak\" \\ ters\nsatır\t😀 İğüşöç \u2028" }
+            },
+            ["required"] = new JsonArray("söz"),
+            ["additionalProperties"] = false
+        };
+        await fake.Client.ChatJsonAsync("qwen/qwen3.8-27b",
+            [new("system", "Sistem: Türkçe yaz.\nİkinci satır"), new("user", "Toplantı dökümü:\n\nAyşe: \"Bütçe\" 1.499 TL 😀\u0001")], schema, default);
+
+        Assert.Equal(TranscriptTextTests.Golden("groq_chat_body.json"), Assert.Single(fake.Handler.Requests).Body);
+    }
+
+    [Fact]
     public async Task Client_sends_the_key_and_waits_on_rate_limit()
     {
         using var fake = new ClientFixture((_, attempt) => attempt == 1 ? RateLimit("7") : ChatReply("{\"a\":1}"));
