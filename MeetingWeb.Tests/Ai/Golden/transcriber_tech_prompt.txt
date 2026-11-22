@@ -1,0 +1,1 @@
+backend, frontend, API, endpoint, database, SQL, server, client, microservice, Docker, Kubernetes, GitHub, pull request, merge, deployment, CI/CD, bug, ticket

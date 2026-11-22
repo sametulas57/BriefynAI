@@ -43,6 +43,8 @@ cp .env.example .env
 
 Fill in `.env`.
 
+For local development and tests on macOS, install ffmpeg: `brew install ffmpeg`.
+
 Public pages use Tailwind CSS v4 and daisyUI 5, built with npm (Node 24+). Install once, and again whenever `package-lock.json` changes:
 
 ```bash
