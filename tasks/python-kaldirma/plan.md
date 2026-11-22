@@ -1,6 +1,6 @@
 # Uygulama planı: Python servisini kaldırma, yapay zekâ hattı .NET içinde
 
-Karar: ADR-0018 · Görev listesi: `tasks/python-kaldirma/todo.md` · Durum: taslak (2026-11-22), Ulaş'ın onayını bekliyor
+Karar: ADR-0018 · Görev listesi: `tasks/python-kaldirma/todo.md` · Durum: onaylandı, uygulanıyor (Ulaş, 2026-11-22)
 
 Bu plan ayrı klasörde, çünkü `tasks/plan.md` ve `tasks/todo.md` arayüz yenileme 1'e ait ve son kontrolünde 4 açık madde var (`tasks/todo.md:104-107`). O iş kapanınca bu dosyalar `tasks/` köküne taşınabilir.
 
@@ -34,8 +34,8 @@ Sıra: önce arada bir arayüz (bugünkü HTTP kodu arkasına girer, hiçbir şe
 Ayrıntılı kabul ölçütleri `todo.md`'de.
 
 ### Aşama 1: Temel
-- [ ] Görev 1: `IAiEngine` arayüzü, bugünkü HTTP kodu arkasında (S-M)
-- [ ] Görev 2: Groq istemcisi ve `ILlmClient` (M)
+- [x] Görev 1: `IAiEngine` arayüzü, bugünkü HTTP kodu arkasında (S-M)
+- [x] Görev 2: Groq istemcisi ve `ILlmClient` (M)
 
 ### Kontrol A
 - [ ] `verify.sh` GEÇTİ; davranış değişmedi (Python yolu varsayılan)

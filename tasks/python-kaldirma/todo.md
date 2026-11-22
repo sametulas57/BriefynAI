@@ -6,13 +6,13 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 1: Temel
 
-- [ ] **Görev 1: `IAiEngine` arayüzü, bugünkü HTTP kodu arkasında** (S-M)
+- [x] **Görev 1: `IAiEngine` arayüzü, bugünkü HTTP kodu arkasında** (S-M)
   - Kabul: `MeetingWeb/Services/Ai/IAiEngine.cs` üç işi tanımlıyor (`ProcessMeetingAsync`, `SummarizeAsync`, `AnswerAsync`). `PythonAiEngine` bugünkü HTTP kodunu taşıyor (`MeetingProcessor.RunPythonPipelineAsync`, `RequestSummaryAsync`, `AskService`'teki istek). `MeetingProcessor` ve `AskService` artık `IHttpClientFactory`'yi yapay zekâ için kullanmıyor, yalnız `IAiEngine`'i. `no_speech` ve özetsiz döküm yolları aynı. `AiEngine:Mode` ayarı var, yalnız `python` tanınıyor; bilinmeyen değerde uygulama açılışta anlaşılır hatayla duruyor.
   - Doğrula: test dosyalarına dokunmadan bütün mevcut testler geçiyor (`StubPythonApiHandler` HTTP düzeyinde çalışmaya devam ediyor).
   - Bağımlılık: yok.
   - Dosyalar: `MeetingWeb/Services/Ai/IAiEngine.cs`, `MeetingWeb/Services/Ai/PythonAiEngine.cs`, `MeetingWeb/Services/MeetingProcessor.cs`, `MeetingWeb/Services/ArchiveSearch/AskService.cs`, `MeetingWeb/Program.cs`.
 
-- [ ] **Görev 2: Groq istemcisi ve `ILlmClient`** (M)
+- [x] **Görev 2: Groq istemcisi ve `ILlmClient`** (M)
   - Kabul: `GroqClient` (`HttpClient`, taban adres `https://api.groq.com/openai/v1`) `providers/groq_client.py`'nin üç işini yapıyor: `ChatJsonAsync` (katı `json_schema`, `temperature` 0.2, `qwen/` modellerinde `reasoning_format: hidden`; 400 gelirse `json_object` ve şema sistem metninin sonuna eklenerek bir kez daha), `TranscribeAsync` (`json`) ve `TranscribeSegmentsAsync` (`verbose_json`), ikisi de `temperature` 0. En fazla 5 deneme: 429'da `Retry-After` kadar (saniye ya da tarih; yoksa 10 sn, en fazla 60 sn), 5xx'te `2 × deneme` saniye (`groq_client.py` ve `http_retry.py` ile aynı). İstek zaman aşımı 300 sn. `ILlmClient.CompleteJsonAsync(system, messages, schema)` ve görev → model seçimi `llm.py`'deki tabloyla aynı: ortam değişkenleri `SUMMARIZER`/`AI_SUMMARY_MODEL`, `SPEAKER_SUGGESTER`/`AI_SPEAKERS_MODEL`, `ANSWERER`/`AI_ANSWER_MODEL`, boş değer varsayılan sayılıyor, varsayılan modeller koddaki gibi. Anahtar yoksa anlaşılır hata. Hata mesajlarında istek ya da cevap içeriği yok.
   - Doğrula: `test_llm.py` (7) ve `test_providers.py`'deki Groq istemcisi testleri sahte `HttpMessageHandler` ile C#'ta; istek gövdesi (model, mesajlar, `response_format`) Python'un gönderdiğiyle aynı.
   - Bağımlılık: yok (Görev 1'le paralel yapılabilir).

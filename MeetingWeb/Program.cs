@@ -3,6 +3,7 @@ using Hangfire.SqlServer;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
+using MeetingWeb.Services.Ai;
 using MeetingWeb.Services.ArchiveSearch;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -89,7 +90,14 @@ try
     builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
     // --- 4. Python API Communication ---
-    builder.Services.AddHttpClient(MeetingProcessor.PythonApiClient, (sp, client) =>
+    builder.Services.AddOptions<AiEngineOptions>().Bind(builder.Configuration.GetSection("AiEngine"))
+        .Validate(o => string.Equals(o.Mode?.Trim(), "python", StringComparison.OrdinalIgnoreCase),
+            "AiEngine:Mode must be 'python'; the .NET engine is not ready yet.")
+        .ValidateOnStart();
+    builder.Services.AddScoped<IAiEngine, PythonAiEngine>();
+    // ADR-0018: Groq client for the .NET engine; not used until the engine is switched on (AiEngine:Mode).
+    builder.Services.AddGroqAi(builder.Configuration);
+    builder.Services.AddHttpClient(PythonAiEngine.HttpClientName, (sp, client) =>
     {
         var configuration = sp.GetRequiredService<IConfiguration>();
         var baseUrl = configuration["PythonApiSettings:BaseUrl"];

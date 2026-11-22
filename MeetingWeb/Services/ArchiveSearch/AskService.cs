@@ -1,9 +1,8 @@
 using System.Globalization;
-using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using MeetingWeb.Services;
+using MeetingWeb.Services.Ai;
 using Microsoft.Extensions.Options;
 
 namespace MeetingWeb.Services.ArchiveSearch;
@@ -11,8 +10,7 @@ namespace MeetingWeb.Services.ArchiveSearch;
 public sealed class AskService(
     IArchiveSearchService search,
     AskRateLimiter limiter,
-    IHttpClientFactory clients,
-    IConfiguration configuration,
+    IAiEngine aiEngine,
     IOptions<AskOptions> options,
     ILogger<AskService> logger) : IAskService
 {
@@ -45,15 +43,11 @@ public sealed class AskService(
             total += text.Length;
         }
 
-        var payload = new
-        {
-            soru = question,
-            parcalar = sent.Select(item => new
-            {
-                id = item.Passage.Id,
-                toplanti = item.Passage.MeetingTitle[..Math.Min(item.Passage.MeetingTitle.Length, 300)],
-                tarih = item.Passage.MeetingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                tur = item.Passage.Kind switch
+        var passages = sent.Select(item => new AiAnswerPassage(
+                item.Passage.Id,
+                item.Passage.MeetingTitle[..Math.Min(item.Passage.MeetingTitle.Length, 300)],
+                item.Passage.MeetingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                item.Passage.Kind switch
                 {
                     ArchivePassageKind.Topic => "konu",
                     ArchivePassageKind.Decision => "karar",
@@ -61,25 +55,13 @@ public sealed class AskService(
                     ArchivePassageKind.Task => "aksiyon",
                     _ => "döküm"
                 },
-                metin = item.Text
-            }).ToArray()
-        };
+                item.Text)).ToArray();
 
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, settings.TimeoutSeconds)));
-            var client = clients.CreateClient(MeetingProcessor.PythonApiClient);
-            var endpoint = configuration["PythonApiSettings:AnswerEndpoint"] ?? "api/answer";
-            using var response = await client.PostAsJsonAsync(endpoint, payload, timeout.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning("Archive answer failed: HTTP {StatusCode}", (int)response.StatusCode);
-                return Result(AskStatus.Busy, found.MeetingsSearched);
-            }
-
-            using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(timeout.Token), cancellationToken: timeout.Token);
-            var root = document.RootElement;
+            var root = await aiEngine.AnswerAsync(question, passages, timeout.Token);
             if (root.ValueKind != JsonValueKind.Object ||
                 !root.TryGetProperty("yeterli_bilgi", out var enough) ||
                 !root.TryGetProperty("cevap", out var answerField) ||
@@ -117,6 +99,11 @@ public sealed class AskService(
                 string.IsNullOrEmpty(uncertain) ? null : uncertain, sources);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (HttpRequestException ex) when (ex.StatusCode is not null)
+        {
+            logger.LogWarning("Archive answer failed: HTTP {StatusCode}", (int)ex.StatusCode.Value);
+            return Result(AskStatus.Busy, found.MeetingsSearched);
+        }
         catch (Exception ex) when (ex is HttpRequestException or IOException or OperationCanceledException or JsonException or NotSupportedException)
         {
             logger.LogWarning("Archive answer failed: {Error}", ex.GetType().Name);
