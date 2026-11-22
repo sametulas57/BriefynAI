@@ -67,12 +67,12 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Dosyalar: `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb/Program.cs`, `MeetingWeb.Tests/Ai/DotNetAiEngineTests.cs`.
 
 ### Kontrol B: iki yolun karşılaştırması
-- [ ] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
-- [ ] Deneme kaydı (`~/Desktop/ULAS/Toplantı_ses_kaydi.m4a`, Ulaş'ın izniyle denemede kullanılıyor) önce `python`, sonra `dotnet` yoluyla işlendi; döküm, özet ve konuşmacı önerisi yan yana yazıldı. Model rastgeleliğinden gelen fark dışında fark yok, varsa nedeni bulundu.
-- [ ] Zoom konuşmacı dosyalı bir kayıt `dotnet` yoluyla işlendi, adlar doğru satırlarda.
-- [ ] `TRANSCRIBER=azure` ile deneme kaydı iki yoldan geçti, konuşmacı etiketleri aynı (Azure anahtarı `.env`'de yoksa bu madde atlanır ve nedeni yazılır).
-- [ ] Arşive soru sor: altın setten 5 soru `dotnet` yoluyla soruldu, sonuç Ekim ölçümüyle aynı sınıfta (bulamadım / kaynaklı cevap).
-- [ ] Sonuç Ulaş'a raporlandı, onay alındı.
+- [x] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
+- [x] Deneme kaydı önce `python`, sonra `dotnet` yoluyla işlendi; döküm üç durumda da birebir aynı, özetler model rastgeleliği kadar farklı. İstek baytlarındaki tek fark (UTF-8 yerine `\u` kaçışı) kapatıldı. Rapor: `docs/raporlar/2026-11-23-python-kaldirma-kontrol-b.md`.
+- [x] Zoom konuşmacı dosyalı kayıt `dotnet` yoluyla işlendi, adlar doğru satırlarda. Gerçek Zoom VTT'si bulunmadığı için kayda göre zamanlanmış yapay VTT kullanıldı.
+- [x] `TRANSCRIBER=azure` ile deneme kaydı iki yoldan geçti; döküm aynı, Azure tek konuşmacı buldu (iki yolda da düz metin).
+- [x] Arşive soru sor: altın setten 5 soru `dotnet` yoluyla soruldu, sınıflar beklenenle aynı (3 kaynaklı cevap, 2 "bulamadım").
+- [x] Sonuç raporlandı; onay: Ulaş kalan görevlerin onayını bu oturuma bıraktı (2026-11-23).
 
 ## Aşama 3: Python'u kaldırma
 

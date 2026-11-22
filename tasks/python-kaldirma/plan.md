@@ -49,7 +49,7 @@ Ayrıntılı kabul ölçütleri `todo.md`'de.
 - [x] Görev 7: Kaydın tamamı .NET'te: `ProcessMeetingAsync` (S-M)
 
 ### Kontrol B: iki yolun karşılaştırması
-- [ ] Aynı kayıt iki yoldan geçti, fark yazıldı; Ulaş onayladı
+- [x] Aynı kayıt iki yoldan geçti, fark yazıldı; onay oturuma bırakıldı (Ulaş, 2026-11-23)
 
 ### Aşama 3: Python'u kaldırma
 - [ ] Görev 8: Varsayılan `dotnet`, testler sahte `IAiEngine` ile (M)
