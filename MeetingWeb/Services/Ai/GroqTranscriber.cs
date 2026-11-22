@@ -6,7 +6,7 @@ public interface ITranscriptionClient
     Task<IReadOnlyList<TranscriptSegment>> TranscribeSegmentsAsync(string audioPath, string model, string language, string prompt, CancellationToken ct);
 }
 
-public sealed class GroqTranscriber(ITranscriptionClient client, IAudioTools audio, string model, double chunkSeconds = 60.0, string language = "tr")
+public sealed class GroqTranscriber(ITranscriptionClient client, IAudioTools audio, string model, double chunkSeconds = 60.0, string language = "tr") : ITranscriber
 {
     public const string TechPrompt = "backend, frontend, API, endpoint, database, SQL, server, client, microservice, Docker, Kubernetes, GitHub, pull request, merge, deployment, CI/CD, bug, ticket";
 
