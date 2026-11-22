@@ -173,7 +173,7 @@ namespace MeetingWeb.Tests.Security
         }
     }
 
-    // Runs the processor with the Python stub switched to a given status, then restores it.
+    // Runs the processor with the fake AI engine switched to a given status, then restores it.
     internal sealed class BriefynFactoryScope
     {
         private readonly BriefynFactory _app;
@@ -183,8 +183,8 @@ namespace MeetingWeb.Tests.Security
 
         public async Task ProcessAsync(int meetingId)
         {
-            var previous = _app.PythonApi.Status;
-            _app.PythonApi.Status = _status;
+            var previous = _app.Ai.Status;
+            _app.Ai.Status = _status;
             try
             {
                 using var scope = _app.Services.CreateScope();
@@ -192,7 +192,7 @@ namespace MeetingWeb.Tests.Security
             }
             finally
             {
-                _app.PythonApi.Status = previous;
+                _app.Ai.Status = previous;
             }
         }
     }

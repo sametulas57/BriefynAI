@@ -52,7 +52,7 @@ Ayrıntılı kabul ölçütleri `todo.md`'de.
 - [x] Aynı kayıt iki yoldan geçti, fark yazıldı; onay oturuma bırakıldı (Ulaş, 2026-11-23)
 
 ### Aşama 3: Python'u kaldırma
-- [ ] Görev 8: Varsayılan `dotnet`, testler sahte `IAiEngine` ile (M)
+- [x] Görev 8: Varsayılan `dotnet`, testler sahte `IAiEngine` ile (M)
 - [ ] Görev 9: `ai_engine`, Python araçları ve servis silinir (M)
 
 ### Kontrol C: bitti

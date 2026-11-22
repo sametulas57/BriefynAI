@@ -48,7 +48,7 @@ namespace MeetingWeb.Tests.Features
                     new MeetingPoint { MeetingId = S.MeetingA, Kind = MeetingPointKind.Pending, Text = "Elle", Source = EntrySource.Manual, CreatedByUserId = S.AliceId });
                 db.SaveChanges(); return 0;
             });
-            _app.PythonApi.Body = """{"success":true,"transkript":"test","summary":{"toplanti_konusu":"Konu","gorusulen_konular":[],"alinan_kararlar":[],"aksiyon_maddeleri":[],"bekleyen_konular":["Yeni bekleyen"]}}""";
+            _app.Ai.Body = """{"success":true,"transkript":"test","summary":{"toplanti_konusu":"Konu","gorusulen_konular":[],"alinan_kararlar":[],"aksiyon_maddeleri":[],"bekleyen_konular":["Yeni bekleyen"]}}""";
             await Process(S.MeetingA);
 
             var rows = _app.WithDb(db => db.MeetingPoints.AsNoTracking().Where(p => p.MeetingId == S.MeetingA && p.Kind == MeetingPointKind.Pending).ToList());
@@ -64,7 +64,7 @@ namespace MeetingWeb.Tests.Features
         {
             ReadyToSummarise();
             var prop = field.Length == 0 ? "" : "," + field;
-            _app.PythonApi.Body = "{\"success\":true,\"transkript\":\"test\",\"summary\":{\"toplanti_konusu\":\"Konu\",\"gorusulen_konular\":[],\"alinan_kararlar\":[],\"aksiyon_maddeleri\":[]" + prop + "}}";
+            _app.Ai.Body = "{\"success\":true,\"transkript\":\"test\",\"summary\":{\"toplanti_konusu\":\"Konu\",\"gorusulen_konular\":[],\"alinan_kararlar\":[],\"aksiyon_maddeleri\":[]" + prop + "}}";
             await Process(S.MeetingA);
             Assert.Equal(MeetingStatus.Completed, _app.WithDb(db => db.Meetings.AsNoTracking().Single(m => m.Id == S.MeetingA).Status));
         }

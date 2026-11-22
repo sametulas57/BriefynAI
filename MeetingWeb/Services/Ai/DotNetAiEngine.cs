@@ -6,7 +6,7 @@ using MeetingWeb.Models;
 
 namespace MeetingWeb.Services.Ai;
 
-// AiEngine:Mode=dotnet selects the in-process pipeline (ADR-0018); python remains the default.
+// The AI pipeline runs in-process (ADR-0018).
 public sealed class DotNetAiEngine(ILlmClientFactory llms, ITranscriberFactory transcribers, ILogger<DotNetAiEngine> logger) : IAiEngine
 {
     private static readonly Regex PartId = new(@"^T\d{1,9}-[KRBAD]\d{1,4}\z");

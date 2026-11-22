@@ -402,8 +402,8 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
         await File.WriteAllBytesAsync(Path.Combine(_app.AudioRoot, audio), new byte[] { 1 });
         var id = NewMeeting(MeetingStatus.Processing, transcript: null);
         _app.WithDb(db => { db.Meetings.Single(m => m.Id == id).AudioFileName = audio; return db.SaveChanges(); });
-        var previousBody = _app.PythonApi.Body;
-        _app.PythonApi.Body = JsonSerializer.Serialize(new
+        var previousBody = _app.Ai.Body;
+        _app.Ai.Body = JsonSerializer.Serialize(new
         {
             success = summarySucceeds,
             transkript = Transcript,
@@ -418,7 +418,7 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
             using var scope = _app.Services.CreateScope();
             await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
         }
-        finally { _app.PythonApi.Body = previousBody; }
+        finally { _app.Ai.Body = previousBody; }
 
         var transcript = Load(id).Transcript!;
         Assert.Equal(Transcript, transcript.Text);
@@ -447,14 +447,14 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
             transcript.SpeakerNames = """{"Konuşmacı 1":"Eski ad"}""";
             return db.SaveChanges();
         });
-        var previousBody = _app.PythonApi.Body;
-        _app.PythonApi.Body = "{\"success\":true,\"transkript\":\"Konuşmacı 1: Merhaba.\",\"summary\":{}" + field + "}";
+        var previousBody = _app.Ai.Body;
+        _app.Ai.Body = "{\"success\":true,\"transkript\":\"Konuşmacı 1: Merhaba.\",\"summary\":{}" + field + "}";
         try
         {
             using var scope = _app.Services.CreateScope();
             await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
         }
-        finally { _app.PythonApi.Body = previousBody; }
+        finally { _app.Ai.Body = previousBody; }
 
         Assert.Equal(MeetingStatus.Completed, Load(id).Status);
         Assert.Null(Load(id).Transcript!.SpeakerSuggestions);
@@ -612,7 +612,7 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
 
         await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ResummarizeMeetingJob(id);
 
-        using var body = JsonDocument.Parse(_app.PythonApi.LastBody!);
+        using var body = JsonDocument.Parse(_app.Ai.LastBody!);
         Assert.Equal(Load(id).Transcript!.Text, body.RootElement.GetProperty("transkript").GetString());
         Assert.StartsWith("Murat: ", body.RootElement.GetProperty("transkript").GetString());
         Assert.Equal(MeetingStatus.Completed, Load(id).Status);

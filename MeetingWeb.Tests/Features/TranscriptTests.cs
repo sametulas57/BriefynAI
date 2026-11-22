@@ -83,10 +83,10 @@ namespace MeetingWeb.Tests.Features
             var audio = Path.Combine(_app.AudioRoot, "ozetsiz.m4a");
             File.WriteAllBytes(audio, new byte[] { 1 });
             var id = NewMeeting(MeetingStatus.Processing, "ozetsiz.m4a");
-            var previous = _app.PythonApi.Body;
-            _app.PythonApi.Body = """{"success": false, "transkript": "yalnız döküm", "summary": null}""";
+            var previous = _app.Ai.Body;
+            _app.Ai.Body = """{"success": false, "transkript": "yalnız döküm", "summary": null}""";
             try { await ProcessAsync(p => p.ProcessMeetingJob(id)); }
-            finally { _app.PythonApi.Body = previous; }
+            finally { _app.Ai.Body = previous; }
 
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Failed, meeting.Status);
@@ -99,16 +99,16 @@ namespace MeetingWeb.Tests.Features
             var audio = Path.Combine(_app.AudioRoot, "konusmasiz.m4a");
             File.WriteAllBytes(audio, new byte[] { 1 });
             var id = NewMeeting(MeetingStatus.Processing, "konusmasiz.m4a");
-            var previousStatus = _app.PythonApi.Status;
-            var previousBody = _app.PythonApi.Body;
-            _app.PythonApi.Status = HttpStatusCode.UnprocessableEntity;
-            _app.PythonApi.Body = """{"detail":"no_speech"}""";
+            var previousStatus = _app.Ai.Status;
+            var previousBody = _app.Ai.Body;
+            _app.Ai.Status = HttpStatusCode.UnprocessableEntity;
+            _app.Ai.Body = """{"detail":"no_speech"}""";
             try
             {
                 using var scope = _app.Services.CreateScope();
                 await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id);
             }
-            finally { _app.PythonApi.Status = previousStatus; _app.PythonApi.Body = previousBody; }
+            finally { _app.Ai.Status = previousStatus; _app.Ai.Body = previousBody; }
 
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Failed, meeting.Status);
@@ -122,16 +122,16 @@ namespace MeetingWeb.Tests.Features
             var audio = Path.Combine(_app.AudioRoot, "genel-hata.m4a");
             File.WriteAllBytes(audio, new byte[] { 1 });
             var id = NewMeeting(MeetingStatus.Processing, "genel-hata.m4a");
-            var previousStatus = _app.PythonApi.Status;
-            var previousBody = _app.PythonApi.Body;
-            _app.PythonApi.Status = HttpStatusCode.UnprocessableEntity;
-            _app.PythonApi.Body = """{"detail":"other_error"}""";
+            var previousStatus = _app.Ai.Status;
+            var previousBody = _app.Ai.Body;
+            _app.Ai.Status = HttpStatusCode.UnprocessableEntity;
+            _app.Ai.Body = """{"detail":"other_error"}""";
             try
             {
                 using var scope = _app.Services.CreateScope();
                 await Assert.ThrowsAnyAsync<Exception>(() => scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id));
             }
-            finally { _app.PythonApi.Status = previousStatus; _app.PythonApi.Body = previousBody; }
+            finally { _app.Ai.Status = previousStatus; _app.Ai.Body = previousBody; }
 
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Failed, meeting.Status);
@@ -238,7 +238,7 @@ namespace MeetingWeb.Tests.Features
 
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Completed, meeting.Status);
-            Assert.Equal("api/summarize", _app.PythonApi.LastPath);
+            Assert.Equal("api/summarize", _app.Ai.LastPath);
             Assert.Contains("a", Topics(meeting));                          // new AI topic from the stub
             Assert.Equal("elle eklenen konu", Topics(meeting).Last());     // manual lines follow the AI ones
             Assert.DoesNotContain("eski yapay zekâ konusu", Topics(meeting));
@@ -253,13 +253,13 @@ namespace MeetingWeb.Tests.Features
             var id = NewMeeting(MeetingStatus.Processing, audio: null, transcript: "kayıtlı döküm");
             using var scope = _app.Services.CreateScope();
             var processor = scope.ServiceProvider.GetRequiredService<IMeetingProcessor>();
-            _app.PythonApi.BeforeRespond = () => _app.WithDb(db =>
+            _app.Ai.BeforeRespond = () => _app.WithDb(db =>
             {
                 db.MeetingPoints.Add(new MeetingPoint { MeetingId = id, Kind = MeetingPointKind.Decision, Text = "araya giren karar", Source = EntrySource.Manual, CreatedByUserId = S.AliceId });
                 return db.SaveChanges();
             });
             try { await processor.ResummarizeMeetingJob(id); }
-            finally { _app.PythonApi.BeforeRespond = null; }
+            finally { _app.Ai.BeforeRespond = null; }
 
             Assert.Contains(Load(id).Points, p => p.Text == "araya giren karar");
         }
@@ -271,13 +271,13 @@ namespace MeetingWeb.Tests.Features
             var id = NewMeeting(MeetingStatus.Processing, audio: null, transcript: "kayıtlı döküm");
             using var scope = _app.Services.CreateScope();
             var processor = scope.ServiceProvider.GetRequiredService<IMeetingProcessor>();
-            _app.PythonApi.BeforeRespond = () => _app.WithDb(db =>
+            _app.Ai.BeforeRespond = () => _app.WithDb(db =>
             {
                 db.ActionItems.Where(a => a.MeetingId == id).AsEnumerable().Single(a => a.Text == "eski görev").AssigneeUserId = S.CarolId;
                 return db.SaveChanges();
             });
             try { await processor.ResummarizeMeetingJob(id); }
-            finally { _app.PythonApi.BeforeRespond = null; }
+            finally { _app.Ai.BeforeRespond = null; }
 
             var meeting = Load(id);
             Assert.Equal(MeetingStatus.Completed, meeting.Status);

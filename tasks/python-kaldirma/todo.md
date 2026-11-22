@@ -76,9 +76,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 3: Python'u kaldırma
 
-- [ ] **Görev 8: Varsayılan `dotnet`, testler sahte `IAiEngine` ile** (M)
+- [x] **Görev 8: Varsayılan `dotnet`, testler sahte `IAiEngine` ile** (M)
   - Kabul: `AiEngine:Mode` ayarı ve `PythonAiEngine` silindi, kayıtlı tek uygulama `DotNetAiEngine`. `StubPythonApiHandler` yerine `FakeAiEngine` aynı ayar adlarıyla (`Status`, `Body`, `BeforeRespond`, `CallCount`, `LastBody`); test dosyalarındaki değişiklik bununla sınırlı. `AiEngineClientTests` silindi (servisler arası anahtar artık yok). `Program.cs`'teki `PythonApi` istemcisi ve `appsettings.json`'daki `PythonApiSettings` kalktı.
   - Doğrula: bütün testler geçiyor; `git grep -i python MeetingWeb MeetingWeb.Tests` boş (ya da kalanların nedeni yazılı).
+  - Not (2026-11-23): Kayıtlı tek motor `DotNetAiEngine`; `AiEngine:Mode`, `AiEngineOptions`, `PythonAiEngine`, `PythonApiSettings` kalktı. `FakeAiEngine` eski stub'ın ayar adlarını ve HTTP durum anlamlarını taşıyor; test dosyalarında değişiklik ad değişikliğiyle sınırlı. `AiEngineClientTests`'in konuşmacı dosyası testleri `MeetingProcessorAiTests`'e taşındı, anahtar testi kalktı; stub'ın yönlendirme testi stub'la birlikte silindi. `AskMeasurement` yalnız .NET motoruyla (`BRIEFYN_OLCUM=1` + `GROQ_API_KEY`), `scripts/olcum.sh` uvicorn'suz. `MeetingWeb` ve testlerde kalan "python" geçişleri `PyText`/`PythonJson` adları ve altın verinin kaynağını anlatan notlar.
   - Bağımlılık: Kontrol B.
   - Dosyalar: `MeetingWeb/Program.cs`, `MeetingWeb/appsettings.json`, `MeetingWeb/Services/Ai/PythonAiEngine.cs` (silinir), `MeetingWeb.Tests/Infrastructure/StubPythonApiHandler.cs` → `FakeAiEngine.cs`, `MeetingWeb.Tests/Infrastructure/BriefynFactory.cs`, `MeetingWeb.Tests/Security/AiEngineClientTests.cs` (silinir), stub'ı kullanan 10 test dosyası.
 

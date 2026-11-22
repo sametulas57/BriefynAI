@@ -89,35 +89,9 @@ try
     builder.Services.Configure<AskOptions>(builder.Configuration.GetSection("Ask"));
     builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 
-    // --- 4. Python API Communication ---
-    builder.Services.AddOptions<AiEngineOptions>().Bind(builder.Configuration.GetSection("AiEngine"))
-        .Validate(o => string.Equals(o.Mode?.Trim(), "python", StringComparison.OrdinalIgnoreCase) ||
-                       string.Equals(o.Mode?.Trim(), "dotnet", StringComparison.OrdinalIgnoreCase),
-            "AiEngine:Mode must be 'python' or 'dotnet'.")
-        .ValidateOnStart();
-    builder.Services.AddScoped<IAiEngine>(sp =>
-        string.Equals(sp.GetRequiredService<IOptions<AiEngineOptions>>().Value.Mode.Trim(), "dotnet", StringComparison.OrdinalIgnoreCase)
-            ? ActivatorUtilities.CreateInstance<DotNetAiEngine>(sp)
-            : ActivatorUtilities.CreateInstance<PythonAiEngine>(sp));
-    // ADR-0018: Groq client for the .NET engine; not used until the engine is switched on (AiEngine:Mode).
+    // --- 4. AI pipeline (ADR-0018) ---
+    builder.Services.AddScoped<IAiEngine, DotNetAiEngine>();
     builder.Services.AddGroqAi(builder.Configuration);
-    builder.Services.AddHttpClient(PythonAiEngine.HttpClientName, (sp, client) =>
-    {
-        var configuration = sp.GetRequiredService<IConfiguration>();
-        var baseUrl = configuration["PythonApiSettings:BaseUrl"];
-        if (!string.IsNullOrEmpty(baseUrl))
-        {
-            client.BaseAddress = new Uri(baseUrl);
-        }
-        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
-
-        // S5: the AI engine only accepts requests carrying the shared secret (AI_ENGINE_API_KEY in .env).
-        var apiKey = configuration["PythonApiSettings:ApiKey"];
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
-        }
-    });
 
     // ADR-0011: Zoom's API. Redirects are followed by ZoomApiClient itself, so the token goes only to zoom.us hosts.
     builder.Services.Configure<ZoomOptions>(builder.Configuration.GetSection("Zoom"));

@@ -40,15 +40,15 @@ namespace MeetingWeb.Tests.Features
                 db.SaveChanges();
                 return m.Id;
             });
-            var previous = _app.PythonApi.Body;
-            _app.PythonApi.Body = """{"success": true, "transkript": "x", "summary": null}""";
+            var previous = _app.Ai.Body;
+            _app.Ai.Body = """{"success": true, "transkript": "x", "summary": null}""";
             try
             {
                 using var scope = _app.Services.CreateScope();
                 try { await scope.ServiceProvider.GetRequiredService<IMeetingProcessor>().ProcessMeetingJob(id); }
                 catch { /* a failed job may rethrow so Hangfire records it */ }
             }
-            finally { _app.PythonApi.Body = previous; }
+            finally { _app.Ai.Body = previous; }
 
             var meeting = _app.WithDb(db => db.Meetings.AsNoTracking().Single(m => m.Id == id));
             Assert.Equal(MeetingStatus.Failed, meeting.Status);
