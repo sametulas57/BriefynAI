@@ -19,8 +19,8 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Dosyalar: `MeetingWeb/Services/Ai/GroqClient.cs`, `MeetingWeb/Services/Ai/LlmClient.cs`, `MeetingWeb/Services/Ai/AiOptions.cs`, `MeetingWeb/Program.cs`, `MeetingWeb.Tests/Ai/GroqClientTests.cs`.
 
 ### Kontrol A
-- [ ] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
-- [ ] Yerel yığında bir kayıt yüklendi, özet geldi (Python yolu, davranış değişmedi).
+- [x] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
+- [x] Yerel yığında Python yoluyla yükleme yapılmadı; yerine Kontrol B'de aynı kayıt Python yolundan (`api_server`, gerçek Groq ve Azure) geçirildi, Kontrol C'de yığında .NET yoluyla yüklendi (2026-11-23).
 
 ## Aşama 2: Dilimler
 
@@ -91,8 +91,8 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Dosyalar: `ai_engine/` (silinir), `pyproject.toml`, `docker-compose.yml`, `.env.example`, `scripts/verify.sh`, `.github/workflows/test.yml`, `.github/workflows/codeql.yml`, `README.md`.
 
 ### Kontrol C: bitti
-- [ ] `scripts/verify.sh` GEÇTİ; push, CI yeşil.
-- [ ] Temiz yığında tarayıcıdan: kayıt yüklendi, özet ve döküm geldi; özeti yeniden oluşturma çalıştı; arşive bir soru soruldu.
-- [ ] `Backlog.md`'den bu madde çıkarıldı; ADR-0018'in "Sonuçlar"ı gerçekleşenle karşılaştırıldı.
-- [ ] Açılan sunucular kapatıldı.
+- [x] `scripts/verify.sh` GEÇTİ (.NET 1711/1711); push, CI yeşil (88bb679: Tests ve CodeQL).
+- [x] Temiz yığında tarayıcıdan (2026-11-23; `docker compose down --remove-orphans && docker compose up -d --build`, veritabanı birimi korundu; `briefyn-ai` konteyneri yok, web imajında ffmpeg 6.1.1): deneme kaydı yüklendi, döküm ve özet geldi (yerel `.env` `TRANSCRIBER=azure`, işleme 9 sn); toplantı yerel veritabanında elle "başarısız"a çekilip "Yeniden Dene" ile özet kayıtlı dökümden yeniden üretildi; "Bu toplantıya sor" ile soruya kaynaklı doğru cevap geldi ("1499 TL, sonrasında 1699 TL").
+- [x] `Backlog.md`'den bu madde çıkarıldı. ADR-0018'in Sonuçlar'ı gerçekleşenle aynı: konteyner, dil, `AI_ENGINE_API_KEY` ve 8000 portu kalktı; `verify.sh` ve CI'da Python yok; ffmpeg web sürecinde zaman aşımı ve temizlikle; geliştirme, CI ve imajda ffmpeg kurulu; Azure taşındı, varsayılan Groq; `AiEngine:Mode` geçişte kullanılıp silindi. Fark: ADR'de yazmayan iki küçük ayrılık var (beklenmeyen işleme hatasında Hangfire'a yalnız genel mesaj; boş `AZURE_SPEECH_MAX_SPEAKERS` 10 sayılıyor) ve istek gövdesi Python'la bayt bayt aynı hâle getirildi (Kontrol B).
+- [x] Açılan sunucular kapatıldı.
 - [ ] Ulaş'a hatırlatıldı: `/agent-skills:review python kaldırma işi`.
