@@ -84,20 +84,20 @@ public sealed class ArchiveAnswerer(ILlmClient llm)
             {
                 if (item.ValueKind != JsonValueKind.Object ||
                     !item.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String || !partIds.Contains(id.GetString()!) ||
-                    !item.TryGetProperty("alinti", out var quote) || quote.ValueKind != JsonValueKind.String || quote.GetString()!.Trim().Length == 0)
+                    !item.TryGetProperty("alinti", out var quote) || quote.ValueKind != JsonValueKind.String || PyText.Strip(quote.GetString()!).Length == 0)
                     continue;
                 evidence.Add(new JsonObject { ["id"] = id.GetString(), ["alinti"] = quote.GetString() });
             }
         if (!raw.TryGetProperty("yeterli_bilgi", out var enough) || enough.ValueKind != JsonValueKind.True || evidence.Count == 0 ||
-            !raw.TryGetProperty("cevap", out var answer) || answer.ValueKind != JsonValueKind.String || answer.GetString()!.Trim().Length == 0)
+            !raw.TryGetProperty("cevap", out var answer) || answer.ValueKind != JsonValueKind.String || PyText.Strip(answer.GetString()!).Length == 0)
             return NotFound();
         var note = raw.TryGetProperty("belirsiz_not", out var noteField) && noteField.ValueKind == JsonValueKind.String
-            ? noteField.GetString()!.Trim() : null;
+            ? PyText.Strip(noteField.GetString()!) : null;
         return JsonSerializer.SerializeToElement(new JsonObject
         {
             ["yeterli_bilgi"] = true,
             ["kanitlar"] = evidence,
-            ["cevap"] = answer.GetString()!.Trim(),
+            ["cevap"] = PyText.Strip(answer.GetString()!),
             ["belirsiz_not"] = string.IsNullOrEmpty(note) ? null : note
         });
     }

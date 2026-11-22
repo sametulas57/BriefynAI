@@ -1,0 +1,918 @@
+[
+  {
+    "op": "suggest",
+    "id": "fewer_labels_0",
+    "transcript": "",
+    "reply": {
+      "oneriler": []
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "fewer_labels_1",
+    "transcript": "Merhaba.",
+    "reply": {
+      "oneriler": []
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "fewer_labels_2",
+    "transcript": "Konuşmacı 1: Merhaba.",
+    "reply": {
+      "oneriler": []
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "valid",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": " Murat ",
+          "gerekce": "Murat'a hitap edildikten hemen sonra cevap veriyor."
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_0",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": null,
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_1",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_2",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "  ",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_3",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Elif",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_4",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Mura",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_5",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat Bey",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_6",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat:",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_7",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Konuşmacı 3",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_8",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat\n",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_9",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat\u0000",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_10",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_11",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat​",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_12",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat Murat Murat Murat Murat Murat Murat Murat Murat Murat Murat ",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "invalid_name_13",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": 42,
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "existing_label",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 1",
+          "ad": "Konuşmacı 2",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "unknown_label",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 9",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "number_and_null",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konusmaci 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        },
+        {
+          "konusmaci": "Konuşmacı 1",
+          "ad": "null",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "turkish_casing",
+    "transcript": "Konuşmacı 1: Herkese günaydın. İLKER, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "İlker",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "first_valid",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Elif",
+          "gerekce": "uydurma"
+        },
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": " Kanıt\n\tsöz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz söz "
+        },
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ikinci"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_0",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        null,
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_1",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        [],
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_2",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        "Murat",
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_3",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {},
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_4",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": []
+        },
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_5",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat"
+        },
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_item_6",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": null
+        },
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": ""
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_list_0",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {},
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_list_1",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": null
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_list_2",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": "Murat"
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_list_3",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": {}
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "malformed_list_4",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": 42
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "whole_lines",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.\nKonuşmacı 3: Ben Elif.",
+    "reply": {
+      "oneriler": []
+    },
+    "max_chars": 116
+  },
+  {
+    "op": "suggest",
+    "id": "first_line",
+    "transcript": "Konuşmacı 1: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nKonuşmacı 2: Merhaba.",
+    "reply": {
+      "oneriler": []
+    },
+    "max_chars": 50
+  },
+  {
+    "op": "suggest",
+    "id": "line_ending_0xd",
+    "transcript": "Konuşmacı 1: İ😀\r\nKonuşmacı 2: Ben Murat.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 20
+  },
+  {
+    "op": "suggest",
+    "id": "line_ending_0x2028",
+    "transcript": "Konuşmacı 1: İ😀 Konuşmacı 2: Ben Murat.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 19
+  },
+  {
+    "op": "suggest",
+    "id": "line_ending_0xd",
+    "transcript": "Konuşmacı 1: İ😀\rKonuşmacı 2: Ben Murat.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 19
+  },
+  {
+    "op": "suggest",
+    "id": "line_ending_0x1c",
+    "transcript": "Konuşmacı 1: İ😀\u001cKonuşmacı 2: Ben Murat.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 19
+  },
+  {
+    "op": "suggest",
+    "id": "emoji_prefix",
+    "transcript": "Konuşmacı 1: 😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ😀İ\nKonuşmacı 2: Murat.",
+    "reply": {
+      "oneriler": []
+    },
+    "max_chars": 17
+  },
+  {
+    "op": "suggest",
+    "id": "reason_codepoints",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "\u001cKanıt\u001f😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 😀 "
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "null_ null ",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": " null ",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "null_NuLl",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "NuLl",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "null_NULL",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "NULL",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "label_None",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": null,
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "label_42",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": 42,
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "label_{}",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": {},
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "label_no_number",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "no_number",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "label_Konusmaci 02",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konusmaci 02",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "label_prefix 2 suffix",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "prefix 2 suffix",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "non_object_None",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": null,
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "non_object_[]",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": [],
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "non_object_42",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": 42,
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "non_object_Murat",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": "Murat",
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "name_length_59",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım. aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "name_length_60",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım. aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "name_length_61",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım. aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "insertion_order",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        },
+        {
+          "konusmaci": "Konuşmacı 1",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "empty_normalized_name",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı 2: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Konuşmacı 2",
+          "ad": "😀",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "suggest",
+    "id": "unicode_label",
+    "transcript": "Konuşmacı 1: Herkese günaydın. Murat, tedarik ne durumda?\nKonuşmacı ٢: Gecikme var, sözleşmeyi bugün imzalarım.",
+    "reply": {
+      "oneriler": [
+        {
+          "konusmaci": "Speaker ٢",
+          "ad": "Murat",
+          "gerekce": "ipucu"
+        }
+      ]
+    },
+    "max_chars": 24000
+  },
+  {
+    "op": "labels",
+    "id": "0",
+    "transcript": "Konuşmacı 2: Merhaba.\nKonuşmacı 1: Evet.\nKonuşmacı 2: Tamam.\nSatır içinde Konuşmacı 3: söz\nKonuşmacı 4:söz"
+  },
+  {
+    "op": "labels",
+    "id": "1",
+    "transcript": ""
+  },
+  {
+    "op": "labels",
+    "id": "2",
+    "transcript": "Konuşmacı 1: x"
+  },
+  {
+    "op": "labels",
+    "id": "3",
+    "transcript": "Konuşmacı 1:x"
+  },
+  {
+    "op": "labels",
+    "id": "4",
+    "transcript": " Konuşmacı 1: x"
+  },
+  {
+    "op": "labels",
+    "id": "5",
+    "transcript": "Konuşmacı ١: x\nKonuşmacı ٢: y"
+  },
+  {
+    "op": "labels",
+    "id": "6",
+    "transcript": "Konuşmacı 1: x\rKonuşmacı 2: y"
+  },
+  {
+    "op": "labels",
+    "id": "7",
+    "transcript": "Konuşmacı 1: x\r\nKonuşmacı 2: y"
+  },
+  {
+    "op": "labels",
+    "id": "8",
+    "transcript": "Konuşmacı 1: x Konuşmacı 2: y"
+  },
+  {
+    "op": "labels",
+    "id": "9",
+    "transcript": "Konuşmacı 01: x\nKonuşmacı 1: y"
+  }
+]

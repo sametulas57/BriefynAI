@@ -30,16 +30,16 @@ public sealed class DotNetAiEngine(ILlmClientFactory llms, ILogger<DotNetAiEngin
 
     public async Task<JsonElement> AnswerAsync(string question, IReadOnlyList<AiAnswerPassage> passages, CancellationToken ct = default)
     {
-        if (Length(question) > 500 || question.Trim().Length == 0 || passages.Count > 40 ||
-            passages.Any(p => !PartId.IsMatch(p.Id) || Length(p.Toplanti) > 300 || !Date.IsMatch(p.Tarih) ||
-                Length(p.Tur) > 20 || Length(p.Metin) is < 1 or > 4000) ||
-            passages.Sum(p => Length(p.Metin)) > 24000)
+        if (PyText.Length(question) > 500 || PyText.Strip(question).Length == 0 || passages.Count > 40 ||
+            passages.Any(p => !PartId.IsMatch(p.Id) || PyText.Length(p.Toplanti) > 300 || !Date.IsMatch(p.Tarih) ||
+                PyText.Length(p.Tur) > 20 || PyText.Length(p.Metin) is < 1 or > 4000) ||
+            passages.Sum(p => PyText.Length(p.Metin)) > 24000)
             throw new HttpRequestException("AI engine rejected the request", null, HttpStatusCode.UnprocessableEntity);
 
         try
         {
             var answerer = new ArchiveAnswerer(llms.Create(LlmTask.Answer));
-            return await answerer.AnswerAsync(question.Trim(), passages, ct);
+            return await answerer.AnswerAsync(PyText.Strip(question), passages, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception ex)
@@ -49,5 +49,17 @@ public sealed class DotNetAiEngine(ILlmClientFactory llms, ILogger<DotNetAiEngin
         }
     }
 
-    private static int Length(string text) => text.EnumerateRunes().Count();
+    public async Task<Dictionary<string, AiSpeakerSuggestion>> SuggestSpeakerNamesAsync(string transcript, CancellationToken ct = default)
+    {
+        try
+        {
+            return await new SpeakerSuggester(llms.Create(LlmTask.Speakers)).SuggestAsync(transcript, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception)
+        {
+            logger.LogError("Speaker name suggestions failed; continuing without proposals.");
+            return [];
+        }
+    }
 }

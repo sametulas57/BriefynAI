@@ -38,9 +38,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 2.
   - Dosyalar: `MeetingWeb/Services/Ai/MeetingSummarizer.cs`, `MeetingWeb/Services/Ai/DotNetAiEngine.cs`, `MeetingWeb.Tests/Ai/MeetingSummarizerTests.cs`.
 
-- [ ] **Görev 5: Döküm temizleme ve konuşmacı önerisi .NET'te** (M)
+- [x] **Görev 5: Döküm temizleme ve konuşmacı önerisi .NET'te** (M)
   - Kabul: `TranscriptText` `speakers.py`'yi taşıyor: Türkçe normalleştirme, uydurma altyazı listesi ve `is_only_hallucinated_captions`, istem yankısı ayıklama, `clean_segment_text`, `clean_plain_chunk`, VTT okuma (en fazla 2 MB, bozuk UTF-8'de yok sayma), `assign_speakers`, `format_lines`. `SpeakerSuggester` `speaker_suggester.py`'yi taşıyor (24.000 karakter sınırı, `Konuşmacı N` etiketleri); hata verirse boş öneri döner, günlüğe içerik yazılmaz.
   - Doğrula: `test_speakers.py` (3) ve `test_speaker_suggester.py` (17) C#'ta.
+  - Not (2026-11-23): Python'un metin anlamları (`strip`, `splitlines`, `split`, `isalnum`, `casefold`, `len`) `PyText`'te; Görev 3-4'teki `Trim` ve uzunluk hesapları da buna geçti. 502 vakalık diferansiyel altın set (`MeetingWeb.Tests/Ai/Golden/transcript_*`, `speaker_*`): girdiler sabit, beklenenler Python'dan üretildi, elle yeniden üretilip doğrulandı; bilinen fark yok. `test_chunk_offsets_are_added_before_matching` Görev 6'da.
   - Bağımlılık: 2.
   - Dosyalar: `MeetingWeb/Services/Ai/TranscriptText.cs`, `MeetingWeb/Services/Ai/SpeakerSuggester.cs`, `MeetingWeb.Tests/Ai/TranscriptTextTests.cs`, `MeetingWeb.Tests/Ai/SpeakerSuggesterTests.cs`.
 

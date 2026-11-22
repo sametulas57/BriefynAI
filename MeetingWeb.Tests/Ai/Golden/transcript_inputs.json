@@ -1,0 +1,2492 @@
+[
+  {
+    "op": "normalise",
+    "id": "0",
+    "text": "I İ ı i"
+  },
+  {
+    "op": "normalise",
+    "id": "1",
+    "text": "Straße ẞ"
+  },
+  {
+    "op": "normalise",
+    "id": "2",
+    "text": "ﬁ ﬄ"
+  },
+  {
+    "op": "normalise",
+    "id": "3",
+    "text": "Çağrı Éléonore ÁÂ"
+  },
+  {
+    "op": "normalise",
+    "id": "4",
+    "text": "Σςσ ΐ ᾈ"
+  },
+  {
+    "op": "normalise",
+    "id": "5",
+    "text": "Ⅻ ² ٣٤"
+  },
+  {
+    "op": "normalise",
+    "id": "6",
+    "text": "😀 Merhaba 𐐀"
+  },
+  {
+    "op": "normalise",
+    "id": "7",
+    "text": "a​b﻿c"
+  },
+  {
+    "op": "normalise",
+    "id": "8",
+    "text": " a\tb\u001cc "
+  },
+  {
+    "op": "normalise",
+    "id": "9",
+    "text": "!?…---"
+  },
+  {
+    "op": "normalise",
+    "id": "10",
+    "text": "a͏b"
+  },
+  {
+    "op": "normalise",
+    "id": "11",
+    "text": "काख"
+  },
+  {
+    "op": "normalise",
+    "id": "12",
+    "text": "áb"
+  },
+  {
+    "op": "normalise",
+    "id": "13",
+    "text": "և ﬓ"
+  },
+  {
+    "op": "normalise",
+    "id": "14",
+    "text": "ẛ̣"
+  },
+  {
+    "op": "normalise",
+    "id": "15",
+    "text": "a𝅥b"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "old",
+    "text": "İngilizce teknik terimleri orijinal yazımıyla koru",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "full",
+    "text": "bir iki üç dört beş altı yedi sekiz dokuz on",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "six",
+    "text": "üç dört beş altı yedi sekiz",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "five",
+    "text": "üç dört beş altı yedi",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "middle",
+    "text": "ir iki üç dört beş altı",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "empty",
+    "text": "",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "case",
+    "text": "BİR İKİ ÜÇ DÖRT BEŞ ALTI",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "spoken",
+    "text": "Docker GitHub",
+    "prompt": "Docker GitHub kubernetes"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "punct",
+    "text": "bir, iki! üç dört beş altı",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "prompt_echo",
+    "id": "different",
+    "text": "bir iki üç dört beş ek",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "caption",
+    "id": "0",
+    "text": "Altyazı M.K."
+  },
+  {
+    "op": "caption",
+    "id": "1",
+    "text": "İzlediğiniz için teşekkür ederim"
+  },
+  {
+    "op": "caption",
+    "id": "2",
+    "text": "İzlediğiniz için teşekkürler"
+  },
+  {
+    "op": "caption",
+    "id": "3",
+    "text": "Abone olmayı unutmayın"
+  },
+  {
+    "op": "caption",
+    "id": "4",
+    "text": " ALTYAZI M.K. "
+  },
+  {
+    "op": "caption",
+    "id": "5",
+    "text": "Altyazı desteğini ekleyelim."
+  },
+  {
+    "op": "caption",
+    "id": "6",
+    "text": ""
+  },
+  {
+    "op": "caption",
+    "id": "7",
+    "text": "!!!"
+  },
+  {
+    "op": "caption",
+    "id": "8",
+    "text": "Altyazı M.K. bugün"
+  },
+  {
+    "op": "caption",
+    "id": "9",
+    "text": "İzlediğiniz için teşekkürler!"
+  },
+  {
+    "op": "caption",
+    "id": "10",
+    "text": "Abone olmayı unutmayın?"
+  },
+  {
+    "op": "only_captions",
+    "id": "0",
+    "text": "",
+    "speakers": []
+  },
+  {
+    "op": "only_captions",
+    "id": "1",
+    "text": "!!!",
+    "speakers": []
+  },
+  {
+    "op": "only_captions",
+    "id": "2",
+    "text": "Altyazı M.K.",
+    "speakers": []
+  },
+  {
+    "op": "only_captions",
+    "id": "3",
+    "text": "Altyazı M.K.\nAbone olmayı unutmayın",
+    "speakers": []
+  },
+  {
+    "op": "only_captions",
+    "id": "4",
+    "text": "Ali: Altyazı M.K.",
+    "speakers": [
+      "Ali"
+    ]
+  },
+  {
+    "op": "only_captions",
+    "id": "5",
+    "text": "Ali: Altyazı M.K.",
+    "speakers": []
+  },
+  {
+    "op": "only_captions",
+    "id": "6",
+    "text": "Ali: Altyazı M.K.\rAyşe: İzlediğiniz için teşekkürler",
+    "speakers": [
+      "Ali",
+      "Ayşe"
+    ]
+  },
+  {
+    "op": "only_captions",
+    "id": "7",
+    "text": "Ali: Altyazı M.K. Ayşe: Abone olmayı unutmayın",
+    "speakers": [
+      "Ali",
+      "Ayşe"
+    ]
+  },
+  {
+    "op": "only_captions",
+    "id": "8",
+    "text": "Ali: Gerçek söz",
+    "speakers": [
+      "Ali"
+    ]
+  },
+  {
+    "op": "only_captions",
+    "id": "9",
+    "text": "Ali: ",
+    "speakers": [
+      "Ali"
+    ]
+  },
+  {
+    "op": "only_captions",
+    "id": "10",
+    "text": "Altyazı M.K. gerçek",
+    "speakers": []
+  },
+  {
+    "op": "clean_segment",
+    "id": "0",
+    "text": "  Merhaba. \u001c",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "1",
+    "text": "İngilizce teknik terimleri orijinal yazımıyla koru",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "2",
+    "text": "bir iki üç dört beş altı yedi sekiz dokuz on",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "3",
+    "text": "üç dört beş altı yedi sekiz",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "4",
+    "text": "Altyazı M.K.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "5",
+    "text": "İzlediğiniz için teşekkür ederim",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "6",
+    "text": "İzlediğiniz için teşekkürler",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "7",
+    "text": "Abone olmayı unutmayın",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "8",
+    "text": "Altyazı desteğini ekleyelim.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "9",
+    "text": "",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "10",
+    "text": "😀 Gerçek söz",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_segment",
+    "id": "11",
+    "text": "üç dört beş altı yedi",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "0",
+    "text": "  Merhaba. \u001c",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "1",
+    "text": "İngilizce teknik terimleri orijinal yazımıyla koru",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "2",
+    "text": "bir iki üç dört beş altı yedi sekiz dokuz on",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "3",
+    "text": "Plan hazır. Altyazı M.K.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "4",
+    "text": "Altyazı M.K. dedi ve devam etti.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "5",
+    "text": "Plan… Altyazı M.K.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "6",
+    "text": "Plan?! İzlediğiniz için teşekkürler!",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "7",
+    "text": "Altyazı M.K.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "8",
+    "text": "Plan. Abone olmayı unutmayın",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "9",
+    "text": "Plan. İzlediğiniz için teşekkür ederim.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "10",
+    "text": "",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "11",
+    "text": "…?!",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "clean_plain",
+    "id": "12",
+    "text": "Plan. Altyazı M.K. Devam.",
+    "prompt": "bir iki üç dört beş altı yedi sekiz dokuz on"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "zoom",
+    "text": "WEBVTT\n\n1\n00:00:16.239 --> 00:00:27.079\nUlaş Karasu: İlk cümle\ndevamı\n\n2\n00:27.100 --> 00:31.000\nAdsız söz\n\nbroken\nnot a timestamp\nDeniz: atla\n\n3\n00:00:32.000 --> 00:00:35.000\nerdfg grgdrg: İkinci söz\n"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "bom",
+    "text": "﻿﻿WEBVTT\n\n1\n00:00:16.239 --> 00:00:27.079\nUlaş Karasu: İlk cümle\ndevamı\n\n2\n00:27.100 --> 00:31.000\nAdsız söz\n\nbroken\nnot a timestamp\nDeniz: atla\n\n3\n00:00:32.000 --> 00:00:35.000\nerdfg grgdrg: İkinci söz\n"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "crlf",
+    "text": "WEBVTT\r\n\r\n1\r\n00:00:16.239 --> 00:00:27.079\r\nUlaş Karasu: İlk cümle\r\ndevamı\r\n\r\n2\r\n00:27.100 --> 00:31.000\r\nAdsız söz\r\n\r\nbroken\r\nnot a timestamp\r\nDeniz: atla\r\n\r\n3\r\n00:00:32.000 --> 00:00:35.000\r\nerdfg grgdrg: İkinci söz\r\n"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "no_hour",
+    "text": "00:01.000 --> 00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "hour",
+    "text": "01:00:01.000 --> 02:00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "equal",
+    "text": "00:02.000 --> 00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "reverse",
+    "text": "00:03.000 --> 00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "settings",
+    "text": "00:01.000 --> 00:02.000 align:start\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "empty_name",
+    "text": "00:01.000 --> 00:02.000\n: metin"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "multiline",
+    "text": "00:01.000 --> 00:02.000\nAli: ilk\n ikinci\n üçüncü"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "index",
+    "text": "42\n00:01.000 --> 00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "third_line",
+    "text": "42\nother\n00:01.000 --> 00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "bad_number",
+    "text": "00:xx.000 --> 00:02.000\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "unicode_number",
+    "text": "٠٠:٠١.٠٠٠ --> ٠٠:٠٢.٠٠٠\nAli: söz"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "no_speech",
+    "text": "00:01.000 --> 00:02.000"
+  },
+  {
+    "op": "parse_vtt",
+    "id": "empty",
+    "text": ""
+  },
+  {
+    "op": "parse_vtt",
+    "id": "space_separators",
+    "text": "00:01.000 --> 00:02.000\nAli: söz\n\u001c\n00:02.000 --> 00:03.000\nAyşe: devam"
+  },
+  {
+    "op": "assign",
+    "id": "sum_gap",
+    "segments": [
+      [
+        0,
+        4,
+        "bir"
+      ],
+      [
+        4,
+        4.5,
+        "iki"
+      ],
+      [
+        5,
+        6,
+        "üç"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        2,
+        "Ali",
+        ""
+      ],
+      [
+        2,
+        4,
+        "Ali",
+        ""
+      ],
+      [
+        1,
+        4.5,
+        "Ayşe",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "tie",
+    "segments": [
+      [
+        0,
+        2,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        1,
+        "Ayşe",
+        ""
+      ],
+      [
+        1,
+        2,
+        "Ali",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "null_first",
+    "segments": [
+      [
+        0,
+        2,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        1,
+        null,
+        ""
+      ],
+      [
+        1,
+        2,
+        "Ali",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "empty_name",
+    "segments": [
+      [
+        0,
+        2,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        1,
+        "",
+        ""
+      ],
+      [
+        1,
+        2,
+        null,
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "no_cues",
+    "segments": [
+      [
+        0,
+        2,
+        "a"
+      ]
+    ],
+    "cues": []
+  },
+  {
+    "op": "assign",
+    "id": "no_segments",
+    "segments": [],
+    "cues": [
+      [
+        0,
+        2,
+        "Ali",
+        ""
+      ],
+      [
+        2,
+        4,
+        "Ali",
+        ""
+      ],
+      [
+        1,
+        4.5,
+        "Ayşe",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "touch",
+    "segments": [
+      [
+        4,
+        5,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        4,
+        "Ali",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "negative",
+    "segments": [
+      [
+        -2,
+        0,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        -2,
+        0,
+        "Ali",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "zero",
+    "segments": [
+      [
+        1,
+        1,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        2,
+        "Ali",
+        ""
+      ],
+      [
+        2,
+        4,
+        "Ali",
+        ""
+      ],
+      [
+        1,
+        4.5,
+        "Ayşe",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "assign",
+    "id": "same_name",
+    "segments": [
+      [
+        0,
+        3,
+        "a"
+      ]
+    ],
+    "cues": [
+      [
+        0,
+        1,
+        "Ali",
+        ""
+      ],
+      [
+        1,
+        3,
+        "Ali",
+        ""
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "0",
+    "pairs": [
+      [
+        "Ali",
+        "bir"
+      ],
+      [
+        "Ali",
+        "iki"
+      ],
+      [
+        null,
+        "üç"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "1",
+    "pairs": []
+  },
+  {
+    "op": "format",
+    "id": "2",
+    "pairs": [
+      [
+        null,
+        "a"
+      ],
+      [
+        null,
+        "b"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "3",
+    "pairs": [
+      [
+        "",
+        "a"
+      ],
+      [
+        null,
+        "b"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "4",
+    "pairs": [
+      [
+        "Ali",
+        " "
+      ],
+      [
+        "Ayşe",
+        "söz"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "5",
+    "pairs": [
+      [
+        "Ali",
+        "a"
+      ],
+      [
+        "Ali",
+        "\u001c"
+      ],
+      [
+        "Ali",
+        "b"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "6",
+    "pairs": [
+      [
+        "Ali",
+        "a"
+      ],
+      [
+        "Ayşe",
+        "b"
+      ],
+      [
+        "Ali",
+        "c"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "7",
+    "pairs": [
+      [
+        null,
+        "\u001ca\u001f"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "8",
+    "pairs": [
+      [
+        "Ali",
+        "😀"
+      ]
+    ]
+  },
+  {
+    "op": "format",
+    "id": "9",
+    "pairs": [
+      [
+        "",
+        " a "
+      ],
+      [
+        "",
+        " b "
+      ]
+    ]
+  },
+  {
+    "op": "casefold",
+    "id": "U+00DF",
+    "text": "ß"
+  },
+  {
+    "op": "casefold",
+    "id": "U+0130",
+    "text": "İ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+0149",
+    "text": "ŉ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+01F0",
+    "text": "ǰ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+0390",
+    "text": "ΐ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+03B0",
+    "text": "ΰ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+0587",
+    "text": "և"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1E96",
+    "text": "ẖ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1E97",
+    "text": "ẗ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1E98",
+    "text": "ẘ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1E99",
+    "text": "ẙ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1E9A",
+    "text": "ẚ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1E9E",
+    "text": "ẞ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F50",
+    "text": "ὐ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F52",
+    "text": "ὒ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F54",
+    "text": "ὔ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F56",
+    "text": "ὖ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F80",
+    "text": "ᾀ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F81",
+    "text": "ᾁ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F82",
+    "text": "ᾂ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F83",
+    "text": "ᾃ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F84",
+    "text": "ᾄ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F85",
+    "text": "ᾅ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F86",
+    "text": "ᾆ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F87",
+    "text": "ᾇ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F88",
+    "text": "ᾈ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F89",
+    "text": "ᾉ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F8A",
+    "text": "ᾊ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F8B",
+    "text": "ᾋ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F8C",
+    "text": "ᾌ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F8D",
+    "text": "ᾍ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F8E",
+    "text": "ᾎ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F8F",
+    "text": "ᾏ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F90",
+    "text": "ᾐ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F91",
+    "text": "ᾑ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F92",
+    "text": "ᾒ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F93",
+    "text": "ᾓ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F94",
+    "text": "ᾔ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F95",
+    "text": "ᾕ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F96",
+    "text": "ᾖ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F97",
+    "text": "ᾗ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F98",
+    "text": "ᾘ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F99",
+    "text": "ᾙ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F9A",
+    "text": "ᾚ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F9B",
+    "text": "ᾛ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F9C",
+    "text": "ᾜ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F9D",
+    "text": "ᾝ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F9E",
+    "text": "ᾞ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1F9F",
+    "text": "ᾟ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA0",
+    "text": "ᾠ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA1",
+    "text": "ᾡ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA2",
+    "text": "ᾢ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA3",
+    "text": "ᾣ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA4",
+    "text": "ᾤ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA5",
+    "text": "ᾥ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA6",
+    "text": "ᾦ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA7",
+    "text": "ᾧ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA8",
+    "text": "ᾨ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FA9",
+    "text": "ᾩ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FAA",
+    "text": "ᾪ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FAB",
+    "text": "ᾫ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FAC",
+    "text": "ᾬ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FAD",
+    "text": "ᾭ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FAE",
+    "text": "ᾮ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FAF",
+    "text": "ᾯ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FB2",
+    "text": "ᾲ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FB3",
+    "text": "ᾳ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FB4",
+    "text": "ᾴ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FB6",
+    "text": "ᾶ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FB7",
+    "text": "ᾷ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FBC",
+    "text": "ᾼ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FC2",
+    "text": "ῂ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FC3",
+    "text": "ῃ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FC4",
+    "text": "ῄ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FC6",
+    "text": "ῆ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FC7",
+    "text": "ῇ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FCC",
+    "text": "ῌ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FD2",
+    "text": "ῒ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FD3",
+    "text": "ΐ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FD6",
+    "text": "ῖ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FD7",
+    "text": "ῗ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FE2",
+    "text": "ῢ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FE3",
+    "text": "ΰ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FE4",
+    "text": "ῤ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FE6",
+    "text": "ῦ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FE7",
+    "text": "ῧ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FF2",
+    "text": "ῲ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FF3",
+    "text": "ῳ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FF4",
+    "text": "ῴ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FF6",
+    "text": "ῶ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FF7",
+    "text": "ῷ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+1FFC",
+    "text": "ῼ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB00",
+    "text": "ﬀ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB01",
+    "text": "ﬁ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB02",
+    "text": "ﬂ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB03",
+    "text": "ﬃ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB04",
+    "text": "ﬄ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB05",
+    "text": "ﬅ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB06",
+    "text": "ﬆ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB13",
+    "text": "ﬓ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB14",
+    "text": "ﬔ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB15",
+    "text": "ﬕ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB16",
+    "text": "ﬖ"
+  },
+  {
+    "op": "casefold",
+    "id": "U+FB17",
+    "text": "ﬗ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+00B5",
+    "text": "µ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+00B5",
+    "text": "aµb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+017F",
+    "text": "ſ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+017F",
+    "text": "aſb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+0345",
+    "text": "ͅ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+0345",
+    "text": "aͅb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03C2",
+    "text": "ς"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03C2",
+    "text": "aςb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03D0",
+    "text": "ϐ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03D0",
+    "text": "aϐb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03D1",
+    "text": "ϑ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03D1",
+    "text": "aϑb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03D5",
+    "text": "ϕ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03D5",
+    "text": "aϕb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03D6",
+    "text": "ϖ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03D6",
+    "text": "aϖb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03F0",
+    "text": "ϰ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03F0",
+    "text": "aϰb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03F1",
+    "text": "ϱ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03F1",
+    "text": "aϱb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+03F5",
+    "text": "ϵ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+03F5",
+    "text": "aϵb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A0",
+    "text": "Ꭰ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A1",
+    "text": "Ꭱ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A2",
+    "text": "Ꭲ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A3",
+    "text": "Ꭳ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A4",
+    "text": "Ꭴ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A5",
+    "text": "Ꭵ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A6",
+    "text": "Ꭶ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A7",
+    "text": "Ꭷ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A8",
+    "text": "Ꭸ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13A9",
+    "text": "Ꭹ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13AA",
+    "text": "Ꭺ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13AB",
+    "text": "Ꭻ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13AC",
+    "text": "Ꭼ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13AD",
+    "text": "Ꭽ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13AE",
+    "text": "Ꭾ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13AF",
+    "text": "Ꭿ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B0",
+    "text": "Ꮀ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B1",
+    "text": "Ꮁ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B2",
+    "text": "Ꮂ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B3",
+    "text": "Ꮃ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B4",
+    "text": "Ꮄ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B5",
+    "text": "Ꮅ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B6",
+    "text": "Ꮆ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B7",
+    "text": "Ꮇ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B8",
+    "text": "Ꮈ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13B9",
+    "text": "Ꮉ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13BA",
+    "text": "Ꮊ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13BB",
+    "text": "Ꮋ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13BC",
+    "text": "Ꮌ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13BD",
+    "text": "Ꮍ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13BE",
+    "text": "Ꮎ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13BF",
+    "text": "Ꮏ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C0",
+    "text": "Ꮐ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C1",
+    "text": "Ꮑ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C2",
+    "text": "Ꮒ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C3",
+    "text": "Ꮓ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C4",
+    "text": "Ꮔ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C5",
+    "text": "Ꮕ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C6",
+    "text": "Ꮖ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C7",
+    "text": "Ꮗ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C8",
+    "text": "Ꮘ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13C9",
+    "text": "Ꮙ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13CA",
+    "text": "Ꮚ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13CB",
+    "text": "Ꮛ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13CC",
+    "text": "Ꮜ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13CD",
+    "text": "Ꮝ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13CE",
+    "text": "Ꮞ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13CF",
+    "text": "Ꮟ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D0",
+    "text": "Ꮠ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D1",
+    "text": "Ꮡ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D2",
+    "text": "Ꮢ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D3",
+    "text": "Ꮣ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D4",
+    "text": "Ꮤ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D5",
+    "text": "Ꮥ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D6",
+    "text": "Ꮦ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D7",
+    "text": "Ꮧ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D8",
+    "text": "Ꮨ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13D9",
+    "text": "Ꮩ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13DA",
+    "text": "Ꮪ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13DB",
+    "text": "Ꮫ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13DC",
+    "text": "Ꮬ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13DD",
+    "text": "Ꮭ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13DE",
+    "text": "Ꮮ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13DF",
+    "text": "Ꮯ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E0",
+    "text": "Ꮰ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E1",
+    "text": "Ꮱ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E2",
+    "text": "Ꮲ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E3",
+    "text": "Ꮳ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E4",
+    "text": "Ꮴ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E5",
+    "text": "Ꮵ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E6",
+    "text": "Ꮶ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E7",
+    "text": "Ꮷ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E8",
+    "text": "Ꮸ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13E9",
+    "text": "Ꮹ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13EA",
+    "text": "Ꮺ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13EB",
+    "text": "Ꮻ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13EC",
+    "text": "Ꮼ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13ED",
+    "text": "Ꮽ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13EE",
+    "text": "Ꮾ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13EF",
+    "text": "Ꮿ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F0",
+    "text": "Ᏸ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F1",
+    "text": "Ᏹ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F2",
+    "text": "Ᏺ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F3",
+    "text": "Ᏻ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F4",
+    "text": "Ᏼ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F5",
+    "text": "Ᏽ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F8",
+    "text": "ᏸ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13F9",
+    "text": "ᏹ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13FA",
+    "text": "ᏺ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13FB",
+    "text": "ᏻ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13FC",
+    "text": "ᏼ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+13FD",
+    "text": "ᏽ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C80",
+    "text": "ᲀ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C80",
+    "text": "aᲀb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C81",
+    "text": "ᲁ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C81",
+    "text": "aᲁb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C82",
+    "text": "ᲂ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C82",
+    "text": "aᲂb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C83",
+    "text": "ᲃ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C83",
+    "text": "aᲃb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C84",
+    "text": "ᲄ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C84",
+    "text": "aᲄb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C85",
+    "text": "ᲅ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C85",
+    "text": "aᲅb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C86",
+    "text": "ᲆ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C86",
+    "text": "aᲆb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C87",
+    "text": "ᲇ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C87",
+    "text": "aᲇb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1C88",
+    "text": "ᲈ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1C88",
+    "text": "aᲈb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1E9B",
+    "text": "ẛ"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1E9B",
+    "text": "aẛb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+1FBE",
+    "text": "ι"
+  },
+  {
+    "op": "normalise",
+    "id": "simple_U+1FBE",
+    "text": "aιb"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB70",
+    "text": "ꭰ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB71",
+    "text": "ꭱ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB72",
+    "text": "ꭲ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB73",
+    "text": "ꭳ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB74",
+    "text": "ꭴ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB75",
+    "text": "ꭵ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB76",
+    "text": "ꭶ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB77",
+    "text": "ꭷ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB78",
+    "text": "ꭸ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB79",
+    "text": "ꭹ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB7A",
+    "text": "ꭺ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB7B",
+    "text": "ꭻ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB7C",
+    "text": "ꭼ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB7D",
+    "text": "ꭽ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB7E",
+    "text": "ꭾ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB7F",
+    "text": "ꭿ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB80",
+    "text": "ꮀ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB81",
+    "text": "ꮁ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB82",
+    "text": "ꮂ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB83",
+    "text": "ꮃ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB84",
+    "text": "ꮄ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB85",
+    "text": "ꮅ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB86",
+    "text": "ꮆ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB87",
+    "text": "ꮇ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB88",
+    "text": "ꮈ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB89",
+    "text": "ꮉ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB8A",
+    "text": "ꮊ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB8B",
+    "text": "ꮋ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB8C",
+    "text": "ꮌ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB8D",
+    "text": "ꮍ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB8E",
+    "text": "ꮎ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB8F",
+    "text": "ꮏ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB90",
+    "text": "ꮐ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB91",
+    "text": "ꮑ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB92",
+    "text": "ꮒ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB93",
+    "text": "ꮓ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB94",
+    "text": "ꮔ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB95",
+    "text": "ꮕ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB96",
+    "text": "ꮖ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB97",
+    "text": "ꮗ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB98",
+    "text": "ꮘ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB99",
+    "text": "ꮙ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB9A",
+    "text": "ꮚ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB9B",
+    "text": "ꮛ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB9C",
+    "text": "ꮜ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB9D",
+    "text": "ꮝ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB9E",
+    "text": "ꮞ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+AB9F",
+    "text": "ꮟ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA0",
+    "text": "ꮠ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA1",
+    "text": "ꮡ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA2",
+    "text": "ꮢ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA3",
+    "text": "ꮣ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA4",
+    "text": "ꮤ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA5",
+    "text": "ꮥ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA6",
+    "text": "ꮦ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA7",
+    "text": "ꮧ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA8",
+    "text": "ꮨ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABA9",
+    "text": "ꮩ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABAA",
+    "text": "ꮪ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABAB",
+    "text": "ꮫ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABAC",
+    "text": "ꮬ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABAD",
+    "text": "ꮭ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABAE",
+    "text": "ꮮ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABAF",
+    "text": "ꮯ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB0",
+    "text": "ꮰ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB1",
+    "text": "ꮱ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB2",
+    "text": "ꮲ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB3",
+    "text": "ꮳ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB4",
+    "text": "ꮴ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB5",
+    "text": "ꮵ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB6",
+    "text": "ꮶ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB7",
+    "text": "ꮷ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB8",
+    "text": "ꮸ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABB9",
+    "text": "ꮹ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABBA",
+    "text": "ꮺ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABBB",
+    "text": "ꮻ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABBC",
+    "text": "ꮼ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABBD",
+    "text": "ꮽ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABBE",
+    "text": "ꮾ"
+  },
+  {
+    "op": "casefold",
+    "id": "simple_U+ABBF",
+    "text": "ꮿ"
+  }
+]

@@ -78,7 +78,7 @@ public sealed class MeetingSummarizer(ILlmClient llm, ILogger logger, int maxCha
 
     public async Task<AiSummaryData> SummarizeAsync(string transcript, CancellationToken ct)
     {
-        if (transcript.EnumerateRunes().Count() <= maxChars)
+        if (PyText.Length(transcript) <= maxChars)
             return ToBackendFormat(await AskAsync("Toplantı dökümü:\n\n" + transcript, ct));
 
         var parts = SplitText(transcript, maxChars);
@@ -99,20 +99,20 @@ public sealed class MeetingSummarizer(ILlmClient llm, ILogger logger, int maxCha
     public static IReadOnlyList<string> SplitText(string text, int maxChars)
     {
         var sentences = text.Replace("\n", " ").Split(". ", StringSplitOptions.None)
-            .Where(s => s.Trim().Length > 0).Select(s => s.Trim() + ".");
+            .Where(s => PyText.Strip(s).Length > 0).Select(s => PyText.Strip(s) + ".");
         List<string> parts = [];
         var current = "";
         foreach (var raw in sentences)
         {
             var sentence = raw.EndsWith("..", StringComparison.Ordinal) ? raw[..^1] : raw;
-            if (current.Length > 0 && current.EnumerateRunes().Count() + sentence.EnumerateRunes().Count() + 1 > maxChars)
+            if (current.Length > 0 && PyText.Length(current) + PyText.Length(sentence) + 1 > maxChars)
             {
-                parts.Add(current.Trim());
+                parts.Add(PyText.Strip(current));
                 current = "";
             }
             current += sentence + " ";
         }
-        if (current.Trim().Length > 0) parts.Add(current.Trim());
+        if (PyText.Strip(current).Length > 0) parts.Add(PyText.Strip(current));
         return parts;
     }
 
@@ -123,14 +123,14 @@ public sealed class MeetingSummarizer(ILlmClient llm, ILogger logger, int maxCha
         foreach (var action in Array(summary, "aksiyon_maddeleri"))
         {
             if (action.ValueKind != JsonValueKind.Object) continue;
-            var text = Text(action, "ne").Trim();
+            var text = PyText.Strip(Text(action, "ne"));
             if (action.TryGetProperty("kim", out var owner) && IsTruthy(owner)) text = Display(owner) + ": " + text;
             if (action.TryGetProperty("ne_zaman", out var deadline) && IsTruthy(deadline)) text += " (" + Display(deadline) + ")";
             actions.Add(text);
         }
         return new AiSummaryData
         {
-            ToplantiKonusu = Text(summary, "toplanti_konusu").Trim(),
+            ToplantiKonusu = PyText.Strip(Text(summary, "toplanti_konusu")),
             GorusulenKonular = Strings(summary, "gorusulen_konular"),
             AlinanKararlar = Strings(summary, "alinan_kararlar"),
             BekleyenKonular = Strings(summary, "bekleyen_konular"),
