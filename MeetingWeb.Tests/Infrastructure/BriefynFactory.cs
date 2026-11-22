@@ -1,6 +1,7 @@
 using Hangfire;
 using MeetingWeb.Data;
 using MeetingWeb.Services;
+using MeetingWeb.Services.Ai;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -24,7 +25,7 @@ namespace MeetingWeb.Tests.Infrastructure
         public Action<IServiceCollection>? ExtraServices { get; set; }
 
         public FakeBackgroundJobClient Jobs { get; } = new();
-        public StubPythonApiHandler PythonApi { get; } = new();
+        public FakeAiEngine Ai { get; } = new();
         public StubZoomHandler Zoom { get; } = new();
         public CapturingLoggerProvider? LogCapture { get; init; }
         // Zoom is off unless a test turns it on (the real .env may not have Zoom settings).
@@ -52,7 +53,6 @@ namespace MeetingWeb.Tests.Infrastructure
         // Where Data Protection keys (login cookies, antiforgery, TempData) are stored; tests can share one folder
         // between two app instances to simulate a container restart.
         public string KeysPath { get; init; } = Path.Combine(Path.GetTempPath(), "briefyn-tests-keys-" + Guid.NewGuid().ToString("N"));
-        public const string AiEngineApiKey = "test-ai-engine-key";
         public SeedData Seed { get; private set; } = null!;
 
         static BriefynFactory()
@@ -77,7 +77,6 @@ namespace MeetingWeb.Tests.Infrastructure
             builder.UseEnvironment("Testing");
             builder.UseWebRoot(WebRoot);
             builder.UseSetting("AudioStorage:RootPath", AudioRoot);
-            builder.UseSetting("PythonApiSettings:ApiKey", AiEngineApiKey);
             builder.UseSetting("Upload:MaxMegabytes", "1");
             builder.UseSetting("DataProtection:KeysPath", KeysPath);
             builder.UseSetting("Zoom:ClientId", ZoomEnabled ? "test-zoom-client" : "");
@@ -115,7 +114,8 @@ namespace MeetingWeb.Tests.Infrastructure
                 }
 
                 services.AddSingleton<IBackgroundJobClient>(Jobs);
-                services.AddHttpClient("PythonApi").ConfigurePrimaryHttpMessageHandler(() => PythonApi);
+                services.RemoveAll<IAiEngine>();
+                services.AddSingleton<IAiEngine>(Ai);
                 services.AddHttpClient(ZoomApiClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Zoom);
                 if (LogCapture != null) services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(new Microsoft.Extensions.Logging.LoggerFactory(new[] { LogCapture }));
 

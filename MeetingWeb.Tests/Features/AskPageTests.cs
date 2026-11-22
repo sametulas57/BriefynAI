@@ -37,7 +37,7 @@ public class AskPageTests : IAsyncLifetime
     }
 
     private void Respond(string answer, params (string Id, string Text)[] quotes) =>
-        _app.PythonApi.Body = JsonSerializer.Serialize(new
+        _app.Ai.Body = JsonSerializer.Serialize(new
         {
             yeterli_bilgi = true,
             kanitlar = quotes.Select(q => new { id = q.Id, alinti = q.Text }),
@@ -112,8 +112,8 @@ public class AskPageTests : IAsyncLifetime
         using var client = Client();
         var html = await Post(client, ("Question", new string('x', 501)));
         Assert.Contains("Soru en fazla 500 karakter olabilir.", Text(html));
-        Assert.Equal(0, _app.PythonApi.CallCount);
-        _app.PythonApi.Status = HttpStatusCode.ServiceUnavailable;
+        Assert.Equal(0, _app.Ai.CallCount);
+        _app.Ai.Status = HttpStatusCode.ServiceUnavailable;
         html = await Post(client, ("Question", Question));
         Assert.Contains("Yapay zekâ şu an yanıt veremiyor.", Text(html));
     }
@@ -139,7 +139,7 @@ public class AskPageTests : IAsyncLifetime
         Assert.Contains("Lütfen bir toplantı seçin.", Text(html));
         html = await Post(client, ("Question", Question), ("Scope", "Series"), ("SeriesId", ""));
         Assert.Contains("Lütfen bir seri seçin.", Text(html));
-        Assert.Equal(0, _app.PythonApi.CallCount);
+        Assert.Equal(0, _app.Ai.CallCount);
     }
 
     [Fact]
@@ -149,6 +149,6 @@ public class AskPageTests : IAsyncLifetime
         var other = G.Meetings["B1"];
         var html = await Post(client, ("Question", Question), ("Scope", "Meeting"), ("MeetingId", other.ToString()));
         Assert.Contains("Bu kapsamda bakılacak tamamlanmış toplantı yok.", Text(html));
-        Assert.Equal(0, _app.PythonApi.CallCount);
+        Assert.Equal(0, _app.Ai.CallCount);
     }
 }

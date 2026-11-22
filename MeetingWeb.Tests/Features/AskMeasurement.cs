@@ -19,10 +19,8 @@ public class AskMeasurement
     [Fact]
     public async Task Run_model_measurement_when_configured()
     {
-        var url = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_URL");
-        var dotnet = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_MOTOR") == "dotnet";
-        if (!dotnet && string.IsNullOrWhiteSpace(url)) return;
-        if (dotnet && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GROQ_API_KEY"))) return;
+        if (Environment.GetEnvironmentVariable("BRIEFYN_OLCUM") != "1" ||
+            string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GROQ_API_KEY"))) return;
 
         var model = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_MODEL") ?? Environment.GetEnvironmentVariable("AI_ANSWER_MODEL") ?? "openai/gpt-oss-20b";
         var output = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_CIKTI") ?? Path.Combine(Directory.GetCurrentDirectory(), "olcum-sonuc");
@@ -39,25 +37,17 @@ public class AskMeasurement
 
         using var app = new BriefynFactory { ExtraSettings = { ["Ask:QuestionsPerHour"] = "100000", ["Ask:TimeoutSeconds"] = "180" } };
         RecordingAiEngine? recording = null;
-        if (dotnet)
+        app.ExtraServices = services =>
         {
-            app.ExtraServices = services =>
-            {
-                services.RemoveAll<IAiEngine>();
-                services.AddSingleton<IAiEngine>(provider => recording = new RecordingAiEngine(new DotNetAiEngine(
-                    provider.GetRequiredService<ILlmClientFactory>(), provider.GetRequiredService<ITranscriberFactory>(), provider.GetRequiredService<ILogger<DotNetAiEngine>>())));
-            };
-        }
-        else
-        {
-            app.PythonApi.ForwardTo = new Uri(url!.EndsWith('/') ? url : url + "/");
-            app.PythonApi.ForwardApiKey = Environment.GetEnvironmentVariable("BRIEFYN_OLCUM_API_KEY");
-        }
+            services.RemoveAll<IAiEngine>();
+            services.AddSingleton<IAiEngine>(provider => recording = new RecordingAiEngine(new DotNetAiEngine(
+                provider.GetRequiredService<ILlmClientFactory>(), provider.GetRequiredService<ITranscriberFactory>(), provider.GetRequiredService<ILogger<DotNetAiEngine>>())));
+        };
         await app.InitializeAsync();
-        if (dotnet) _ = app.Services.GetRequiredService<IAiEngine>();
-        int CallCount() => dotnet ? recording!.CallCount : app.PythonApi.CallCount;
-        string? RawAnswer() => dotnet ? recording!.LastRawAnswer : app.PythonApi.LastResponseBody;
-        int BodyCharacters() => dotnet ? recording!.LastBodyCharacters : app.PythonApi.LastBody?.Length ?? 0;
+        _ = app.Services.GetRequiredService<IAiEngine>();
+        int CallCount() => recording!.CallCount;
+        string? RawAnswer() => recording!.LastRawAnswer;
+        int BodyCharacters() => recording!.LastBodyCharacters;
         var gold = app.WithDb(GoldSet.Load);
         var busyStreak = 0;
         var previousCallCount = 0;

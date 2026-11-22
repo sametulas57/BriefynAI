@@ -56,8 +56,8 @@ namespace MeetingWeb.Services
                 if (string.IsNullOrEmpty(meeting.AudioFileName))
                     throw new FileNotFoundException($"Meeting {meetingId} has no stored recording.");
 
-                _logger.LogInformation("Dispatching audio file to Python AI API for MeetingId: {MeetingId}", meetingId);
-                var ai = await RunPythonPipelineAsync(meeting.AudioFileName);
+                _logger.LogInformation("Processing audio file with AI engine for MeetingId: {MeetingId}", meetingId);
+                var ai = await RunAiPipelineAsync(meeting.AudioFileName);
 
                 meeting = await SaveOnFreshCopyAsync(meetingId, m =>
                 {
@@ -84,7 +84,7 @@ namespace MeetingWeb.Services
                     else
                     {
                         // An empty answer is a failed analysis; leaving it "Processing" made the meeting spin forever.
-                        _logger.LogWarning("Python API returned no summary for MeetingId: {MeetingId}; marking as Failed.", meetingId);
+                        _logger.LogWarning("AI engine returned no summary for MeetingId: {MeetingId}; marking as Failed.", meetingId);
                         m.Status = MeetingStatus.Failed;
                         m.FailureReason = null;
                     }
@@ -248,7 +248,7 @@ namespace MeetingWeb.Services
         }
 
         // Resolve the stored recording and optional speaker sidecar before calling the engine.
-        private async Task<AiApiResponse?> RunPythonPipelineAsync(string storedName)
+        private async Task<AiApiResponse?> RunAiPipelineAsync(string storedName)
         {
             var audioPath = _audioStorage.GetPath(storedName);
             if (!System.IO.File.Exists(audioPath))

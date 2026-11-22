@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text;
 using System.Text.Json;
 using MeetingWeb.Services.ArchiveSearch;
 using MeetingWeb.Tests.Infrastructure;
@@ -9,44 +8,6 @@ namespace MeetingWeb.Tests.Features;
 
 public class AskServiceTests : IAsyncLifetime
 {
-    [Fact]
-    public async Task Python_stub_forwards_path_body_and_replaced_api_key()
-    {
-        string? forwardedPath = null, forwardedQuery = null, forwardedKey = null;
-        Task<string>? forwardedBody = null;
-        var forwardHandler = new CaptureHandler(request =>
-        {
-            forwardedPath = request.RequestUri!.AbsolutePath;
-            forwardedQuery = request.RequestUri.Query;
-            forwardedKey = request.Headers.GetValues("X-Api-Key").Single();
-            forwardedBody = request.Content!.ReadAsStringAsync();
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"ok\":true}", Encoding.UTF8, "application/json") };
-        });
-        var stub = new StubPythonApiHandler { ForwardTo = new Uri("http://forwarded/"), ForwardApiKey = "replacement-key", ForwardHandler = forwardHandler };
-        using var client = new HttpClient(stub);
-        using var request = new HttpRequestMessage(HttpMethod.Post, "http://stub/api/answer?x=1")
-        {
-            Content = new StringContent("{\"soru\":\"uydurma\"}", Encoding.UTF8, "application/json")
-        };
-        request.Headers.Add("X-Api-Key", "original-key");
-        using var response = await client.SendAsync(request);
-        Assert.Equal("/api/answer", forwardedPath);
-        Assert.Equal("x=1", forwardedQuery!.TrimStart('?'));
-        Assert.Equal("replacement-key", forwardedKey);
-        Assert.Equal("{\"soru\":\"uydurma\"}", await forwardedBody!);
-        var responseBody = "{\"ok\":true}";
-        Assert.Equal(responseBody, await response.Content.ReadAsStringAsync());
-        Assert.Equal(responseBody, stub.LastResponseBody);
-        Assert.Equal("api/answer", stub.LastPath);
-        Assert.Equal("original-key", stub.LastApiKey);
-        Assert.Equal("{\"soru\":\"uydurma\"}", stub.LastBody);
-    }
-
-    private sealed class CaptureHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(respond(request));
-    }
-
     private readonly TestClock _clock = new();
     private readonly CapturingLoggerProvider _logs = new();
     private readonly BriefynFactory _app;
@@ -88,7 +49,7 @@ public class AskServiceTests : IAsyncLifetime
     private void Respond(params (string Id, string Quote)[] evidence) => Respond(true, "Fiyat 149 TL olarak belirlendi.", evidence);
 
     private void Respond(bool enough, string answer, params (string Id, string Quote)[] evidence) =>
-        _app.PythonApi.Body = JsonSerializer.Serialize(new
+        _app.Ai.Body = JsonSerializer.Serialize(new
         {
             yeterli_bilgi = enough,
             kanitlar = evidence.Select(e => new { id = e.Id, alinti = e.Quote }),
@@ -161,11 +122,11 @@ public class AskServiceTests : IAsyncLifetime
         app.ExtraSettings["Ask:ContextCharacters"] = "1000";
         await app.InitializeAsync();
         var gold = app.WithDb(GoldSet.Load);
-        app.PythonApi.Body = """{"yeterli_bilgi":false,"kanitlar":[],"cevap":"","belirsiz_not":null}""";
+        app.Ai.Body = """{"yeterli_bilgi":false,"kanitlar":[],"cevap":"","belirsiz_not":null}""";
         using (var lifetime = app.Services.CreateScope())
             await lifetime.ServiceProvider.GetRequiredService<IAskService>().AskAsync(gold.Askers["A"], gold.Workspaces["A"], new AskRequest(Question));
-        Assert.Equal("api/answer", app.PythonApi.LastPath);
-        using var body = JsonDocument.Parse(app.PythonApi.LastBody!);
+        Assert.Equal("api/answer", app.Ai.LastPath);
+        using var body = JsonDocument.Parse(app.Ai.LastBody!);
         var root = body.RootElement;
         Assert.Equal(2, root.EnumerateObject().Count());
         Assert.Equal(Question, root.GetProperty("soru").GetString());
@@ -191,7 +152,7 @@ public class AskServiceTests : IAsyncLifetime
         var id = G.Meetings["A1"];
         var result = await Ask(target: id, scope: ArchiveScope.Meeting);
         Assert.Equal(1, result.MeetingsSearched);
-        using var body = JsonDocument.Parse(_app.PythonApi.LastBody!);
+        using var body = JsonDocument.Parse(_app.Ai.LastBody!);
         Assert.All(body.RootElement.GetProperty("parcalar").EnumerateArray().ToList(),
             p => Assert.StartsWith($"T{id}-", p.GetProperty("id").GetString()));
     }
@@ -207,7 +168,7 @@ public class AskServiceTests : IAsyncLifetime
         Assert.Equal("Soru en fazla 500 karakter olabilir.", longQuestion.Message);
         Assert.Equal(0, empty.MeetingsSearched);
         Assert.Equal(0, longQuestion.MeetingsSearched);
-        Assert.Equal(0, _app.PythonApi.CallCount);
+        Assert.Equal(0, _app.Ai.CallCount);
     }
 
     [Fact]
@@ -218,7 +179,7 @@ public class AskServiceTests : IAsyncLifetime
         Assert.Equal("Bu kapsamda bakılacak tamamlanmış toplantı yok.", empty.Message);
         var outsider = await Ask(user: _app.Seed.BobId);
         Assert.Equal(AskStatus.EmptyArchive, outsider.Status);
-        Assert.Equal(0, _app.PythonApi.CallCount);
+        Assert.Equal(0, _app.Ai.CallCount);
     }
 
     [Fact]
@@ -227,7 +188,7 @@ public class AskServiceTests : IAsyncLifetime
         var result = await Ask("zebercet");
         Assert.Equal(AskStatus.NotFound, result.Status);
         Assert.Equal(8, result.MeetingsSearched);
-        Assert.Equal(0, _app.PythonApi.CallCount);
+        Assert.Equal(0, _app.Ai.CallCount);
     }
 
     [Fact]
@@ -237,7 +198,7 @@ public class AskServiceTests : IAsyncLifetime
         app.ExtraSettings["Ask:QuestionsPerHour"] = "2";
         await app.InitializeAsync();
         var gold = app.WithDb(GoldSet.Load);
-        app.PythonApi.Body = """{"yeterli_bilgi":false,"kanitlar":[],"cevap":"","belirsiz_not":null}""";
+        app.Ai.Body = """{"yeterli_bilgi":false,"kanitlar":[],"cevap":"","belirsiz_not":null}""";
         async Task<AskResult> AskRate(string team)
         {
             using var lifetime = app.Services.CreateScope();
@@ -253,23 +214,23 @@ public class AskServiceTests : IAsyncLifetime
         Assert.Equal(AskStatus.RateLimited, limited.Status);
         Assert.Equal("Bu saat içinde çok fazla soru sordunuz. Lütfen biraz sonra tekrar deneyin.", limited.Message);
         Assert.Equal(0, limited.MeetingsSearched);
-        Assert.Equal(2, app.PythonApi.CallCount);
+        Assert.Equal(2, app.Ai.CallCount);
         await AskRate("B");
-        Assert.Equal(3, app.PythonApi.CallCount);
+        Assert.Equal(3, app.Ai.CallCount);
         _clock.Advance(TimeSpan.FromMinutes(61));
         await AskRate("A");
-        Assert.Equal(4, app.PythonApi.CallCount);
+        Assert.Equal(4, app.Ai.CallCount);
     }
 
     [Fact]
     public async Task Http_failure_and_invalid_json_are_busy()
     {
-        _app.PythonApi.Status = HttpStatusCode.ServiceUnavailable;
+        _app.Ai.Status = HttpStatusCode.ServiceUnavailable;
         var failed = await Ask();
         Assert.Equal(AskStatus.Busy, failed.Status);
         Assert.Equal("Yapay zekâ şu an yanıt veremiyor. Lütfen birazdan tekrar deneyin.", failed.Message);
-        _app.PythonApi.Status = HttpStatusCode.OK;
-        _app.PythonApi.Body = "not json";
+        _app.Ai.Status = HttpStatusCode.OK;
+        _app.Ai.Body = "not json";
         Assert.Equal(AskStatus.Busy, (await Ask()).Status);
     }
 
@@ -279,7 +240,7 @@ public class AskServiceTests : IAsyncLifetime
         var p = await Passage();
         Respond((p.Id, Evidence));
         await Ask();
-        _app.PythonApi.Status = HttpStatusCode.ServiceUnavailable;
+        _app.Ai.Status = HttpStatusCode.ServiceUnavailable;
         await Ask("abonelik fiyatı 149 TL");
         var lines = string.Join("\n", _logs.Lines);
         foreach (var secret in new[] { Question, Evidence, p.Text, "Fiyat 149 TL olarak belirlendi." })

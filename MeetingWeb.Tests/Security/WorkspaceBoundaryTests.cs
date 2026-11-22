@@ -318,11 +318,11 @@ public class WorkspaceBoundaryAttackTests : IClassFixture<WorkspaceBoundaryAttac
     {
         using var bob = _app.ClientFor(S.BobId);
         var before = Snapshot();
-        var calls = _app.PythonApi.CallCount;
+        var calls = _app.Ai.CallCount;
         var id = scope == "seri" ? _fixture.SeriesA : S.MeetingA;
         var response = await bob.GetAsync($"/Ask?kapsam={scope}&hedef={id}");
         await AssertRejectedAsync(response, HttpStatusCode.OK, before);
-        Assert.Equal(calls, _app.PythonApi.CallCount);
+        Assert.Equal(calls, _app.Ai.CallCount);
     }
 
     [Fact]
@@ -332,13 +332,13 @@ public class WorkspaceBoundaryAttackTests : IClassFixture<WorkspaceBoundaryAttac
         using (bob)
         {
             var before = Snapshot();
-            var calls = _app.PythonApi.CallCount;
+            var calls = _app.Ai.CallCount;
             var response = await PostFormAsync(bob, "/Ask", token, ("Question", "Gizli bütçe kararı nedir?"),
                 ("Scope", "Series"), ("SeriesId", _fixture.SeriesA.ToString()));
             // This page reports an empty permitted scope with HTTP 200, without asking the AI.
             var body = await AssertRejectedAsync(response, HttpStatusCode.OK, before);
             Assert.Contains("Bu kapsamda bakılacak tamamlanmış toplantı yok.", body);
-            Assert.Equal(calls, _app.PythonApi.CallCount);
+            Assert.Equal(calls, _app.Ai.CallCount);
         }
     }
 
