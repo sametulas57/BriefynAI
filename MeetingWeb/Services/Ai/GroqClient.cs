@@ -10,7 +10,7 @@ public sealed class GroqException(string message, Exception? inner = null) : Exc
 
 public sealed record TranscriptSegment(double Start, double End, string Text);
 
-public sealed class GroqClient
+public sealed class GroqClient : ITranscriptionClient
 {
     private readonly HttpClient _http;
     private readonly string _apiKey;
@@ -96,7 +96,7 @@ public sealed class GroqClient
     public async Task<string> TranscribeAsync(string audioPath, string model, string language, string prompt, CancellationToken ct)
     {
         using var result = await TranscriptionAsync(audioPath, model, language, prompt, "json", ct);
-        return result.RootElement.TryGetProperty("text", out var text) ? text.GetString()!.Trim() : "";
+        return result.RootElement.TryGetProperty("text", out var text) ? PyText.Strip(text.GetString()!) : "";
     }
 
     public async Task<IReadOnlyList<TranscriptSegment>> TranscribeSegmentsAsync(string audioPath, string model, string language, string prompt, CancellationToken ct)
@@ -104,7 +104,7 @@ public sealed class GroqClient
         using var result = await TranscriptionAsync(audioPath, model, language, prompt, "verbose_json", ct);
         if (!result.RootElement.TryGetProperty("segments", out var segments)) return [];
         return segments.EnumerateArray().Select(segment => new TranscriptSegment(
-            segment.GetProperty("start").GetDouble(), segment.GetProperty("end").GetDouble(), segment.GetProperty("text").GetString()!.Trim())).ToArray();
+            segment.GetProperty("start").GetDouble(), segment.GetProperty("end").GetDouble(), PyText.Strip(segment.GetProperty("text").GetString()!))).ToArray();
     }
 
     public async Task<JsonElement> ChatJsonAsync(string model, IReadOnlyList<LlmMessage> messages, JsonObject schema, CancellationToken ct)

@@ -28,6 +28,8 @@ jobs:
         run: npm ci
       - name: Install dependencies
         run: python -m venv ai_engine/.venv && ai_engine/.venv/bin/python -m pip install -r ai_engine/requirements.txt -r ai_engine/requirements-dev.txt
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: scripts/verify.sh
       - name: Security audit
         run: |

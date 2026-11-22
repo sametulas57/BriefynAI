@@ -45,9 +45,10 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 2.
   - Dosyalar: `MeetingWeb/Services/Ai/TranscriptText.cs`, `MeetingWeb/Services/Ai/SpeakerSuggester.cs`, `MeetingWeb.Tests/Ai/TranscriptTextTests.cs`, `MeetingWeb.Tests/Ai/SpeakerSuggesterTests.cs`.
 
-- [ ] **Görev 6: Ses işleme (ffmpeg) ve Groq yazıya dökme .NET'te** (M)
+- [x] **Görev 6: Ses işleme (ffmpeg) ve Groq yazıya dökme .NET'te** (M)
   - Kabul: `IAudioTools`/`FfmpegAudioTools` `audio.py`'nin beş işini yapıyor (mono FLAC 16 kHz, `ffprobe` ile süre, `silencedetect=noise=-35dB:d=0.4` orta noktaları, `PlanCuts`, `Cut`). Argümanlar yalnız `ProcessStartInfo.ArgumentList` ile, kabuk yok. Her çağrının zaman aşımı var, aşılınca süreç öldürülüyor. `GroqTranscriber` `groq_transcriber.py`'yi taşıyor (60 sn parçalar, teknik terim istemi, VTT varsa parça zamanlarıyla konuşmacı atama, yoksa düz metin). Geçici klasör hata olsa da siliniyor. `MeetingWeb/Dockerfile`'a ffmpeg, `test.yml`'a `sudo apt-get install -y ffmpeg`, README'ye geliştirme makinesi için `brew install ffmpeg` eklendi.
   - Doğrula: `PlanCuts` ve yazıya dökme döngüsü sahte `IAudioTools` ile (`test_providers.py`'deki karşılıkları); tek bir gerçek ffmpeg testi birkaç saniyelik üretilmiş sesi böler ve süresini okur (ffmpeg yoksa açık mesajla başarısız olur); boşluk ve tırnak içeren dosya adıyla argüman testi.
+  - Not (2026-11-23): `PlanCuts` Python'dan üretilen 15 vakalık altın setle (`Golden/audio_plan_cuts.json`) ve `TechPrompt` bayt bayt (`Golden/transcriber_tech_prompt.txt`) aynı. Gerçek ffmpeg testi boşluk, tırnak ve `;` içeren yolla sesi çeviriyor, süresini okuyor, sessizliği buluyor ve kesiyor. Bilinen farklar: ffmpeg'e giden sayılarda Python'un `0.0`'ı yerine `0` (ffmpeg aynı okur); `AI_TRANSCRIBE_MODEL` tanımlı ama boşsa C# varsayılan modeli kullanıyor (Python boş model adı gönderirdi). Python'daki `plan_cuts` hedef 7,5 sn ve altında ilerlemeyen döngüye girebiliyor; kullanılan değer 60 sn olduğu için birebir bırakıldı. Groq cevabındaki `Trim` de `PyText.Strip`'e geçti.
   - Bağımlılık: 2, 5.
   - Dosyalar: `MeetingWeb/Services/Ai/AudioTools.cs`, `MeetingWeb/Services/Ai/GroqTranscriber.cs`, `MeetingWeb.Tests/Ai/AudioToolsTests.cs`, `MeetingWeb.Tests/Ai/GroqTranscriberTests.cs`, `MeetingWeb/Dockerfile`, `.github/workflows/test.yml`, `README.md`.
 
