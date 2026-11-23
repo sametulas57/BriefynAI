@@ -1,6 +1,6 @@
 @model string
-@* Herkese açık sitenin simgeleri: elle çizilmiş, kütüphanesiz. Kullanım: @await Html.PartialAsync("_Icons", "chevron-down")
-   Renk yazının renginden gelir (currentColor); simgeler yalnız süs, ekran okuyucuya gösterilmez. *@
+@* Public site icons: hand-drawn, without a library. Usage: @await Html.PartialAsync("_Icons", "chevron-down")
+   Icons inherit the text color (currentColor); they are decorative and hidden from screen readers. *@
 @switch (Model)
 {
     case "chevron-down":

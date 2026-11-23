@@ -61,7 +61,7 @@ namespace MeetingWeb.Services
 
                 meeting = await SaveOnFreshCopyAsync(meetingId, m =>
                 {
-                    // Faz 2: keep the transcript (encrypted) even when the summary failed, so a retry only redoes the summary.
+                    // Phase 2: keep the transcript (encrypted) even when the summary failed, so a retry only redoes the summary.
                     if (!string.IsNullOrWhiteSpace(ai?.Transkript))
                     {
                         m.Transcript ??= new MeetingTranscript();

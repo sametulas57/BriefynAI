@@ -1,11 +1,11 @@
 @using MeetingWeb.Services.PublicSite
 @inject SiteCatalog Catalog
-@* Üst menü. Başlıklar, gruplar ve bağlantılar katalogdan (Services/PublicSite/SiteCatalog.cs) gelir; burada liste yazılmaz.
-   Açılır menüler <details>: betik yokken de açılıp kapanır. public-nav.js Esc, dışarı tıklama ve telefondaki paneli ekler. *@
+@* Top navigation. Titles, groups and links come from the catalog (Services/PublicSite/SiteCatalog.cs), not a list here.
+   Dropdowns use <details> and work without scripts. public-nav.js adds Esc, outside-click handling and the mobile panel. *@
 @{
     var currentPath = Context.Request.Path.Value;
     var signedIn = User.Identity?.IsAuthenticated == true;
-    // Koyu çerçeveli sayfada (ana sayfa) menü koyu zeminde: logonun koyu zemin sürümü.
+    // Pages with dark chrome (the home page) use the logo variant for dark backgrounds in the navigation.
     var logo = ViewData["Chrome"] as string == "koyu" ? "/img/brand/logo-a-acik.svg" : "/img/brand/logo-a.svg";
 }
 <header class="pn-header border-b border-base-300 bg-base-100" data-public-nav>

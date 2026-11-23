@@ -5,7 +5,7 @@ public sealed record SiteEntry(string Section, string? Group, string? Slug, stri
     public string Path => Slug is null ? $"/tr/{Section}" : $"/tr/{Section}/{Slug}";
 }
 
-// Menünün bir başlığı. Altında adres adı olan sayfalar varsa açılır menüdür; yoksa tek sayfaya giden bağlantıdır.
+// A navigation heading: a dropdown when it contains pages with slugs, otherwise a link to a single page.
 public sealed record SiteSection(string Key, string Title, IReadOnlyList<SiteEntry> Entries)
 {
     public bool IsMenu => Entries.Any(entry => entry.Slug is not null);
@@ -13,7 +13,7 @@ public sealed record SiteSection(string Key, string Title, IReadOnlyList<SiteEnt
     public IEnumerable<IGrouping<string?, SiteEntry>> Groups => Entries.GroupBy(entry => entry.Group);
 }
 
-// Herkese açık sitenin sayfa haritası (SPEC.md): menü ve "yakında" sayfaları buradan üretilir.
+// Public site map (SPEC.md): generates navigation and coming-soon pages.
 public sealed class SiteCatalog
 {
     public IReadOnlyList<SiteEntry> Entries { get; } =
@@ -57,7 +57,7 @@ public sealed class SiteCatalog
         ("pricing", "Fiyatlandırma")
     ];
 
-    // Menü ve alt bilgi bu sırayla dizilir.
+    // Navigation and footer follow this order.
     public IReadOnlyList<SiteSection> Sections { get; }
 
     public SiteCatalog() => Sections = SectionTitles

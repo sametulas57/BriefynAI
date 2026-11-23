@@ -29,7 +29,7 @@ namespace MeetingWeb.Tests.Security
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // Ulaş: inviting people into a personal space should be possible but gently discouraged in favour of a team.
+    // Inviting people into a personal space should be possible but gently discouraged in favour of a team.
     public class PersonalWorkspaceTests : IClassFixture<PersonalWorkspaceFixture>
     {
         private readonly BriefynFactory _app;

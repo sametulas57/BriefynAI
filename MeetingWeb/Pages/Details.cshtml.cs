@@ -204,7 +204,7 @@ namespace MeetingWeb.Pages
             }
             else if (!string.IsNullOrWhiteSpace(meeting.Transcript?.Text))
             {
-                // Faz 2: the transcript is stored, so only the summary is generated again.
+                // Phase 2: the transcript is stored, so only the summary is generated again.
                 if (!await TryMarkProcessingAsync(meeting.Id)) return RedirectToPage(new { id = meeting.Id });
 
                 _backgroundJobClient.Enqueue<IMeetingProcessor>(x => x.ResummarizeMeetingJob(meeting.Id));
@@ -519,7 +519,6 @@ namespace MeetingWeb.Pages
                 return RedirectToPage(new { id = meetingId });
             }
 
-            // Reports may only go to members of the meeting's workspace, never to arbitrary addresses.
             var memberEmails = await _context.WorkspaceMembers
                 .Where(wu => wu.Workspace.Meetings.Any(m => m.Id == meetingId))
                 .Select(wu => wu.User.Email)

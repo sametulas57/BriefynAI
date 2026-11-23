@@ -59,7 +59,7 @@ namespace MeetingWeb.Pages.Auth
             [Compare("Password", ErrorMessage = "Şifreler birbiriyle eşleşmiyor. Lütfen kontrol edin.")]
             public string ConfirmPassword { get; set; } = string.Empty;
 
-            // Range etiketi tamamen kaldırıldı, kontrol aşağıda manuel yapılacak.
+            // The Range attribute was removed; validation is performed manually below.
             [Display(Name = "KVKK Onayı")]
             public bool IsKvkkAccepted { get; set; }
         }
@@ -67,7 +67,7 @@ namespace MeetingWeb.Pages.Auth
         // HTTP POST handler for the registration workflow.
         public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
         {
-            // DÜZELTME: Manuel KVKK Kontrolü (ModelState.IsValid kontrolünden hemen önce yapıyoruz)
+            // Validate KVKK consent manually before checking ModelState.IsValid
             if (!Input.IsKvkkAccepted)
             {
                 ModelState.AddModelError("Input.IsKvkkAccepted", "Kayıt olmak için KVKK metnini onaylamanız gerekmektedir.");
@@ -118,7 +118,7 @@ namespace MeetingWeb.Pages.Auth
 
                     // Authenticate the user bypassing the login screen and redirect to dashboard.
                     await _signInManager.SignInAsync(user, isPersistent: false);
-                    // Kayıttan sonra geldiği yere döner (ör. "Kayıt yükle" → /Upload); dış adrese asla (plan karar 9).
+                    // After registration, return to the originating local page (e.g. upload → /Upload), never an external URL (plan decision 9).
                     if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
                     return RedirectToPage("/Index");
                 }
@@ -130,7 +130,7 @@ namespace MeetingWeb.Pages.Auth
                 }
             }
 
-            // ModelState içinde hata varsa (Örn: KVKK işaretlenmediyse) sayfayı hatalarla geri döndür.
+            // If ModelState has errors (e.g. missing KVKK consent), return the page with those errors.
             return Page();
         }
     }

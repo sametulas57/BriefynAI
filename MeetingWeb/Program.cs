@@ -16,10 +16,10 @@ using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
-// 1. AŞAMA: Uygulama ayağa kalkarken kullanılacak geçici ve güvenli (Bootstrap) Logger
+// STEP 1: Temporary, safe bootstrap logger for application startup
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
-    .WriteTo.Console() // Konsola yaz (Docker terminali buradan okuyacak)
+    .WriteTo.Console() // Write to the console for Docker logs
     .WriteTo.File("logs/bootstrap-log-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
@@ -29,10 +29,10 @@ try
     Log.Information("Uygulama başlatılıyor, servisler yükleniyor...");
     var builder = WebApplication.CreateBuilder(args);
 
-    // Entegrasyon testleri "Testing" ortamında çalışır: veritabanına bağlı parçalar (Hangfire, migration, SQL log) atlanır.
+    // Integration tests run in the "Testing" environment: database-dependent components (Hangfire, migrations, SQL logging) are skipped.
     isTesting = builder.Environment.IsEnvironment("Testing");
 
-    // Appsettings.json'dan connection string'i al
+    // Read the connection string from appsettings.json
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
         ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -41,7 +41,7 @@ try
     else
         EncryptionHelper.Initialize(builder.Configuration);
 
-    // Serilog'u sisteme dahil et (Şu an geçici bootstrap logger'ı kullanıyor)
+    // Register Serilog using the temporary bootstrap logger
     builder.Host.UseSerilog();
 
     // --- 1. Database Connections ---
@@ -102,7 +102,7 @@ try
         .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
 
     // --- 5. Background Jobs (Hangfire) ---
-    // Testlerde Hangfire kurulmaz; testler IBackgroundJobClient yerine sahte bir istemci koyar.
+    // Tests skip Hangfire setup and replace IBackgroundJobClient with a fake client.
     if (!isTesting)
     {
         builder.Services.AddHangfire(config => config
@@ -264,10 +264,10 @@ try
     var app = builder.Build();
 
     // =========================================================================
-    // 2. AŞAMA: Şema kurulumu ayrı adımda (ADR-0009), sonra tam loglamaya geçiş
+    // STEP 2: Install the schema separately (ADR-0009), then enable full logging
     // =========================================================================
-    //   dotnet run -- migrate   -> EF migration'ları ve Hangfire tablolarını kurar, çıkar (compose "migrate" servisi,
-    //                              şema yetkili briefyn_migrator ile). Web (briefyn_app) yalnız okur/yazar.
+    //   dotnet run -- migrate   -> Apply EF migrations and install Hangfire tables, then exit (Compose "migrate" service,
+    //                              using briefyn_migrator with schema permissions). Web (briefyn_app) only reads/writes.
     if (args.Contains("migrate"))
     {
         using var scope = app.Services.CreateScope();
@@ -284,7 +284,7 @@ try
         return;
     }
 
-    // Testler veritabanını kendisi kurar (SQLite, EnsureCreated) ve veritabanı log hedefini kullanmaz.
+    // Tests create their own database (SQLite, EnsureCreated) and do not use the database log sink.
     if (!isTesting)
     {
         using (var scope = app.Services.CreateScope())
@@ -296,16 +296,16 @@ try
             }
         }
 
-        // Veritabanı KESİN olarak var olduğuna göre Asıl Logger'a geçebiliriz.
+        // The database is confirmed to exist; switch to the main logger.
         Log.Information("Veritabanı loglamasına geçiliyor...");
-        Log.CloseAndFlush(); // Geçici logger'ı kapat ve belleği boşalt
+        Log.CloseAndFlush(); // Close and flush the temporary logger
 
-        // ADR-0009: framework ayrıntısı (istek adresleri ve davet bağlantıları, SQL komutları) yalnız uyarıdan itibaren;
-        // veritabanına yalnız uyarı ve hata yazılır (30 gün tutulur, LogCleanupService). Logs tablosu migration'da kurulur.
+        // ADR-0009: log framework details (request URLs, invitation links, SQL commands) only at Warning or above;
+        // the database stores only warnings and errors (30-day retention, LogCleanupService). Migrations create the Logs table.
         Log.Logger = new LoggerConfiguration()
             .ApplyLevels()
-            .WriteTo.Console() // Docker terminali için konsol AÇIK kalmalı
-            .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // Dosya yedeği (senin talebin)
+            .WriteTo.Console() // Keep console logging enabled for Docker logs
+            .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // File copy of the log
             .WriteTo.PostgreSQL(
                 connectionString: connectionString,
                 tableName: "Logs",
@@ -337,7 +337,7 @@ try
         app.UseHsts();
     }
 
-    // DOCKER İÇİN HTTPS YÖNLENDİRMESİNİ ATLA (Edge Case Koruması)
+    // Skip HTTPS redirection in Docker to avoid container edge cases
     if (!app.Environment.IsDevelopment() && Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true")
     {
         app.UseHttpsRedirection();
@@ -421,7 +421,7 @@ finally
     Log.CloseAndFlush();
 }
 
-// WebApplicationFactory'nin (entegrasyon testleri) Program sınıfına erişebilmesi için.
+// Allow WebApplicationFactory (integration tests) to access Program.
 public partial class Program
 {
     private static readonly object TestEncryptionLock = new();

@@ -9,7 +9,7 @@ namespace MeetingWeb.Services
 
     public record SeriesSummary(int Id, string Name, int MeetingCount, DateTime? LastMeetingAtUtc);
 
-    // Meeting series (PRD iç proje notu, ADR-0013). Every call that takes a user
+    // Meeting series (internal project PRD, ADR-0013). Every call that takes a user
     // checks team membership here (ADR-0005); another team's series behaves as if it did not exist.
     public interface IMeetingSeriesService
     {

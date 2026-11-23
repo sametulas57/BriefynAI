@@ -2,7 +2,6 @@
 
 namespace MeetingWeb.Models
 {
-    // Root Data Transfer Object (DTO) mapping the external Python API response.
     public class AiApiResponse
     {
         [JsonPropertyName("success")]
@@ -14,7 +13,7 @@ namespace MeetingWeb.Models
         [JsonPropertyName("konusmaci_onerileri")]
         public Dictionary<string, AiSpeakerSuggestion>? KonusmaciOnerileri { get; set; }
 
-        // Null when the summary step failed; the transcript may still be present (Faz 2).
+        // Null when the summary step failed; the transcript may still be present (Phase 2).
         [JsonPropertyName("summary")]
         public AiSummaryData? Summary { get; set; }
     }

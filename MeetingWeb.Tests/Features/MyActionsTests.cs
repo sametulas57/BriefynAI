@@ -25,7 +25,7 @@ namespace MeetingWeb.Tests.Features
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // Ulaş's plain request: assign an action to a teammate with a date; "Bana atananlar" shows which team, which
+    // Assign an action to a teammate with a date; "Bana atananlar" shows which team, which
     // meeting and which task; marking it done shows, in the archived summary, that it is done and who did it.
     public class MyActionsTests : IClassFixture<MyActionsFixture>
     {

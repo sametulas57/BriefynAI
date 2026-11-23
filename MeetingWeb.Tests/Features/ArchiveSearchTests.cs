@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace MeetingWeb.Tests.Features;
 
-// Arşive soru sor, search half (PRD 2026-10-24 acceptance 1, 2, 6, 8), run on the made-up gold set.
+// Ask the archive, search half (PRD 2026-10-24 acceptance 1, 2, 6, 8), run on the made-up gold set.
 public class ArchiveSearchTests : IAsyncLifetime
 {
     // Share of answerable gold questions whose evidence is in the top 8 passages. Floor from the first measurement

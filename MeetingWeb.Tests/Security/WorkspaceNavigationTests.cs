@@ -22,7 +22,7 @@ namespace MeetingWeb.Tests.Security
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // Ulaş's browser check: switching company while viewing a meeting summary ended on "page not found".
+    // Regression from a browser check: switching company while viewing a meeting summary ended on "page not found".
     // Legitimate navigation must land somewhere useful; outsiders must still learn nothing about the meeting.
     public class WorkspaceNavigationTests : IClassFixture<WorkspaceNavigationFixture>
     {

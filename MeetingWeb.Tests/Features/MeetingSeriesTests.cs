@@ -14,7 +14,7 @@ namespace MeetingWeb.Tests.Features
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // PRD iç proje notu criteria 1–5 and 8, ADR-0013. Pages call this service, so
+    // internal project PRD criteria 1–5 and 8, ADR-0013. Pages call this service, so
     // the permission rules are tested here; page tests check that pages pass the signed-in user through.
     public class MeetingSeriesTests : IClassFixture<MeetingSeriesFixture>
     {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-@* Sayfa "koyu" çerçeve isterse (ana sayfa: ViewData["Chrome"] = "koyu") menü ve sayfa zemini koyu boyanır; öbür sayfalar açık kalır. *@
+@* Pages requesting dark chrome (home page: ViewData["Chrome"] = "koyu") get dark navigation and page backgrounds; other pages stay light. *@
 <html lang="tr" data-theme="briefyn" data-chrome="@(ViewData["Chrome"] as string)">
 <head>
     <meta charset="utf-8" />
@@ -11,10 +11,10 @@
     <title>@ViewData["Title"] | Briefyn</title>
     <link rel="icon" type="image/svg+xml" href="/img/brand/favicon.svg" />
     <link rel="preload" href="/fonts/ibm-plex-sans/IBMPlexSansVar-Roman-Latin1.woff2" as="font" type="font/woff2" crossorigin />
-    @* Sayfaya özel baş öğeleri app.css'ten önce gelir: ana sayfa burada scroll-craft motorunun stilini en alttaki katmana koyar. *@
+    @* Page-specific head elements precede app.css: the home page places the scroll-craft engine styles in the lowest layer here. *@
     @await RenderSectionAsync("Head", required: false)
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
-    @* Betik çalışıyorsa telefondaki menü panele dönüşür; çalışmıyorsa menü sayfanın akışında açık durur. *@
+    @* With scripts enabled, mobile navigation becomes a panel; otherwise it stays expanded in the page flow. *@
     <script>document.documentElement.classList.add("js")</script>
     <script src="~/js/public-nav.js" asp-append-version="true" defer></script>
 </head>

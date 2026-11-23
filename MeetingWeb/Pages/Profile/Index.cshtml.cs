@@ -291,7 +291,7 @@ namespace MeetingWeb.Pages.Profile
             return RedirectToPage();
         }
 
-        // --- HELPER METOD ---
+        // --- HELPER METHOD ---
         private async Task LoadProfileDataAsync(ApplicationUser user)
         {
             Username = user.Email ?? "";

@@ -12,7 +12,7 @@ namespace MeetingWeb.Tests.Security
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // Ulaş: besides team members, the share dialog gets a line for extra addresses (someone outside the team,
+    // Besides team members, the share dialog gets a line for extra addresses (someone outside the team,
     // or a summary from a personal space). Capped per send so the sender account cannot become a spam relay.
     public class ExtraRecipientTests : IClassFixture<ExtraRecipientFixture>
     {

@@ -224,8 +224,7 @@ namespace MeetingWeb.Services
             var message = new MailMessage
             {
                 From = new MailAddress(senderEmail, senderName),
-                // A resent invite gets its own subject, so the person can tell the button's invite from the first one
-                // (Ulaş, 2026-11-20).
+                // A resent invite gets its own subject, so the person can tell the button's invite from the first one.
                 Subject = cancel ? "Takviminizden kaldırılan görev" : (invite.Resent ? "Takviminiz için yeniden: " : "Görev: ") + taskSubject,
                 SubjectEncoding = Encoding.UTF8,
                 HeadersEncoding = Encoding.UTF8,

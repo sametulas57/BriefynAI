@@ -15,7 +15,7 @@ namespace MeetingWeb.Tests.Features
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // Follow-ups from Ulaş's browser check after S4: times were shown in UTC, report emails started landing in spam,
+    // Regressions from a browser check after S4: times were shown in UTC, report emails started landing in spam,
     // and the share confirmation talked about "background" processing.
     public class UserFacingTests : IClassFixture<UserFacingFixture>
     {

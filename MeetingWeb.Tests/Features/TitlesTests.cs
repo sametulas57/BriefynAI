@@ -14,7 +14,7 @@ namespace MeetingWeb.Tests.Features
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // PRD iç proje notu (titles and grouped sharing; the admin role comes later, so for now
+    // internal project PRD (titles and grouped sharing; the admin role comes later, so for now
     // only the founder manages titles). Titles give no permissions; they label and group people.
     public class TitlesTests : IClassFixture<TitlesFixture>
     {

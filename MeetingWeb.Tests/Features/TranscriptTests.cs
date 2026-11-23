@@ -16,7 +16,7 @@ namespace MeetingWeb.Tests.Features
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // Faz 2 (K4): the transcript is stored encrypted, a retry without audio only regenerates the summary,
+    // Phase 2 (K4): the transcript is stored encrypted, a retry without audio only regenerates the summary,
     // and manual additions survive a regenerated summary.
     public class TranscriptTests : IClassFixture<TranscriptFixture>
     {

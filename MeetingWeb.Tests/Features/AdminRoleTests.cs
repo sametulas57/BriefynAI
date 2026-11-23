@@ -13,7 +13,7 @@ namespace MeetingWeb.Tests.Features
         public Task DisposeAsync() { Factory.Dispose(); return Task.CompletedTask; }
     }
 
-    // PRD iç proje notu, criteria 1–3 and the admin's share of title management.
+    // internal project PRD, criteria 1–3 and the admin's share of title management.
     // Each test builds its own team, so tests do not depend on each other's changes.
     public class AdminRoleTests : IClassFixture<AdminRoleFixture>
     {

@@ -2,25 +2,25 @@
 @model MeetingWeb.Pages.Public.HomeModel
 @{
     ViewData["Title"] = "Toplantıyı siz yapın, notları Briefyn çıkarsın";
-    // Ana sayfanın bütün zeminleri koyu (2026-11-22, Ulaş): menü ve sayfa zemini de koyu çerçeveye geçer (_PublicLayout, app.css).
+    // All home page backgrounds are dark (decided 2026-11-22): navigation and page backgrounds use dark chrome too (_PublicLayout, app.css).
     ViewData["Chrome"] = "koyu";
-    // Kayan şerit: Briefyn her toplantının ses kaydını aynı yoldan işler; türe özel bir iddia yok (BRIEF 9. bölüm, satır 5).
+    // Scrolling strip: Briefyn processes every meeting recording the same way; no type-specific claims (BRIEF section 9, line 5).
     string[] meetings =
     [
         "Haftalık ekip toplantısı", "Sprint planlama", "Müşteri görüşmesi", "Birebir görüşme", "İşe alım mülakatı",
         "Proje başlangıcı", "Satış görüşmesi", "Yönetim toplantısı", "Ajans sunumu", "Geriye dönük değerlendirme"
     ];
-    // Açılıştaki durgun ses dalgası (süs): çubuk boyları elle seçildi, konuşma gibi inip çıkıyor.
+    // Static hero waveform (decorative): bar heights were chosen by hand to rise and fall like speech.
     int[] heroBars = [14, 30, 22, 48, 70, 40, 92, 58, 108, 76, 44, 96, 64, 110, 84, 52, 100, 68, 36, 80, 56, 28, 42, 18];
-    // Özet bölümündeki ses dalgası (süs, yalnız hareketli düzende): açılıştaki dalganın boyları, iki tur.
+    // Summary waveform (decorative, animated layout only): hero bar heights used twice.
     int[] summaryBars = heroBars.Concat(Enumerable.Reverse(heroBars)).ToArray();
 }
 @section Head {
     <meta name="description" content="Kaydı yükleyin; yazıya dökülsün, özet, kararlar ve yapılacaklar tek sayfada toplansın." />
-    @* scroll-craft motorunun stili en alttaki katmanda: Tailwind'in bütün katmanları onu geçer, menü ve alt bilgi öbür sayfalarla aynı kalır. *@
+    @* The scroll-craft engine styles use the lowest layer: all Tailwind layers override them, keeping navigation and footer consistent across pages. *@
     <style>@@layer scrollcraft; @@import url("/lib/scrollcraft/scrollcraft.css") layer(scrollcraft);</style>
-    @* Hareket yalnız "hareketi azalt" kapalıysa ve ekran en az 500 piksel yüksekse açılır ("sc-on").
-       Sınıf boyamadan önce konur ki sayfa durağan düzenden hareketli düzene sıçramasın. Motor 4 saniyede bağlanmazsa durağan düzene dönülür. *@
+    @* Enable animation only when reduced motion is off and the viewport is at least 500 pixels high ("sc-on").
+       Set the class before paint to avoid a jump from static to animated layout. Revert to static if the engine is not ready within 4 seconds. *@
     <script>(function(d){if(matchMedia("(prefers-reduced-motion: no-preference)").matches&&innerHeight>=500){d.classList.add("sc-on");setTimeout(function(){if(!d.classList.contains("sc-ready"))d.classList.remove("sc-on")},4000)}})(document.documentElement)</script>
 }
 
@@ -37,7 +37,7 @@
     </div>
     <div class="hh-inner">
         <div class="hh-copy">
-            @* Açılış metni hep görünür ("0 1 0 0"); ipucu olması yalnız doğrulama aracının kontrastı ölçmesi için. *@
+            @* Hero text stays visible ("0 1 0 0"); the cue only lets the validation tool measure contrast. *@
             <h1 id="hh-title" class="hh-title" data-sc-cue="0 1 0 0">Toplantıyı siz yapın, notları Briefyn çıkarsın.</h1>
             <p class="hh-lede" data-sc-cue="0 1 0 0">Kaydı yükleyin; yazıya dökülsün, özet, kararlar ve yapılacaklar tek sayfada toplansın.</p>
             <a href="/Upload" class="btn btn-grad mt-8 h-13 px-7 text-lg font-bold focus-visible:outline-hero-title">Kayıt yükle</a>
@@ -47,7 +47,7 @@
     <div class="hh-panel" data-sc-parallax="0.5" aria-hidden="true">
         <svg class="hh-wave" viewBox="0 0 480 220" focusable="false">
             <defs>
-                @* Çubuklar panelin üst kenarından taşar: kenarın üstünde açık, panelin içinde koyu. *@
+                @* Bars extend above the panel edge: light above the edge, dark inside the panel. *@
                 <linearGradient id="hh-wave-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="220">
                     <stop offset="0.29" stop-color="#9BEFF7" />
                     <stop offset="0.29" stop-color="#04121F" />
@@ -61,7 +61,7 @@
                     <path class="@(i % 2 == 1 ? "hh-bar-odd" : null)" d="M@(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)) @((64 - half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))V@((64 + half).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))" />
                 }
             </g>
-            @* Henüz yazılmamış not satırları: dalganın gideceği yer. *@
+            @* Unwritten note lines: the waveform will move here. *@
             <g fill="none" stroke="#04121F" stroke-opacity="0.22" stroke-width="7" stroke-linecap="round">
                 <path d="M20 152H380" />
                 <path d="M20 176H330" />
@@ -94,8 +94,8 @@
     </button>
 </section>
 
-@* Zirve: kayıt girer, özet çıkar. Özet sayfanın kendi metni (betik yokken ve "hareketi azalt" açıkken de okunur).
-   Hareket izinliyse home.js bölümü kısa bir pinli sahneye çevirir: kaydın ses dalgası yatıp söner, özet yerine gelir. *@
+@* Climax: recording in, summary out. The summary is page text, readable without scripts and with reduced motion enabled.
+   When animation is allowed, home.js briefly pins the section: the recording waveform flattens and fades, replaced by the summary. *@
 <section class="hj" id="yolculuk" data-home-journey data-sc-act="flow" aria-labelledby="hj-title">
     <div class="hj-stage" data-sc-stage>
         <div class="hj-grid">
@@ -126,7 +126,7 @@
                             }
                         </g>
                     </svg>
-                    @* Üç bölüm dalganın söndüğü yerden sırayla gelir ve kalır (tek değerli ipucu). *@
+                    @* Three sections appear in sequence where the waveform fades and stay visible (single-value cue). *@
                     <div class="hj-block hj-block-sum" data-sc-cue="0.18">
                         <h4 class="hj-block-name">Özet</h4>
                         <p class="hj-block-text">Lansman tarihi ve ödeme ekranı konuşuldu. Müşteri geri bildirimlerinin çoğu ödeme ekranındaki kart bilgisi adımıyla ilgili. Fiyat konusu gelecek haftaya kaldı.</p>
@@ -160,7 +160,7 @@
                      alt="Üstten bakış: toplantı masasında eller, kapalı dizüstü bilgisayarlar, kahve fincanları ve not tutulan boş bir defter." />
             </picture>
         </div>
-        @* Roller katalogdan (SiteCatalog, Çözümler). "Yakında" sayfaları boş olduğu için bağlantı değiller (BRIEF 5. bölüm). *@
+        @* Roles come from the catalog (SiteCatalog, solutions). They are not links because the coming-soon pages are empty (BRIEF section 5). *@
         <ul class="ha-roles" data-sc-in data-sc-stagger="60">
             @foreach (var solution in Model.Solutions)
             {
@@ -173,8 +173,8 @@
     </div>
 </section>
 
-@* Güven: yalnız iki izinli cümle (SPEC "Ana sayfa içeriği" 5). Şeritte ses çubukları soldan sağa silinir, altındaki satırlar kalır.
-   Hareketli düzende bölüm, çizgiler tamamen açılana kadar ekranda sabit kalır (home.js pinler); sonra sayfa akmaya devam eder. *@
+@* Trust: only the two approved sentences (SPEC "Ana sayfa içeriği" 5). Sound bars disappear from left to right, leaving the lines beneath.
+   In the animated layout, home.js pins the section until the lines are fully revealed, then scrolling resumes. *@
 <section class="ht" data-home-trust data-sc-act="flow" aria-labelledby="ht-title">
     <div class="ht-stage" data-sc-stage>
         <div class="ht-inner">
@@ -203,7 +203,7 @@
     </div>
 </section>
 
-@* Sık sorulanlar: cevaplar koddan ve ayardan (BRIEF 9. bölüm, satır 20-24). Açılıp kapanma tarayıcının kendi <details> davranışı. *@
+@* FAQ: answers come from code and configuration (BRIEF section 9, lines 20-24). Expansion uses native browser <details> behavior. *@
 <section class="hf" data-home-faq aria-labelledby="hf-title">
     <div class="hf-inner">
         <h2 id="hf-title" class="hf-title">Sık sorulanlar</h2>
@@ -232,11 +232,11 @@
     </div>
 </section>
 
-@* Kapanış: aynı çizgiler son kez toplanıp Briefyn işaretinde durur; çağrı işaretin not satırının yanında. Son bölüm: ipucu tek değerli ve tutulur. *@
+@* Closing: the same lines gather once more into the Briefyn mark; the call to action sits beside its note line. The final section keeps a single-value cue. *@
 <section class="hc" data-home-closing data-sc-act="flow" data-sc-span="1.3" aria-labelledby="hc-title">
     <div class="hc-stage" data-sc-stage>
         <div class="hc-grid">
-            @* İşaret, logo A'nın yolları (docs/brand/logo-a.svg): dört ses çubuğu, sonuncusu iki not satırına dönüşür, altta kısa üçüncü satır. *@
+            @* The mark uses logo A paths (docs/brand/logo-a.svg): four sound bars, the last becoming two note lines, with a short third line below. *@
             <svg class="hc-mark" viewBox="0 2 90 49" aria-hidden="true" focusable="false" data-hc-mark>
                 <defs>
                     <linearGradient id="hc-mark-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="90" y2="0">

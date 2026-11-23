@@ -44,7 +44,7 @@ public sealed class LlmClientFactory(AiOptions options, IHttpClientFactory http,
             LlmTask.Summary => ("SUMMARIZER", _options.Summarizer, _options.SummaryModel, "qwen/qwen3.8-27b"),
             // 2026-11-20, one sample transcript x3 runs: gpt-oss-120b 3/3 valid, no wrong name; qwen3.8-27b one empty/broken answer.
             LlmTask.Speakers => ("SPEAKER_SUGGESTER", _options.SpeakerSuggester, _options.SpeakersModel, "openai/gpt-oss-120b"),
-            LlmTask.Answer => ("ANSWERER", _options.Answerer, _options.AnswerModel, "openai/gpt-oss-20b"), // 2026-10-24 ölçümü, ADR-0014
+            LlmTask.Answer => ("ANSWERER", _options.Answerer, _options.AnswerModel, "openai/gpt-oss-20b"), // Measured 2026-10-24, ADR-0014
             _ => throw new InvalidOperationException($"Unknown LLM task: {task}")
         };
         // compose passes unset variables as empty strings

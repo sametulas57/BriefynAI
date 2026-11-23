@@ -51,7 +51,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.Contains("href=\"/Auth/Login\"", html);
     }
 
-    // Ana sayfa (Görev 9): açılış, kayan şerit, toplantının yolculuğu. BRIEF.md 5-7. ve 9. bölümler.
+    // Home page (Task 9): hero, scrolling strip, meeting journey. BRIEF.md sections 5-7 and 9.
     private async Task<string> HomeHtmlAsync()
     {
         using var client = AnonymousClient();
@@ -108,7 +108,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.Single(Regex.Matches(html, "fetchpriority=\"high\""));
     }
 
-    // 2026-11-22: yolculuk bölümü adım adım süreç anlatmıyor; tek büyük özet sayfası gösteriyor (Ulaş'ın isteği).
+    // Decided 2026-11-22: the journey section shows one large summary page instead of a step-by-step process.
     [Fact]
     public async Task Journey_shows_one_summary_page_instead_of_a_step_list()
     {
@@ -121,11 +121,11 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
             Assert.Matches(new Regex("<h4[^>]*>\\s*" + part + "\\s*</h4>"), journey);
         Assert.Contains("Lansman, ödeme ekranı bitince yapılacak.", said);
         Assert.Contains("Ödeme ekranını bitirmek", said);
-        // Süreç anlatımı ve konuşmacı adımı yok: adım listesi, küçük önizlemeler, "Konuşmacı" sözü.
+        // No process explanation or speaker step: no step list, small previews or speaker label.
         Assert.DoesNotContain("<ol", journey);
         Assert.DoesNotContain("data-hj-mini", journey);
         Assert.DoesNotContain("Konuşmacı", said, StringComparison.OrdinalIgnoreCase);
-        // Özet sayfanın kendi metni (betik yokken de okunur); süs olan ses dalgası ekran okuyucudan gizli.
+        // The summary is page text, readable without scripts; the decorative waveform is hidden from screen readers.
         Assert.Matches(new Regex("<svg class=\"hj-wave\"[^>]*aria-hidden=\"true\""), journey);
     }
 
@@ -164,7 +164,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
             Assert.Contains(meeting, strip);
     }
 
-    // Ana sayfa (Görev 10): kimler için, güven, sık sorulanlar, kapanış. SPEC "Ana sayfa içeriği" 4-7, BRIEF.md 5. ve 9. bölümler.
+    // Home page (Task 10): audience, trust, FAQ, closing. SPEC "Ana sayfa içeriği" 4-7, BRIEF.md sections 5 and 9.
     private const string NotUsedForTraining = "Toplantılarınız yapay zekâ eğitiminde kullanılmaz.";
     private const string AudioDeletedTranscriptEncrypted = "Ses analizden sonra silinir, döküm şifreli saklanır.";
 
@@ -194,7 +194,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
             Assert.Matches(new Regex("<h3[^>]*>\\s*" + Regex.Escape(solution.Title) + "\\s*</h3>"), roles);
             Assert.Contains(solution.Summary, roles);
         }
-        // Rollerin "yakında" sayfaları boş; satırlar çağrıdan uzaklaştırmasın diye bağlantı değil (BRIEF 5. bölüm).
+        // Role coming-soon pages are empty; rows are not links to avoid distracting from the call to action (BRIEF section 5).
         Assert.DoesNotContain("<a ", roles);
     }
 
@@ -230,7 +230,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
     [Fact]
     public async Task Faq_file_types_and_size_limit_come_from_the_upload_settings()
     {
-        // Test sunucusu Upload:MaxMegabytes = 1 veriyor (BriefynFactory); sayfa elle yazılmış 300'ü değil ayarı göstermeli.
+        // The test server sets Upload:MaxMegabytes = 1 (BriefynFactory); the page must show the setting rather than a hard-coded 300.
         var limit = _app.Services.GetRequiredService<IConfiguration>().GetValue<int>("Upload:MaxMegabytes");
         var faq = WebUtility.HtmlDecode(SectionHtml(await HomeHtmlAsync(), "data-home-faq"));
         var files = Assert.Single(Regex.Matches(faq, "<details[^>]*>(.*?)</details>", RegexOptions.Singleline).Select(match => match.Value),
@@ -466,7 +466,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.DoesNotMatch(new Regex("(src|href)\\s*=\\s*\"(https?:)?//"), html);
     }
 
-    // Ana sayfanın menüsü koyu zeminde (2026-11-22): orada logonun koyu zemin sürümü; öbür sayfalarda açık menü ve normal logo.
+    // Home page navigation has a dark background (2026-11-22) and uses the dark-background logo variant; other pages use light navigation and the normal logo.
     [Theory]
     [InlineData("/tr", "logo-a-acik.svg", true)]
     [InlineData("/tr/product/ask-archive", "logo-a.svg", false)]
@@ -482,7 +482,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
         Assert.Equal(darkChrome, html.Contains("data-chrome=\"koyu\""));
     }
 
-    // Test sunucusu geçici bir wwwroot kullanıyor; dosyalar projenin kendi wwwroot'unda aranır.
+    // The test server uses a temporary wwwroot; look for files in the project's own wwwroot.
     [Theory]
     [InlineData("img/brand/favicon.svg")]
     [InlineData("img/brand/logo-a.svg")]
@@ -515,7 +515,7 @@ public class PublicSiteTests : IClassFixture<PublicSiteFixture>
     {
         using var client = AnonymousClient();
 
-        // Menüde "Yakında" işaretleri her sayfada var; burada yalnız sayfanın kendi içeriğine bakılır.
+        // Navigation has coming-soon labels on every page; check only the page content here.
         var unavailable = MainHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr/integrations/teams")));
         var available = MainHtml(WebUtility.HtmlDecode(await client.GetStringAsync("/tr/product/ask-archive")));
 

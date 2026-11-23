@@ -1,7 +1,7 @@
 namespace MeetingWeb.Services.PublicSite;
 
-// Herkese açık sayfaların yükleme hakkında söyledikleri (ana sayfadaki sık sorulanlar) buradan gelir; sayfaya elle sayı yazılmaz.
-// Uzantılar Pages/Upload.cshtml.cs'teki denetimle aynı; sınır, yüklemenin de okuduğu Upload:MaxMegabytes ayarı.
+// Public page upload information (the home page FAQ) comes from here; no hard-coded numbers in the page.
+// Extensions match validation in Pages/Upload.cshtml.cs; the limit uses the same Upload:MaxMegabytes setting as uploads.
 public sealed class UploadRules(IConfiguration configuration)
 {
     public static IReadOnlyList<string> Extensions { get; } = [".mp3", ".wav", ".m4a"];
