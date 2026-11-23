@@ -31,7 +31,6 @@ flowchart LR
 
 - `MeetingWeb/`: ASP.NET Core Razor Pages app with Identity, EF Core, Hangfire, and SignalR.
 - `MeetingWeb.Tests/`: xUnit suite.
-- `docs/decisions/`: architecture decision records (in Turkish).
 
 ## Getting started
 
