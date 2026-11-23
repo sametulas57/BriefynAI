@@ -1,0 +1,98 @@
+@using MeetingWeb.Models
+@using MeetingWeb.Services
+@using System.Security.Claims
+@inject AppNavigationService Navigation
+@* Signed-in top navigation; shares classes and public-nav.js with _PublicNav. *@
+@{
+    var page = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+    var nav = await Navigation.GetAsync(User.FindFirstValue(ClaimTypes.NameIdentifier));
+    var fullName = User.FindFirstValue(UserClaimTypes.FullName) ?? User.Identity?.Name ?? UserDisplay.UnknownName;
+    var avatarUrl = User.FindFirstValue(UserClaimTypes.AvatarUrl);
+    (string Page, string Title, bool Current)[] links =
+    [
+        ("/History", "Geçmiş Özetler", page == "/History"),
+        ("/MyActions", "Bana Atananlar", page == "/MyActions"),
+        ("/Series/Index", "Seriler", page.StartsWith("/Series/")),
+        ("/Ask", "Arşive Sor", page == "/Ask"),
+    ];
+}
+<header class="pn-header border-b border-base-300 bg-base-100" data-public-nav>
+    <div class="mx-auto flex min-h-16 w-full max-w-6xl flex-wrap items-center gap-x-5 px-4 sm:min-h-17 sm:px-7 lg:flex-nowrap">
+        <a href="/tr" class="inline-flex min-h-11 shrink-0 items-center rounded-field">
+            <img src="/img/brand/logo-a-acik.svg" alt="Briefyn" width="134" height="26" class="h-5.5 w-auto sm:h-6.5" />
+        </a>
+        <button type="button" class="btn btn-ghost ml-auto min-h-11 gap-2 rounded-field px-3 text-base font-bold hover:bg-base-200 lg:hidden"
+                data-nav-toggle aria-expanded="false" aria-controls="pn-menu">
+            <span class="pn-icon-open">@await Html.PartialAsync("_Icons", "menu")</span>
+            <span class="pn-icon-close">@await Html.PartialAsync("_Icons", "close")</span>
+            Menü
+        </button>
+        <div id="pn-menu" class="pn-menu max-lg:basis-full max-lg:pb-5 lg:flex lg:flex-1 lg:items-center lg:gap-5">
+            <nav aria-label="Ana menü" class="lg:flex-1">
+                <ul class="flex flex-col lg:flex-row lg:items-center lg:gap-0.5">
+                    @foreach (var link in links)
+                    {
+                        <li class="max-lg:border-b max-lg:border-base-300">
+                            <a asp-area="" asp-page="@link.Page" class="pn-trigger @(link.Current ? "is-current" : null)" aria-current="@(link.Current ? "page" : null)">@link.Title</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+            <div class="flex shrink-0 flex-col gap-3 max-lg:mt-6 lg:flex-row lg:items-center">
+                <a href="/Upload" class="btn btn-grad min-h-11 px-5 text-base font-bold max-lg:h-12">Kayıt yükle</a>
+                <details name="pn-menu" class="app-account group relative" data-nav-menu>
+                    <summary class="pn-summary pn-trigger" aria-controls="pn-account">
+                        <span class="flex min-w-0 items-center gap-2.5">
+                            @if (!string.IsNullOrEmpty(avatarUrl))
+                            {
+                                <img src="@avatarUrl" alt="" class="size-8 shrink-0 rounded-full object-cover" />
+                            }
+                            else
+                            {
+                                <span class="app-avatar" aria-hidden="true">@UserDisplay.Initials(fullName)</span>
+                            }
+                            <span class="truncate lg:max-w-40">@fullName</span>
+                        </span>
+                        <span class="inline-flex motion-safe:transition-transform group-open:rotate-180">@await Html.PartialAsync("_Icons", "chevron-down")</span>
+                    </summary>
+                    <div id="pn-account" class="pn-panel app-account-panel">
+                        <ul>
+                            <li><a class="pn-link" asp-area="" asp-page="/Profile/Index">Profilim</a></li>
+                            @if (nav.Active is { } active)
+                            {
+                                <li><a class="pn-link" asp-area="" asp-page="/Workspace/Members">Ekibi görüntüle</a></li>
+                                @if (WorkspaceMember.RunsTeam(active.Role))
+                                {
+                                    <li><a class="pn-link" asp-area="" asp-page="/Workspace/Invite">Davet linki üret</a></li>
+                                }
+                            }
+                            <li><a class="pn-link" asp-area="" asp-page="/Workspace/Create">Yeni ekip oluştur</a></li>
+                        </ul>
+                        @if (nav.Memberships.Count > 0)
+                        {
+                            <p id="pn-teams" class="app-account-group text-muted">Ekip değiştir</p>
+                            <ul aria-labelledby="pn-teams">
+                                @foreach (var membership in nav.Memberships)
+                                {
+                                    var isActive = membership.WorkspaceId == nav.Active?.WorkspaceId;
+                                    <li>
+                                        <a class="pn-link" href="/Workspace/Switch?workspaceId=@membership.WorkspaceId&amp;returnUrl=@Context.Request.Path" aria-current="@(isActive ? "true" : null)">
+                                            <span class="min-w-0 truncate">@membership.Workspace.Name</span>
+                                            @if (isActive)
+                                            {
+                                                <span class="shrink-0 text-sm text-muted">Açık ekip</span>
+                                            }
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        <form class="app-account-exit" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" method="post">
+                            <button type="submit" class="pn-link w-full cursor-pointer">Çıkış</button>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+</header>

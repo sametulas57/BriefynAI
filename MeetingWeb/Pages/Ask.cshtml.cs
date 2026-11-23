@@ -38,6 +38,7 @@ public class AskModel : PageModel
     public List<Meeting> Meetings { get; private set; } = new();
     public AskResult? Result { get; private set; }
     public string? ScopeMessage { get; private set; }
+    public bool IsNarrowed => Scope is "Series" or "Meeting" || From.HasValue || To.HasValue;
 
     public async Task OnGetAsync(string? kapsam, int? hedef)
     {
@@ -62,7 +63,7 @@ public class AskModel : PageModel
             "Meeting" when !MeetingId.HasValue => "Lütfen bir toplantı seçin.",
             _ => null
         };
-        if (ScopeMessage != null) return Page();
+        if (ScopeMessage != null) return Answer();
         var scope = Scope switch
         {
             "Series" when SeriesId.HasValue => ArchiveScope.Series,
@@ -80,7 +81,43 @@ public class AskModel : PageModel
                 new AskRequest(Question, scope, targetId, From, To), ct);
         else
             Result = new AskResult(AskStatus.EmptyArchive, 0, null, null, Array.Empty<AskSource>());
-        return Page();
+        return Answer();
+    }
+
+    // ask.js gets only the answer to add to the conversation; without scripts the whole page comes back.
+    private IActionResult Answer() =>
+        Request.Headers.XRequestedWith == "XMLHttpRequest" ? Partial("_AskAnswer", this) : Page();
+
+    public string ScopeLabel()
+    {
+        var place = Scope switch
+        {
+            "Series" => Series.FirstOrDefault(s => s.Id == SeriesId)?.Name ?? "Bir seri",
+            "Meeting" => Meetings.FirstOrDefault(m => m.Id == MeetingId)?.Title ?? "Bir toplantı",
+            _ => "Tüm arşiv"
+        };
+        static string Day(DateOnly date) => date.ToString("dd.MM.yyyy", DisplayTime.Culture);
+        return (From, To) switch
+        {
+            ({ } from, { } to) => $"{place}, {Day(from)} ile {Day(to)} arası",
+            ({ } from, null) => $"{place}, {Day(from)} ve sonrası",
+            (null, { } to) => $"{place}, {Day(to)} ve öncesi",
+            _ => place
+        };
+    }
+
+    // Each question names the meeting or series because the search matches those names in every passage.
+    public IReadOnlyList<AskStarter> Starters()
+    {
+        static string Short(string name) => name.Length <= 120 ? name : name[..120].TrimEnd();
+        var starters = new List<AskStarter>();
+        if (Meetings.Count > 0)
+            starters.Add(new AskStarter($"“{Short(Meetings[0].Title)}” kaydında hangi kararlar alındı?", "Meeting", Meetings[0].Id));
+        if (Meetings.Count > 1)
+            starters.Add(new AskStarter($"“{Short(Meetings[1].Title)}” sonrasında kime hangi iş kaldı?", "Meeting", Meetings[1].Id));
+        if (Series.Count > 0)
+            starters.Add(new AskStarter($"“{Short(Series[0].Name)}” serisinde hangi konular hâlâ bekliyor?", "Series", Series[0].Id));
+        return starters;
     }
 
     private async Task<int?> LoadChoicesAsync()
@@ -96,3 +133,5 @@ public class AskModel : PageModel
         return workspaceId;
     }
 }
+
+public record AskStarter(string Question, string Scope, int TargetId);

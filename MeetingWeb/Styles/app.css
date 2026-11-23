@@ -2,6 +2,7 @@
    Derle: npm run css:build  ·  geliştirirken: npm run css:watch
    Çıktı MeetingWeb/wwwroot/css/app.css git'e girmez. Eski Bootstrap sayfaları bu dosyayı yüklemez. */
 @import "tailwindcss" source("..");
+@import "./ask.css";
 @source not "../wwwroot/lib";
 
 @plugin "daisyui" {

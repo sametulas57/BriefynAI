@@ -1,138 +1,160 @@
 @page
 @model MeetingWeb.Pages.AskModel
-@using MeetingWeb.Services.ArchiveSearch
 @{
+    Layout = "_AppLayout";
     ViewData["Title"] = "Arşive sor";
+    var hasTurn = Model.Result != null || Model.ScopeMessage != null;
+    // Answered questions move into the conversation; the rest stay in the box to be corrected.
+    var draft = hasTurn && Model.Result?.Status == MeetingWeb.Services.ArchiveSearch.AskStatus.Answered ? "" : Model.Question ?? "";
 }
-<style>
-    .ask-card { border: 1px solid rgba(0,0,0,.04); border-radius: 1.25rem; box-shadow: 0 4px 24px rgba(0,0,0,.02); }
-    .ask-answer { white-space: pre-line; }
-    .btn-soft { font-weight: 600; padding: .6rem 1.2rem; border-radius: 2rem; }
-</style>
+<svg class="absolute size-0" aria-hidden="true" focusable="false">
+    <defs>
+        <linearGradient id="ask-mark-ink" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="88" y2="0">
+            <stop offset="0" stop-color="#00D3E6" />
+            <stop offset="1" stop-color="#1E9BFF" />
+        </linearGradient>
+    </defs>
+</svg>
 
-<div class="container mt-5 mb-5" style="max-width: 1100px;">
-    <div class="d-flex align-items-center mb-4 gap-3">
-        <span class="rounded-circle bg-primary bg-opacity-10 text-primary d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;"><i class="bi bi-chat-square-text fs-4"></i></span>
-        <div>
-            <h2 class="mb-0 text-dark fw-bold">Arşive sor</h2>
-            <p class="text-muted mb-0 small">Toplantılarınızda konuşulanları sorun.</p>
-        </div>
+<div class="ask" data-ask data-state="@(hasTurn ? "chat" : "empty")">
+    @* The home page's meeting room at night; it fades out once the conversation starts. *@
+    <div class="ask-photo" aria-hidden="true">
+        <picture>
+            <source media="(max-width: 860px)" srcset="/img/home/salon-gece-dikey-780.webp" width="780" height="1386" />
+            <img src="/img/home/salon-gece-genis-1440.webp" width="1600" height="900" alt="" decoding="async" />
+        </picture>
     </div>
 
-    <div class="card ask-card mb-4">
-        <div class="card-body p-4">
-            <form method="post" id="ask-form">
-                <label asp-for="Question" class="form-label fw-medium">Sorunuz</label>
-                <textarea asp-for="Question" class="form-control text-break" rows="3" maxlength="500" aria-describedby="question-count"></textarea>
-                <div id="question-count" class="form-text text-end"><span id="remaining">@(500 - (Model.Question?.Length ?? 0))</span> karakter kaldı</div>
+    <div class="ask-intro">
+        <h1 class="ask-title">Hangi konuyu hatırlatayım?</h1>
+        <p class="ask-lede">Cevabı yalnız sizin toplantılarınızdan veririm ve nereden aldığımı gösteririm.</p>
+    </div>
 
-                <div class="row g-3 mt-1">
-                    <div class="col-md-4">
-                        <label asp-for="Scope" class="form-label">Kapsam</label>
-                        <select asp-for="Scope" class="form-select" id="ask-scope">
-                            <option value="Archive">Tüm arşiv</option>
-                            <option value="Series">Bir seri</option>
-                            <option value="Meeting">Bir toplantı</option>
-                        </select>
-                    </div>
-                    <div class="col-md-8" id="ask-series">
-                        <label asp-for="SeriesId" class="form-label">Seri</label>
-                        <select asp-for="SeriesId" class="form-select">
-                            <option value="">Seri seçin</option>
-                            @foreach (var series in Model.Series)
-                            {
-                                <option value="@series.Id">@series.Name</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-8" id="ask-meeting">
-                        <label asp-for="MeetingId" class="form-label">Toplantı</label>
-                        <select asp-for="MeetingId" class="form-select">
-                            <option value="">Toplantı seçin</option>
-                            @foreach (var meeting in Model.Meetings)
-                            {
-                                <option value="@meeting.Id">@meeting.Title · @MeetingWeb.Services.DisplayTime.Format(meeting.CreatedAtUtc, "dd.MM.yyyy")</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label asp-for="From" class="form-label">Başlangıç</label>
-                        <input asp-for="From" type="date" class="form-control" />
-                    </div>
-                    <div class="col-md-3">
-                        <label asp-for="To" class="form-label">Bitiş</label>
-                        <input asp-for="To" type="date" class="form-control" />
-                    </div>
+    <section class="ask-thread" data-ask-thread aria-label="Sohbet">
+        @if (hasTurn)
+        {
+            <article class="ask-turn">
+                <div class="ask-question">
+                    <h2 class="sr-only">Sorunuz</h2>
+                    <p class="ask-bubble">@Model.Question</p>
+                    @if (Model.IsNarrowed)
+                    {
+                        <p class="ask-asked-in">@Model.ScopeLabel()</p>
+                    }
                 </div>
-                <button type="submit" class="btn btn-primary btn-soft mt-4" id="ask-submit"><span id="ask-submit-label">Sor</span></button>
-            </form>
+                <div class="ask-reply">
+                    <partial name="_BriefynMark" />
+                    <div class="ask-reply-body"><h2 class="sr-only">Briefyn'in cevabı</h2><partial name="_AskAnswer" model="Model" /></div>
+                </div>
+            </article>
+        }
+    </section>
+
+    <div class="ask-dock">
+        <form method="post" id="ask-form" class="ask-composer" data-ask-form>
+            <label asp-for="Question" class="sr-only">Sorunuz</label>
+            <textarea name="Question" id="Question" class="ask-input" rows="1" maxlength="500" placeholder="Bir şey sorun" data-ask-input>
+@draft</textarea>
+            <div class="ask-bar">
+                <details class="ask-scope" data-ask-scope>
+                    <summary>@await Html.PartialAsync("_Icons", "filter")<span class="sr-only">Nerede aransın: </span><span class="ask-scope-label" data-ask-scope-label>@Model.ScopeLabel()</span></summary>
+                    <div class="ask-scope-panel">
+                        <fieldset class="ask-field">
+                            <legend>Nerede aransın</legend>
+                            <div class="ask-choices">
+                                <label><input type="radio" name="Scope" value="Archive" checked="@(Model.Scope is not ("Series" or "Meeting"))" /><span>Tüm arşiv</span></label>
+                                <label><input type="radio" name="Scope" value="Series" checked="@(Model.Scope == "Series")" /><span>Bir seri</span></label>
+                                <label><input type="radio" name="Scope" value="Meeting" checked="@(Model.Scope == "Meeting")" /><span>Bir toplantı</span></label>
+                            </div>
+                        </fieldset>
+                        <div class="ask-field" data-ask-target="Series">
+                            <label asp-for="SeriesId">Seri</label>
+                            <select asp-for="SeriesId" class="ask-control">
+                                <option value="">Seri seçin</option>
+                                @foreach (var series in Model.Series)
+                                {
+                                    <option value="@series.Id" data-label="@series.Name">@series.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="ask-field" data-ask-target="Meeting">
+                            <label asp-for="MeetingId">Toplantı</label>
+                            <select asp-for="MeetingId" class="ask-control">
+                                <option value="">Toplantı seçin</option>
+                                @foreach (var meeting in Model.Meetings)
+                                {
+                                    <option value="@meeting.Id" data-label="@meeting.Title">@meeting.Title (@MeetingWeb.Services.DisplayTime.Format(meeting.CreatedAtUtc, "dd.MM.yyyy"))</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="ask-dates">
+                            <div class="ask-field">
+                                <label asp-for="From">Başlangıç</label>
+                                <input asp-for="From" type="date" class="ask-control" />
+                            </div>
+                            <div class="ask-field">
+                                <label asp-for="To">Bitiş</label>
+                                <input asp-for="To" type="date" class="ask-control" />
+                            </div>
+                        </div>
+                        <div class="ask-scope-end">
+                            <button type="button" class="ask-action" data-ask-scope-clear hidden>Tüm arşive dön</button>
+                            <button type="button" class="ask-action ask-scope-done" data-ask-scope-done hidden>Tamam</button>
+                        </div>
+                    </div>
+                </details>
+                <span class="ask-count" data-ask-count hidden></span>
+                <button type="submit" class="ask-send btn btn-grad" data-ask-send aria-label="Sor">
+                    <span class="ask-send-go">@await Html.PartialAsync("_Icons", "send")</span>
+                    <span class="ask-send-stop">@await Html.PartialAsync("_Icons", "stop")</span>
+                </button>
+            </div>
+        </form>
+        <div class="ask-foot">
+            <p>Her soru ayrı aranır, önceki mesajlar hatırlanmaz.</p>
+            <a class="ask-action" href="/Ask" data-ask-new>@await Html.PartialAsync("_Icons", "plus")Yeni sohbet</a>
         </div>
     </div>
 
-    @if (Model.ScopeMessage != null)
-    {
-        <div class="alert alert-danger" role="alert">@Model.ScopeMessage</div>
-    }
-    @if (Model.Result is { } result)
-    {
-        @if (result.Status is AskStatus.Answered or AskStatus.NotFound)
+    <div class="ask-starters" data-ask-starters>
+        @if (Model.Meetings.Count == 0)
         {
-            <div class="mb-3"><span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2">@result.MeetingsSearched toplantıya bakıldı</span></div>
+            <p class="ask-hint">Henüz özeti çıkmış bir toplantınız yok. <a href="/Upload">Bir kayıt yükleyin</a>, özeti hazır olunca burada sorabilirsiniz.</p>
         }
-        @if (result.Status == AskStatus.Answered)
+        @foreach (var starter in Model.Starters())
         {
-            <div class="card ask-card mb-4"><div class="card-body p-4">
-                <div class="ask-answer text-break">@result.Answer</div>
-                @if (!string.IsNullOrWhiteSpace(result.Uncertain))
-                {
-                    <p class="small text-muted mt-3 mb-0 text-break">Not: @result.Uncertain</p>
-                }
-            </div></div>
-            <h3 class="h5 fw-bold mb-3">Kaynaklar</h3>
-            <div class="row g-3">
-                @foreach (var source in result.Sources)
-                {
-                    <div class="col-12"><div class="card ask-card"><div class="card-body p-4">
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                            <strong class="text-break">@source.MeetingTitle</strong>
-                            <span class="small text-muted">@source.MeetingDate.ToString("dd.MM.yyyy")</span>
-                            <span class="badge bg-light text-secondary border">@(source.Kind switch { ArchivePassageKind.Topic => "Konu", ArchivePassageKind.Decision => "Karar", ArchivePassageKind.Pending => "Bekleyen konu", ArchivePassageKind.Task => "Görev", _ => "Toplantı dökümü" })</span>
-                        </div>
-                        <blockquote class="border-start border-primary border-3 ps-3 text-muted text-break">“@source.Quote”</blockquote>
-                        <a asp-page="/Details" asp-route-id="@source.MeetingId" class="small">Toplantıyı aç</a>
-                    </div></div></div>
-                }
-            </div>
+            <button type="button" class="ask-starter" data-ask-starter data-scope="@starter.Scope" data-target="@starter.TargetId" hidden>@starter.Question</button>
         }
-        else
-        {
-            var alertClass = result.Status is AskStatus.NotFound or AskStatus.EmptyArchive ? "alert-info" :
-                result.Status is AskStatus.RateLimited or AskStatus.Busy ? "alert-warning" : "alert-danger";
-            <div class="alert @alertClass" role="alert">@result.Message</div>
-        }
-    }
+    </div>
+    <p class="sr-only" role="status" data-ask-status></p>
 </div>
 
+@* ask.js clones these and sets every text with textContent. *@
+<template id="ask-turn-template">
+    <article class="ask-turn">
+        <div class="ask-question">
+            <h2 class="sr-only">Sorunuz</h2>
+            <p class="ask-bubble" data-slot="question"></p>
+            <p class="ask-asked-in" data-slot="scope"></p>
+        </div>
+        <div class="ask-reply is-thinking">
+            <partial name="_BriefynMark" />
+            <div class="ask-reply-body"><h2 class="sr-only">Briefyn'in cevabı</h2><div data-slot="answer"><p class="ask-waiting" data-slot="waiting"></p></div></div>
+        </div>
+    </article>
+</template>
+<template id="ask-problem-template">
+    <div class="ask-answer">
+        <div class="ask-text" data-ask-text></div>
+        <div class="ask-after" data-ask-after>
+            <div class="ask-actions">
+                <button type="button" class="ask-action" data-ask-retry>@await Html.PartialAsync("_Icons", "retry")Tekrar sor</button>
+                <a class="ask-action" data-slot="link" hidden></a>
+            </div>
+        </div>
+    </div>
+</template>
+
 @section Scripts {
-    <script>
-        const scope = document.getElementById('ask-scope');
-        const series = document.getElementById('ask-series');
-        const meeting = document.getElementById('ask-meeting');
-        function showScope() {
-            series.hidden = scope.value !== 'Series';
-            meeting.hidden = scope.value !== 'Meeting';
-            series.querySelector('select').required = scope.value === 'Series';
-            meeting.querySelector('select').required = scope.value === 'Meeting';
-        }
-        scope.addEventListener('change', showScope);
-        showScope();
-        const question = document.getElementById('Question');
-        const remaining = document.getElementById('remaining');
-        question.addEventListener('input', () => remaining.textContent = Math.max(0, 500 - question.value.length));
-        document.getElementById('ask-form').addEventListener('submit', () => {
-            const button = document.getElementById('ask-submit');
-            button.disabled = true;
-            document.getElementById('ask-submit-label').innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Cevap hazırlanıyor…';
-        });
-    </script>
+    <script src="~/js/ask.js" asp-append-version="true" defer></script>
 }

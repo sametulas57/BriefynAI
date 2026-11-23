@@ -1,0 +1,78 @@
+@model MeetingWeb.Pages.AskModel
+@using MeetingWeb.Services.ArchiveSearch
+@* One answer in the conversation. Rendered inside the page, or alone when ask.js asks for it; model text is always encoded here. *@
+@{
+    var result = Model.Result;
+    var message = Model.ScopeMessage ?? result?.Message;
+    var retry = Model.ScopeMessage == null && result?.Status == AskStatus.Busy;
+    // A narrower question that found nothing can be asked again in the whole archive.
+    var widen = Model.IsNarrowed && result?.Status is AskStatus.NotFound or AskStatus.EmptyArchive;
+    string KindName(ArchivePassageKind kind) => kind switch
+    {
+        ArchivePassageKind.Topic => "Konu",
+        ArchivePassageKind.Decision => "Karar",
+        ArchivePassageKind.Pending => "Bekleyen konu",
+        ArchivePassageKind.Task => "Görev",
+        _ => "Toplantı dökümü"
+    };
+}
+<div class="ask-answer" data-ask-answer data-status="@(Model.ScopeMessage != null ? "Scope" : result?.Status.ToString())">
+    @if (result?.Status == AskStatus.Answered)
+    {
+        <div class="ask-text" data-ask-text>@result.Answer</div>
+        <div class="ask-after" data-ask-after>
+            @if (!string.IsNullOrWhiteSpace(result.Uncertain))
+            {
+                <p class="ask-uncertain">@result.Uncertain</p>
+            }
+            <section class="ask-sources" aria-label="Cevabın dayandığı yerler">
+                <p class="ask-sources-head">
+                    <span class="ask-sources-title">Dayandığı yerler</span>
+                    <span>@result.MeetingsSearched toplantıya bakıldı</span>
+                </p>
+                <ul>
+                    @for (var i = 0; i < result.Sources.Count; i++)
+                    {
+                        var source = result.Sources[i];
+                        <li>
+                            <details class="ask-source" open="@(i == 0)">
+                                <summary>
+                                    <span class="ask-source-title">@source.MeetingTitle</span>
+                                    <span class="ask-source-meta">@KindName(source.Kind), @source.MeetingDate.ToString("d MMMM yyyy", MeetingWeb.Services.DisplayTime.Culture)</span>
+                                    <span class="ask-source-chevron">@await Html.PartialAsync("_Icons", "chevron-down")</span>
+                                </summary>
+                                <div class="ask-source-body">
+                                    <blockquote>“@source.Quote”</blockquote>
+                                    <a asp-page="/Details" asp-route-id="@source.MeetingId" target="_blank" rel="noopener">Toplantıyı aç @await Html.PartialAsync("_Icons", "open")<span class="sr-only">(yeni sekmede)</span></a>
+                                </div>
+                            </details>
+                        </li>
+                    }
+                </ul>
+            </section>
+            <div class="ask-actions">
+                <button type="button" class="ask-action" data-ask-copy hidden>@await Html.PartialAsync("_Icons", "copy")<span data-ask-copy-label>Cevabı kopyala</span></button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="ask-text" data-ask-text>@message</div>
+        <div class="ask-after" data-ask-after>
+            @if (result?.Status == AskStatus.NotFound)
+            {
+                <p class="ask-hint">@result.MeetingsSearched toplantıya bakıldı. Soruyu toplantıda geçen kelimelerle yazmak işe yarayabilir.</p>
+            }
+            <div class="ask-actions">
+                @if (widen)
+                {
+                    <button type="button" class="ask-action" data-ask-widen hidden>@await Html.PartialAsync("_Icons", "filter")Tüm arşivde sor</button>
+                }
+                @if (retry)
+                {
+                    <button type="button" class="ask-action" data-ask-retry hidden>@await Html.PartialAsync("_Icons", "retry")Tekrar sor</button>
+                }
+            </div>
+        </div>
+    }
+</div>

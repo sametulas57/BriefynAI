@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+@* Signed-in pages in the home page's dark look (Tailwind, app.css). Older signed-in pages stay on _Layout (Bootstrap). *@
+<html lang="tr" data-theme="briefyn" data-chrome="koyu">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#04121F" />
+    <title>@ViewData["Title"] | Briefyn</title>
+    <link rel="icon" type="image/svg+xml" href="/img/brand/favicon.svg" />
+    <link rel="preload" href="/fonts/ibm-plex-sans/IBMPlexSansVar-Roman-Latin1.woff2" as="font" type="font/woff2" crossorigin />
+    @await RenderSectionAsync("Head", required: false)
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <script>document.documentElement.classList.add("js")</script>
+    <script src="~/js/public-nav.js" asp-append-version="true" defer></script>
+</head>
+<body class="flex min-h-screen flex-col font-sans antialiased">
+    <partial name="_AppNav" />
+    <main class="flex flex-1 flex-col">@RenderBody()</main>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

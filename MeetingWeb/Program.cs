@@ -133,6 +133,7 @@ try
     builder.Services.AddScoped<IAskService, AskService>();
     builder.Services.AddScoped<IMeetingAccessService, MeetingAccessService>();
     builder.Services.AddScoped<IActiveWorkspaceService, ActiveWorkspaceService>();
+    builder.Services.AddScoped<AppNavigationService>();
     builder.Services.AddSingleton<IAudioStorage, AudioStorage>();
     builder.Services.AddScoped<IAudioCleanupService, AudioCleanupService>();
     builder.Services.AddScoped<ILogCleanupService, LogCleanupService>();

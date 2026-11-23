@@ -151,4 +151,66 @@ public class AskPageTests : IAsyncLifetime
         Assert.Contains("Bu kapsamda bakılacak tamamlanmış toplantı yok.", Text(html));
         Assert.Equal(0, _app.Ai.CallCount);
     }
+
+    // ask.js adds only the answer to the conversation, so a background request must not get the page around it.
+    private async Task<string> Ask(HttpClient client, params (string Key, string Value)[] fields)
+    {
+        var token = await GetAntiforgeryTokenAsync(client, "/Ask");
+        var request = new HttpRequestMessage(HttpMethod.Post, "/Ask")
+        {
+            Content = new FormUrlEncodedContent(fields.Append(("__RequestVerificationToken", token))
+                .Select(f => new KeyValuePair<string, string>(f.Item1, f.Item2)))
+        };
+        request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+        var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await Html(response);
+    }
+
+    [Fact]
+    public async Task Background_request_gets_only_the_escaped_answer()
+    {
+        Respond("<script>alert(1)</script> Fiyat 149 TL.", (await PassageId(), Quote));
+        using var client = Client();
+        var html = await Ask(client, ("Question", Question), ("Scope", "Archive"));
+        Assert.Contains("data-ask-answer", html);
+        Assert.DoesNotContain("<html", html);
+        Assert.DoesNotContain("name=\"Question\"", html);
+        Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", html);
+        Assert.DoesNotContain("<script>", html);
+        Assert.Contains(Quote, Text(html));
+        Assert.Contains($"/Details?id={G.Meetings["A1"]}", html);
+    }
+
+    [Fact]
+    public async Task Narrowed_question_without_an_answer_offers_the_whole_archive()
+    {
+        Respond("Sahte cevap", ("yok", "Uydurma alıntı"));
+        using var client = Client();
+        var whole = await Ask(client, ("Question", Question), ("Scope", "Archive"));
+        Assert.DoesNotContain("data-ask-widen", whole);
+        var narrowed = await Ask(client, ("Question", Question), ("Scope", "Meeting"), ("MeetingId", G.Meetings["A1"].ToString()));
+        Assert.Contains("data-ask-widen", narrowed);
+    }
+
+    [Fact]
+    public async Task Background_request_without_a_target_asks_for_a_choice()
+    {
+        using var client = Client();
+        var html = await Ask(client, ("Question", Question), ("Scope", "Meeting"), ("MeetingId", ""));
+        Assert.Contains("Lütfen bir toplantı seçin.", Text(html));
+        Assert.DoesNotContain("<html", html);
+        Assert.Equal(0, _app.Ai.CallCount);
+    }
+
+    [Fact]
+    public async Task Page_uses_the_public_look_and_loads_nothing_from_other_servers()
+    {
+        using var client = Client();
+        var html = await Html(await client.GetAsync("/Ask"));
+        Assert.Contains("/css/app.css", html);
+        Assert.DoesNotContain("bootstrap", html);
+        Assert.DoesNotMatch("(src|href)\\s*=\\s*\"(https?:)?//", html);
+        Assert.Contains("/Account/Logout", html);
+    }
 }
