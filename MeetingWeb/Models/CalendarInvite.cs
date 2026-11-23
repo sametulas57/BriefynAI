@@ -35,6 +35,6 @@ namespace MeetingWeb.Models
         public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 
         [Timestamp]
-        public byte[]? RowVersion { get; set; }
+        public uint RowVersion { get; set; }
     }
 }

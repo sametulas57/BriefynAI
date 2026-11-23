@@ -44,7 +44,7 @@ namespace MeetingWeb.Models
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
         [Timestamp]
-        public byte[]? RowVersion { get; set; }
+        public uint RowVersion { get; set; }
 
         [NotMapped]
         public bool IsDone => CompletedAtUtc != null;

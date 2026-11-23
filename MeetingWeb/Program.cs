@@ -43,7 +43,7 @@ try
 
     // --- 1. Database Connections ---
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(connectionString));
+        options.UseNpgsql(connectionString));
     builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
     // --- 2. Identity & Security ---

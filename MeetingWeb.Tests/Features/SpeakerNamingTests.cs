@@ -559,11 +559,11 @@ public class SpeakerNamingTests : IClassFixture<SpeakerNamingFixture>
     public async Task Completed_rename_uses_the_row_version_after_claiming_processing()
     {
         var id = NewMeeting();
-        // SQL Server changes rowversion on ExecuteUpdate; reproduce that boundary in SQLite.
+        // PostgreSQL changes xmin on ExecuteUpdate; reproduce that boundary in SQLite.
         _app.WithDb(db => db.Database.ExecuteSqlRaw("""
             CREATE TRIGGER ClaimSpeakerRowVersion AFTER UPDATE OF Status ON Meetings
             WHEN OLD.Status <> 0 AND NEW.Status = 0
-            BEGIN UPDATE Meetings SET RowVersion = randomblob(16) WHERE Id = NEW.Id; END;
+            BEGIN UPDATE Meetings SET RowVersion = (OLD.RowVersion % 4294967295) + 1 WHERE Id = NEW.Id; END;
             """));
         try
         {

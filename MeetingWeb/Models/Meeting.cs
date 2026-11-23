@@ -42,7 +42,7 @@ namespace MeetingWeb.Models
         public DateTime? CompletedAtUtc { get; set; }
 
         [Timestamp]
-        public byte[]? RowVersion { get; set; }
+        public uint RowVersion { get; set; }
 
         // Kept in its own table so lists never load (and decrypt) the full transcript.
         public MeetingTranscript? Transcript { get; set; }
