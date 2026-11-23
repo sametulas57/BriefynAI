@@ -14,7 +14,7 @@ WHERE schemaname IN ('public', 'hangfire')
 ORDER BY schemaname, tablename
 \gexec
 
--- Column grants survive table-level REVOKE; clear them before rebuilding the list.
+-- Clear column grants explicitly too, so rebuilding the list does not rely on the table-level REVOKE.
 SELECT format('REVOKE ALL (%s) ON TABLE %I.%I FROM briefyn_okur',
               string_agg(format('%I', column_name), ', ' ORDER BY ordinal_position),
               table_schema, table_name)

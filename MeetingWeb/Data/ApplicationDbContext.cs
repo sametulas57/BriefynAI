@@ -39,7 +39,7 @@ namespace MeetingWeb.Data
             // Required for Identity framework configuration.
             base.OnModelCreating(builder);
 
-            // Titles compare case-insensitively (Turkish rules), like SQL Server did.
+            // ADR-0019: titles compare case-insensitively with Turkish rules; PostgreSQL's default comparison does not.
             if (Database.IsNpgsql())
                 builder.HasCollation("tr_ci", locale: "tr-u-ks-level2", provider: "icu", deterministic: false);
 
@@ -61,7 +61,7 @@ namespace MeetingWeb.Data
                 m.HasOne(x => x.Workspace).WithMany(w => w.Members).HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
                 m.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
                 m.HasIndex(x => x.UserId);
-                // Not a database cascade: SQL Server refuses a second cascade path from Workspaces to WorkspaceMembers.
+                // Not a database cascade: deleting a title must not delete its members.
                 // DeleteTitle clears the members first; deleting a team removes titles and members in the same cascade.
                 m.HasOne(x => x.Title).WithMany().HasForeignKey(x => x.TitleId).OnDelete(DeleteBehavior.ClientSetNull);
                 m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "\"Role\" IN (1, 2, 3)"));
@@ -87,8 +87,8 @@ namespace MeetingWeb.Data
                 m.Property(x => x.Title).HasConversion(new EncryptedConverter("Meetings.Title"));
                 m.HasOne(x => x.Workspace).WithMany(w => w.Meetings).HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
                 m.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
-                // Not a database cascade: SQL Server refuses a second cascade path from Workspaces to Meetings. Deleting a
-                // series clears the link in code (MeetingSeriesService); deleting a team removes both in the same cascade.
+                // Not a database cascade: deleting a series must not delete its meetings. MeetingSeriesService clears the
+                // link in code; deleting a team removes both in the same cascade.
                 m.HasOne(x => x.Series).WithMany(s => s.Meetings).HasForeignKey(x => x.SeriesId).OnDelete(DeleteBehavior.ClientSetNull);
                 // History lists a workspace's meetings newest first.
                 m.HasIndex(x => new { x.WorkspaceId, x.CreatedAtUtc });

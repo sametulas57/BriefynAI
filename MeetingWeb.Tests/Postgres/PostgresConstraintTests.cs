@@ -73,6 +73,90 @@ public class PostgresConstraintTests(PostgresFixture fixture) : IClassFixture<Po
         Assert.Equal(2, App.WithDb(db => db.Workspaces.Count(w => w.CreatedByUserId == userId && !w.IsPersonal)));
     }
 
+    [PostgresTheory]
+    [InlineData("Yönetici", "yönetici")]
+    [InlineData("İK uzmanı", "ik uzmanı")]
+    [InlineData("IŞIK", "ışık")]
+    public void Titles_of_a_team_differ_by_more_than_letter_case(string name, string sameName)
+    {
+        var teamId = NewTeamWithTitle(name);
+
+        // The page's "already exists" message comes from this query.
+        Assert.True(App.WithDb(db => db.WorkspaceTitles.Any(t => t.WorkspaceId == teamId && t.Name == sameName)));
+        var error = Assert.Throws<DbUpdateException>(() => App.WithDb(db =>
+        {
+            db.WorkspaceTitles.Add(new WorkspaceTitle { WorkspaceId = teamId, Name = sameName });
+            return db.SaveChanges();
+        }));
+
+        var postgres = Assert.IsType<PostgresException>(error.InnerException);
+        Assert.Equal("23505", postgres.SqlState);
+        Assert.Equal("IX_WorkspaceTitles_WorkspaceId_Name", postgres.ConstraintName);
+    }
+
+    [PostgresFact]
+    public void Dotted_and_dotless_i_are_different_letters_in_titles()
+    {
+        var teamId = NewTeamWithTitle("İK");
+
+        App.WithDb(db =>
+        {
+            db.WorkspaceTitles.Add(new WorkspaceTitle { WorkspaceId = teamId, Name = "IK" });
+            return db.SaveChanges();
+        });
+
+        Assert.Equal(2, App.WithDb(db => db.WorkspaceTitles.Count(t => t.WorkspaceId == teamId)));
+    }
+
+    // Titles and series have no database cascade to members and meetings; the team's own cascade must remove both.
+    [PostgresFact]
+    public void Deleting_a_team_removes_titled_members_and_meetings_in_a_series()
+    {
+        var teamId = App.WithDb(db =>
+        {
+            var team = new Workspace { Name = "Silinecek ekip" };
+            db.WorkspaceMembers.Add(new WorkspaceMember
+            {
+                Workspace = team,
+                UserId = App.Seed.BobId,
+                Role = WorkspaceRole.Owner,
+                Title = new WorkspaceTitle { Workspace = team, Name = "Yönetici" }
+            });
+            var comment = new Comment { UserId = App.Seed.BobId, Content = "yorum" };
+            db.Meetings.Add(new Meeting
+            {
+                Workspace = team,
+                Title = "silinecek",
+                Series = new MeetingSeries { Workspace = team, Name = "Haftalık" },
+                Comments = new List<Comment> { comment }
+            });
+            db.SaveChanges();
+            db.Comments.Add(new Comment { MeetingId = comment.MeetingId, ParentCommentId = comment.Id, UserId = App.Seed.BobId, Content = "yanıt" });
+            db.SaveChanges();
+            return team.Id;
+        });
+
+        App.WithDb(db => db.Database.ExecuteSql($"""DELETE FROM "Workspaces" WHERE "Id" = {teamId}"""));
+
+        App.WithDb(db =>
+        {
+            Assert.False(db.WorkspaceMembers.Any(m => m.WorkspaceId == teamId));
+            Assert.False(db.WorkspaceTitles.Any(t => t.WorkspaceId == teamId));
+            Assert.False(db.Meetings.Any(m => m.WorkspaceId == teamId));
+            Assert.False(db.MeetingSeries.Any(s => s.WorkspaceId == teamId));
+            Assert.False(db.Comments.Any(c => c.Content != "" && c.Meeting!.WorkspaceId == teamId));
+            return 0;
+        });
+    }
+
+    private int NewTeamWithTitle(string title) => App.WithDb(db =>
+    {
+        var team = new Workspace { Name = "Unvan ekibi" };
+        db.WorkspaceTitles.Add(new WorkspaceTitle { Workspace = team, Name = title });
+        db.SaveChanges();
+        return team.Id;
+    });
+
     [PostgresFact]
     public void Undefined_workspace_role_is_rejected()
     {

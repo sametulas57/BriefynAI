@@ -22,7 +22,7 @@ Briefyn is an AI meeting assistant for teams. Upload a recording or connect Zoom
 flowchart LR
     U[Browser] --> W[ASP.NET Core web app]
     Z[Zoom] -->|webhooks| W
-    W --> D[(SQL Server)]
+    W --> D[(PostgreSQL)]
     W -->|Hangfire jobs| G[Groq: Whisper and LLMs]
     W -->|Optional transcription| A[Azure Speech]
     W -->|Audio preparation| F[ffmpeg]
@@ -70,6 +70,8 @@ The app runs at http://127.0.0.1:8080.
 ```bash
 dotnet test MeetingWeb.Tests
 ```
+
+The suite runs on SQLite. A small group in `MeetingWeb.Tests/Postgres/` needs a real PostgreSQL server: set `BRIEFYN_PG_TEST` to a superuser connection string for a server where `docker compose up` (or the CI steps in `.github/workflows/test.yml`) has prepared the `briefyn` database, with `READONLY_DB_PASSWORD` set. Without it those tests are reported as skipped; CI always runs them.
 
 `scripts/verify.sh` runs everything at once (CSS build, format, .NET build and tests); the pre-commit hook and CI run the same script.
 

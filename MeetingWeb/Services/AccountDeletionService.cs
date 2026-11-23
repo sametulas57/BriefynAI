@@ -111,7 +111,7 @@ public class AccountDeletionService : IAccountDeletionService
             toDelete.UnionWith(children);
         }
         await _db.CommentReactions.Where(r => r.UserId == userId || toDelete.Contains(r.CommentId)).ExecuteDeleteAsync();
-        // SQL Server's self-reference is ClientCascade; remove leaves before their parents.
+        // Replies have no database cascade (ClientCascade); remove leaves before their parents.
         while (toDelete.Count > 0)
         {
             var leaves = toDelete.Where(id => !comments.Any(c => c.ParentCommentId == id && toDelete.Contains(c.Id))).ToList();
