@@ -41,7 +41,7 @@ public class ArchiveAnswererTests
     [Fact]
     public void System_prompt_states_the_rules()
     {
-        foreach (var rule in new[] { "yalnız", "veri", "talimat", "harfi harfine", "yeterli_bilgi", "karar", "öneri", "en yeni" })
+        foreach (var rule in new[] { "yalnız", "veri", "talimat", "harfi harfine", "yeterli_bilgi", "karar", "öneri", "en yeni", "planı sonuç gibi yazma" })
             Assert.Contains(rule, ArchiveAnswerer.System.ToLowerInvariant());
     }
 
@@ -139,7 +139,7 @@ public class ArchiveAnswererTests
     }
 
     [Fact]
-    public void System_matches_python_golden() => Assert.Equal(ArchiveAnswerer.System, Golden("answerer_system.txt"));
+    public void System_matches_golden() => Assert.Equal(ArchiveAnswerer.System, Golden("answerer_system.txt"));
 
     [Fact]
     public void Schema_matches_python_golden() => Assert.Equal(Golden("answerer_schema.json"), PythonJson.Dumps(ArchiveAnswerer.Schema()));
