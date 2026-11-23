@@ -39,16 +39,20 @@ namespace MeetingWeb.Data
             // Required for Identity framework configuration.
             base.OnModelCreating(builder);
 
+            // Titles compare case-insensitively (Turkish rules), like SQL Server did.
+            if (Database.IsNpgsql())
+                builder.HasCollation("tr_ci", locale: "tr-u-ks-level2", provider: "icu", deterministic: false);
+
             builder.Entity<ApplicationUser>(u =>
             {
                 u.Property(x => x.PhoneNumber).HasMaxLength(20);
-                u.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("[PhoneNumber] IS NOT NULL AND [PhoneNumber] <> ''");
+                u.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("\"PhoneNumber\" IS NOT NULL AND \"PhoneNumber\" <> ''");
             });
 
             builder.Entity<Workspace>(w =>
             {
                 w.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
-                w.HasIndex(x => x.CreatedByUserId).IsUnique().HasFilter("[IsPersonal] = 1").HasDatabaseName("IX_Workspaces_PersonalPerUser");
+                w.HasIndex(x => x.CreatedByUserId).IsUnique().HasFilter("\"IsPersonal\" = TRUE").HasDatabaseName("IX_Workspaces_PersonalPerUser");
             });
 
             builder.Entity<WorkspaceMember>(m =>
@@ -60,11 +64,12 @@ namespace MeetingWeb.Data
                 // Not a database cascade: SQL Server refuses a second cascade path from Workspaces to WorkspaceMembers.
                 // DeleteTitle clears the members first; deleting a team removes titles and members in the same cascade.
                 m.HasOne(x => x.Title).WithMany().HasForeignKey(x => x.TitleId).OnDelete(DeleteBehavior.ClientSetNull);
-                m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "[Role] IN (1, 2, 3)"));
+                m.ToTable(t => t.HasCheckConstraint("CK_WorkspaceMembers_Role", "\"Role\" IN (1, 2, 3)"));
             });
 
             builder.Entity<WorkspaceTitle>(t =>
             {
+                if (Database.IsNpgsql()) t.Property(x => x.Name).UseCollation("tr_ci");
                 t.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
                 t.HasIndex(x => new { x.WorkspaceId, x.Name }).IsUnique();
             });
@@ -87,14 +92,13 @@ namespace MeetingWeb.Data
                 m.HasOne(x => x.Series).WithMany(s => s.Meetings).HasForeignKey(x => x.SeriesId).OnDelete(DeleteBehavior.ClientSetNull);
                 // History lists a workspace's meetings newest first.
                 m.HasIndex(x => new { x.WorkspaceId, x.CreatedAtUtc });
-                m.HasIndex(x => new { x.WorkspaceId, x.ExternalRecordingId }).IsUnique().HasFilter("[ExternalRecordingId] IS NOT NULL");
-                // Zoom UUIDs are case-sensitive; SQL Server's default comparison is not.
-                if (Database.IsSqlServer()) m.Property(x => x.ExternalRecordingId).UseCollation("Latin1_General_100_BIN2");
+                m.HasIndex(x => new { x.WorkspaceId, x.ExternalRecordingId }).IsUnique().HasFilter("\"ExternalRecordingId\" IS NOT NULL");
+                // Zoom UUIDs are case-sensitive; PostgreSQL's default comparison already is.
                 m.ToTable(t =>
                 {
-                    t.HasCheckConstraint("CK_Meetings_Status", "[Status] IN (0, 1, 2)");
-                    t.HasCheckConstraint("CK_Meetings_FailureReason", "[FailureReason] IS NULL OR [FailureReason] IN (1)");
-                    t.HasCheckConstraint("CK_Meetings_Source", "[Source] IN (1, 2)");
+                    t.HasCheckConstraint("CK_Meetings_Status", "\"Status\" IN (0, 1, 2)");
+                    t.HasCheckConstraint("CK_Meetings_FailureReason", "\"FailureReason\" IS NULL OR \"FailureReason\" IN (1)");
+                    t.HasCheckConstraint("CK_Meetings_Source", "\"Source\" IN (1, 2)");
                 });
             });
 
@@ -104,7 +108,7 @@ namespace MeetingWeb.Data
                 s.HasOne(x => x.Workspace).WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Cascade);
                 s.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
                 // Two sessions of one Zoom meeting imported at once must still land in a single series.
-                s.HasIndex(x => new { x.WorkspaceId, x.ZoomMeetingKey }).IsUnique().HasFilter("[ZoomMeetingKey] IS NOT NULL");
+                s.HasIndex(x => new { x.WorkspaceId, x.ZoomMeetingKey }).IsUnique().HasFilter("\"ZoomMeetingKey\" IS NOT NULL");
             });
 
             builder.Entity<MeetingTranscript>(t =>
@@ -124,8 +128,8 @@ namespace MeetingWeb.Data
                 p.HasOne(x => x.CreatedBy).WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
                 p.ToTable(t =>
                 {
-                    t.HasCheckConstraint("CK_MeetingPoints_Kind", "[Kind] IN (1, 2, 3)");
-                    t.HasCheckConstraint("CK_MeetingPoints_Source", "[Source] IN (1, 2)");
+                    t.HasCheckConstraint("CK_MeetingPoints_Kind", "\"Kind\" IN (1, 2, 3)");
+                    t.HasCheckConstraint("CK_MeetingPoints_Source", "\"Source\" IN (1, 2)");
                 });
             });
 
@@ -138,7 +142,7 @@ namespace MeetingWeb.Data
                 a.HasOne(x => x.CompletedBy).WithMany().HasForeignKey(x => x.CompletedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
                 // "Bana atananlar" looks tasks up by assignee.
                 a.HasIndex(x => x.AssigneeUserId);
-                a.ToTable(t => t.HasCheckConstraint("CK_ActionItems_Source", "[Source] IN (1, 2)"));
+                a.ToTable(t => t.HasCheckConstraint("CK_ActionItems_Source", "\"Source\" IN (1, 2)"));
             });
 
             builder.Entity<CalendarInvite>(i =>
@@ -147,7 +151,7 @@ namespace MeetingWeb.Data
                 i.HasIndex(x => new { x.ActionItemId, x.UserId }).IsUnique();
                 i.HasIndex(x => x.Uid).IsUnique();
                 i.HasIndex(x => x.Status);
-                i.ToTable(t => t.HasCheckConstraint("CK_CalendarInvites_Status", "[Status] IN (1, 2)"));
+                i.ToTable(t => t.HasCheckConstraint("CK_CalendarInvites_Status", "\"Status\" IN (1, 2)"));
             });
 
             builder.Entity<Comment>(c =>
@@ -178,9 +182,9 @@ namespace MeetingWeb.Data
                 z.HasIndex(x => x.ZoomUserId);
             });
 
-            // SQLite (tests) cannot generate rowversion values; there StampRowVersions sets a new one on every save, so the
-            // same concurrency check runs in tests as on SQL Server.
-            if (!Database.IsSqlServer())
+            // SQLite (tests) cannot generate xmin values; StampRowVersions sets a new token on every save, so the
+            // same concurrency check runs in tests as on PostgreSQL.
+            if (!Database.IsNpgsql())
             {
                 // SQLite (tests) returns DateTimeKind.Unspecified; PostgreSQL returns Utc, so tests read times the same way.
                 var utcConverter = new ValueConverter<DateTime, DateTime>(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
@@ -214,10 +218,11 @@ namespace MeetingWeb.Data
 
         private void StampRowVersions()
         {
-            if (Database.IsSqlServer()) return;
+            // PostgreSQL advances xmin automatically; SQLite tests need an application-generated token.
+            if (Database.IsNpgsql()) return;
             foreach (var entry in ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified))
             {
-                if (entry.Metadata.FindProperty("RowVersion") != null) entry.Property("RowVersion").CurrentValue = Guid.NewGuid().ToByteArray();
+                if (entry.Metadata.FindProperty("RowVersion") != null) entry.Property("RowVersion").CurrentValue = (uint)Random.Shared.NextInt64(1, uint.MaxValue);
             }
         }
     }

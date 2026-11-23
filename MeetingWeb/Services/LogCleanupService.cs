@@ -23,7 +23,7 @@ namespace MeetingWeb.Services
         public Task<int> RunAsync()
         {
             var cutoff = DateTime.UtcNow - _retention;
-            return _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM [Logs] WHERE [TimeStamp] < {cutoff}");
+            return _context.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"Logs\" WHERE \"TimeStamp\" < {cutoff}");
         }
     }
 }

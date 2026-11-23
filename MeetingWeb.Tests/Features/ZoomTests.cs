@@ -764,17 +764,17 @@ public class ZoomTests
         Assert.Equal("reconnected-access", ConnectionOf(app, app.Seed.AliceId)!.AccessToken);
     }
 
-    // Review round 5: Zoom UUIDs differ only by letter case sometimes; SQL Server must compare them exactly.
+    // Review round 5: Zoom UUIDs differ only by letter case sometimes; PostgreSQL's default comparison is case-sensitive.
     [Fact]
-    public void Recording_id_is_compared_case_sensitively_on_sql_server()
+    public void Recording_id_has_no_case_insensitive_collation_on_postgresql()
     {
-        var options = new DbContextOptionsBuilder<MeetingWeb.Data.ApplicationDbContext>().UseSqlServer("Server=unused").Options;
+        var options = new DbContextOptionsBuilder<MeetingWeb.Data.ApplicationDbContext>().UseNpgsql("Host=unused").Options;
         using var db = new MeetingWeb.Data.ApplicationDbContext(options);
 
         var model = Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions.GetService<Microsoft.EntityFrameworkCore.Metadata.IDesignTimeModel>(db).Model;
         var collation = model.FindEntityType(typeof(Meeting))!.FindProperty(nameof(Meeting.ExternalRecordingId))!.GetCollation();
 
-        Assert.EndsWith("_BIN2", collation);
+        Assert.Null(collation);
     }
 
     // Review round 6: a reconnect waiting while a rejected refresh is handled is not deleted afterwards.

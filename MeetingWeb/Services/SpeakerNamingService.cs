@@ -154,7 +154,7 @@ public class SpeakerNamingService : ISpeakerNamingService
 
         try
         {
-            // SQL Server advances rowversion on the claim even though ExecuteUpdate bypasses tracking.
+            // PostgreSQL advances xmin on the claim even though ExecuteUpdate bypasses tracking.
             var claimedVersion = await _db.Meetings.Where(m => m.Id == meetingId).Select(m => m.RowVersion).SingleAsync();
             _db.Entry(meeting).Property(m => m.RowVersion).OriginalValue = meeting.RowVersion = claimedVersion;
             meeting.Transcript!.OriginalText ??= meeting.Transcript.Text;

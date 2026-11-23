@@ -41,6 +41,6 @@ namespace MeetingWeb.Models
         public DateTime? RefreshStartedAtUtc { get; set; }
 
         [Timestamp]
-        public byte[]? RowVersion { get; set; }
+        public uint RowVersion { get; set; }
     }
 }
