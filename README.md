@@ -24,7 +24,7 @@ flowchart LR
     Z[Zoom] -->|webhooks| W
     W --> D[(PostgreSQL)]
     W -->|Hangfire jobs| G[Groq: Whisper and LLMs]
-    W -->|Optional transcription| A[Azure Speech]
+    W -->|Upload transcription| A[Azure Speech]
     W -->|Audio preparation| F[ffmpeg]
     W -->|SignalR| U
 ```
@@ -34,7 +34,7 @@ flowchart LR
 
 ## Getting started
 
-Requires Docker and a [Groq](https://groq.com) API key.
+Requires Docker, a [Groq](https://groq.com) API key, and an Azure Speech key. Azure separates the speakers in uploaded recordings; without an Azure key, set `TRANSCRIBER=groq`.
 
 ```bash
 cp .env.example .env

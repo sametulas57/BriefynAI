@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Core;
 using Lucene.Net.Analysis.Miscellaneous;
@@ -17,6 +18,7 @@ namespace MeetingWeb.Services.ArchiveSearch
 {
     public sealed class ArchiveSearchService : IArchiveSearchService, IDisposable
     {
+        private static readonly Regex SpeakerLabel = new(@"^[^:.?!,;\r\n]{1,60}: ", RegexOptions.Compiled);
         private static readonly TimeSpan IdleLifetime = TimeSpan.FromMinutes(30);
         private readonly ConcurrentDictionary<int, CacheEntry> _cache = new();
         private readonly IServiceScopeFactory _scopes;
@@ -138,9 +140,15 @@ namespace MeetingWeb.Services.ArchiveSearch
         private static IEnumerable<string> TranscriptChunks(string? transcript)
         {
             if (string.IsNullOrWhiteSpace(transcript)) yield break;
-            // Uploaded recordings come back as one long line, so a line longer than a chunk is cut into word runs.
-            var lines = transcript.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .SelectMany(line => line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Chunk(300).Select(run => string.Join(" ", run)));
+            // A recording without speakers comes back as one long line, so a line longer than a chunk is cut into word runs.
+            var rawLines = transcript.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var lines = rawLines.SelectMany(line =>
+            {
+                // Only transcripts with speakers have several lines; every run of a long line keeps its speaker.
+                var speaker = rawLines.Length > 1 ? SpeakerLabel.Match(line).Value : "";
+                return line[speaker.Length..].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Chunk(300)
+                    .Select(run => speaker + string.Join(" ", run));
+            });
             var chunk = new List<string>();
             var words = 0;
             foreach (var line in lines)
@@ -215,8 +223,20 @@ namespace MeetingWeb.Services.ArchiveSearch
                 }
                 scored.Add(p.Passage with { Score = score });
             }
-            return new ArchiveSearchResult(count, scored.OrderByDescending(p => p.Score)
-                .ThenByDescending(p => p.MeetingDate).ThenBy(p => p.Id, StringComparer.Ordinal).Take(query.Top).ToArray());
+            var ordered = scored.OrderByDescending(p => p.Score)
+                .ThenByDescending(p => p.MeetingDate).ThenBy(p => p.Id, StringComparer.Ordinal).ToArray();
+            return new ArchiveSearchResult(count, WithNewerDecisions(ordered, query.Top));
+        }
+
+        // A later decision may settle the topic in other words and rank below the older passages that repeat the question's
+        // words, so the last fifth of the list is kept for the best decisions made after the meeting of the best hit.
+        private static ArchivePassage[] WithNewerDecisions(ArchivePassage[] ordered, int top)
+        {
+            if (ordered.Length <= top) return ordered;
+            var first = ordered.Take(top - top / 5).ToArray();
+            var newer = ordered.Skip(first.Length)
+                .Where(p => p.Kind == ArchivePassageKind.Decision && p.MeetingDate > ordered[0].MeetingDate).Take(top / 5).ToArray();
+            return first.Concat(newer).Union(ordered).Take(top).ToArray();
         }
 
         private static bool NameInQuestion(string question, string name)

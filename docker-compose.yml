@@ -89,8 +89,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=db;Database=briefyn;Username=briefyn_app;Password=${APP_DB_PASSWORD}
       # Yapay zekâ hattı web sürecinde (ADR-0018); yazıya dökme ve özet Groq'ta (ZDR Groq panelinden açılır). Anahtar .env'deki GROQ_KEY.
       - GROQ_API_KEY=${GROQ_KEY}
-      # Yazıya dökme: boş ya da groq = Groq; azure = yüklenen dosyalar Azure Speech'te (konuşmacı ayırma). Zoom kayıtları her durumda Groq + Zoom'un adları.
-      - TRANSCRIBER=${TRANSCRIBER:-groq}
+      # Yazıya dökme: boş ya da azure = yüklenen dosyalar Azure Speech'te (konuşmacı ayırma); groq = Groq. Zoom kayıtları her durumda Groq + Zoom'un adları.
+      - TRANSCRIBER=${TRANSCRIBER:-azure}
       - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY:-}
       - AZURE_SPEECH_ENDPOINT=${AZURE_SPEECH_ENDPOINT:-}
       # Arşive soru sor (ADR-0014): boşsa koddaki varsayılan. Model değişimi yalnız .env'den.

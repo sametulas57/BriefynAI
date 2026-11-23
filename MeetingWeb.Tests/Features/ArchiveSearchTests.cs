@@ -247,6 +247,88 @@ public class ArchiveSearchTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Speaker_name_is_carried_to_every_passage_of_a_long_line()
+    {
+        var filler = string.Join(" ", Enumerable.Range(0, 420).Select(i => $"kelime{i}"));
+        _app.WithDb(db =>
+        {
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Uzun konuşma",
+                Status = MeetingStatus.Completed,
+                CreatedAtUtc = new DateTime(2026, 10, 16, 7, 0, 0, DateTimeKind.Utc),
+                Transcript = new MeetingTranscript { Text = $"Ayşe Kaya: Başlayalım.\nMert Demir: {filler} Zebercet sunucusu cumartesi taşınacak.\nAyşe Kaya: Tamam." }
+            });
+            return db.SaveChanges();
+        });
+
+        var result = await Ask("A", "zebercet sunucusu ne zaman taşınacak");
+        var hit = Assert.Single(result.Passages, p => p.Text.Contains("Zebercet sunucusu cumartesi taşınacak"));
+        Assert.StartsWith("Mert Demir: kelime", hit.Text);
+    }
+
+    [Fact]
+    public async Task Sentence_with_a_colon_in_a_transcript_without_speakers_is_not_taken_for_a_name()
+    {
+        var filler = string.Join(" ", Enumerable.Range(0, 420).Select(i => $"kelime{i}"));
+        _app.WithDb(db =>
+        {
+            db.Meetings.Add(new Meeting
+            {
+                WorkspaceId = G.Workspaces["A"],
+                Title = "Konuşmacısız kayıt",
+                Status = MeetingStatus.Completed,
+                CreatedAtUtc = new DateTime(2026, 10, 16, 7, 0, 0, DateTimeKind.Utc),
+                Transcript = new MeetingTranscript { Text = $"Bugünkü konu: {filler} Zebercet sunucusu cumartesi taşınacak." }
+            });
+            return db.SaveChanges();
+        });
+
+        var result = await Ask("A", "zebercet sunucusu ne zaman taşınacak");
+        var hit = Assert.Single(result.Passages, p => p.Text.Contains("Zebercet sunucusu cumartesi taşınacak"));
+        Assert.StartsWith("kelime", hit.Text);
+    }
+
+    [Fact]
+    public async Task Newer_decision_is_kept_when_older_passages_fill_the_list()
+    {
+        // Q06: the old meeting says "hatırlatma bildirimleri", the decision that settled it only says "bildirim özelliği".
+        _app.WithDb(db =>
+        {
+            for (var i = 0; i < 4; i++)
+                db.Meetings.Add(new Meeting
+                {
+                    WorkspaceId = G.Workspaces["A"],
+                    Title = $"Eski görüşme {i}",
+                    Status = MeetingStatus.Completed,
+                    CreatedAtUtc = new DateTime(2026, 8, 3 + i, 7, 0, 0, DateTimeKind.Utc),
+                    Points = Enumerable.Range(0, 8).Select(n => new MeetingPoint
+                    {
+                        Kind = MeetingPointKind.Topic,
+                        Text = $"Hatırlatma bildirimleri hangi sürümde gelecek sorusu {i} {n}",
+                        SortOrder = n
+                    }).ToList()
+                });
+            return db.SaveChanges();
+        });
+
+        var result = await Search(G.Askers["A"], G.Workspaces["A"],
+            new ArchiveQuery("Hatırlatma bildirimleri hangi sürümde gelecek?", Top: 20));
+
+        Assert.Equal(20, result.Passages.Count);
+        Assert.True(Contains(result, "Bildirim özelliği 2.1 sürümüne alındı"));
+    }
+
+    [Fact]
+    public async Task Settled_decision_of_Q06_reaches_the_passages_sent_to_the_model()
+    {
+        var question = G.Questions.Single(q => q.Id == "Q06");
+        var result = await Search(G.Askers["A"], G.Workspaces["A"], new ArchiveQuery(question.Text, Top: new AskOptions().MaxPassages));
+        Assert.True(Contains(result, "Bildirim özelliği 2.1 sürümüne alındı"));
+    }
+
+    [Fact]
     public async Task Failed_rebuild_does_not_leave_the_old_index_marked_current()
     {
         var failer = new TranscriptQueryFailer();

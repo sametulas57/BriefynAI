@@ -38,7 +38,7 @@ public sealed class AskService(
         foreach (var passage in found.Passages)
         {
             var text = passage.Text[..Math.Min(passage.Text.Length, 4000)];
-            if (sent.Count > 0 && total + text.Length > contextLimit) break;
+            if (sent.Count > 0 && total + text.Length > contextLimit) continue;
             sent.Add((passage, text));
             total += text.Length;
         }

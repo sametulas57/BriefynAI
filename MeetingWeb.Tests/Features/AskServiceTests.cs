@@ -146,6 +146,24 @@ public class AskServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Passage_too_long_for_the_context_does_not_hide_the_shorter_ones_after_it()
+    {
+        using var app = new BriefynFactory();
+        app.ExtraSettings["Ask:MaxPassages"] = "20";
+        app.ExtraSettings["Ask:ContextCharacters"] = "1000";
+        await app.InitializeAsync();
+        var gold = app.WithDb(GoldSet.Load);
+        app.Ai.Body = """{"yeterli_bilgi":false,"kanitlar":[],"cevap":"","belirsiz_not":null}""";
+        using (var lifetime = app.Services.CreateScope())
+            await lifetime.ServiceProvider.GetRequiredService<IAskService>().AskAsync(gold.Askers["A"], gold.Workspaces["A"],
+                new AskRequest("Hatırlatma bildirimleri hangi sürümde gelecek?"));
+        using var body = JsonDocument.Parse(app.Ai.LastBody!);
+        var texts = body.RootElement.GetProperty("parcalar").EnumerateArray().Select(p => p.GetProperty("metin").GetString()!).ToList();
+        Assert.InRange(texts.Sum(t => t.Length), 1, 1000);
+        Assert.Contains(texts, t => t.Contains("2.1 sürümüne alındı"));
+    }
+
+    [Fact]
     public async Task Meeting_scope_limits_body_and_count()
     {
         Respond(false, "");
