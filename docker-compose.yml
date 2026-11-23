@@ -1,33 +1,37 @@
-# Sabit proje adı: Docker birimleri klasör adından bağımsız (briefynai_sql_data). 2026-10-21, klasör/depo adı BriefynAI oldu.
+# Sabit proje adı: Docker birimleri klasör adından bağımsız (briefynai_pg_data). 2026-10-21, klasör/depo adı BriefynAI oldu.
 name: briefynai
 
 services:
   # ==========================================
-  # 1. VERİTABANI (Microsoft SQL Server)
+  # 1. VERİTABANI (PostgreSQL)
   # ==========================================
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    platform: linux/amd64
-    container_name: briefyn-sql
+    image: postgres:18
+    container_name: briefyn-pg
     environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       # S9a: yalnız bu bilgisayardan erişilir (veritabanı araçları için). Ağdaki başka cihazlar bağlanamaz;
       # web servisi Docker ağı içinden "db" adıyla bağlanır.
-      - "127.0.0.1:1433:1433"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - sql_data:/var/opt/mssql
+      - pg_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
+      interval: 2s
+      retries: 30
 
   # S9a / ADR-0009: veritabanını ve iki girişi her açılışta hazırlar: briefyn_app (uygulama, yalnız okur/yazar) ve
-  # briefyn_migrator (yalnız migrate servisi, şemayı kurar). sa yalnız burada ve db-readonly'de kullanılır.
+  # briefyn_migrator (yalnız migrate servisi, şemayı kurar). Süper kullanıcı postgres yalnız burada ve db-readonly'de kullanılır.
   db-init:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    platform: linux/amd64
+    image: postgres:18
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - SQLCMDPASSWORD=${MSSQL_SA_PASSWORD}
+      - PGHOST=db
+      - PGUSER=postgres
+      - PGPASSWORD=${POSTGRES_PASSWORD}
       - APP_DB_PASSWORD=${APP_DB_PASSWORD}
       - MIGRATOR_DB_PASSWORD=${MIGRATOR_DB_PASSWORD}
     volumes:
@@ -41,7 +45,7 @@ services:
       context: ./MeetingWeb
     entrypoint: ["dotnet", "run", "--", "migrate"]
     environment:
-      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=briefyn_migrator;Password=${MIGRATOR_DB_PASSWORD};TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=db;Database=briefyn;Username=briefyn_migrator;Password=${MIGRATOR_DB_PASSWORD}
       - EncryptionSettings__KeyV2=${ENCRYPTION_KEY_V2}
     volumes:
       - ./MeetingWeb:/app
@@ -54,13 +58,14 @@ services:
 
   # Salt okunur giriş; tablolar kurulduktan sonra çalışır ki parola sütunlarını kapatabilsin.
   db-readonly:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    platform: linux/amd64
+    image: postgres:18
     depends_on:
       migrate:
         condition: service_completed_successfully
     environment:
-      - SQLCMDPASSWORD=${MSSQL_SA_PASSWORD}
+      - PGHOST=db
+      - PGUSER=postgres
+      - PGPASSWORD=${POSTGRES_PASSWORD}
       - READONLY_DB_PASSWORD=${READONLY_DB_PASSWORD:-}
     volumes:
       - ./db:/db:ro
@@ -78,8 +83,8 @@ services:
       - "8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      # S9a: sa değil, yalnız BriefynDB'ye yetkili kullanıcı.
-      - ConnectionStrings__DefaultConnection=Server=db;Database=BriefynDB;User Id=briefyn_app;Password=${APP_DB_PASSWORD};TrustServerCertificate=True;
+      # S9a: yalnız briefyn veritabanını okuyan/yazan kullanıcı; süper kullanıcı postgres kullanılmaz.
+      - ConnectionStrings__DefaultConnection=Host=db;Database=briefyn;Username=briefyn_app;Password=${APP_DB_PASSWORD}
       # Yapay zekâ hattı web sürecinde (ADR-0018); yazıya dökme ve özet Groq'ta (ZDR Groq panelinden açılır). Anahtar .env'deki GROQ_KEY.
       - GROQ_API_KEY=${GROQ_KEY}
       # Yazıya dökme: boş ya da groq = Groq; azure = yüklenen dosyalar Azure Speech'te (konuşmacı ayırma). Zoom kayıtları her durumda Groq + Zoom'un adları.
@@ -128,4 +133,4 @@ services:
 # KALICI DEPOLAMA ALANLARI (Volumes)
 # ==========================================
 volumes:
-  sql_data:
+  pg_data:

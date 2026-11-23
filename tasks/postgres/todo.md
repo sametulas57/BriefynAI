@@ -64,7 +64,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 3.
   - Dosyalar: `MeetingWeb/MeetingWeb.csproj`, `MeetingWeb/Program.cs`.
 
-- [ ] **Görev 5: Compose, roller ve `.env.example`** (M)
+- [x] **Görev 5: Compose, roller ve `.env.example`** (M)
   - Kabul:
     - `db` resmî `postgres` imajında, sabit ana sürümle (Docker Hub'daki güncel kararlı sürüm, görevde yazılır), `platform` satırı yok. Port `127.0.0.1:5432`, birim `pg_data`.
     - `db-init` (`psql`, idempotent): veritabanı; `briefyn_migrator` (şema sahibi); `briefyn_app`, varsayılan yetkilerle yalnız okur/yazar, Hangfire şeması dahil.
@@ -240,3 +240,45 @@ INSERT INTO "public"."Logs" ("Message", "MessageTemplate", "Level", "TimeStamp",
 - `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~Hangfire|FullyQualifiedName~Log|FullyQualifiedName~PostgresModel"`: ilk denemede test projesinin NuGet erişimi NU1301 ile durdu, testler başlamadı. Ağ ve yerel soket erişimiyle aynı komutun tekrarında **78 başarılı, 0 başarısız, 0 atlanan**. Bu testler yeni Hangfire/Serilog veritabanı hedeflerini çalıştırmıyor (`isTesting`); API, kolon ve adların doğruluğu paket incelemesiyle doğrulandı.
 
 Çalıştırmadım: tam test takımı, `scripts/verify.sh`, ayrı biçim/lint denetimi, gerçek PostgreSQL üzerinde Hangfire kurulumu ve log yazma denemesi. Git komutu çalıştırmadım, `.env` dosyası okumadım, görev kutularını değiştirmedim. `docker-compose.yml`, `db/` ve diğer kapsam dışı dosyalara dokunmadım. Görev 5'in rol/compose kurulumu ve sonraki gerçek PostgreSQL doğrulaması bekliyor.
+
+
+## Görev 5 notu
+
+Değişen dosyalar: `docker-compose.yml`, `db/init-app-user.sh`, `db/init-app-user.sql`, `db/init-readonly-user.sql`, `.env.example` ve bu notun eklendiği `tasks/postgres/todo.md`. Görev kutuları değiştirilmedi.
+
+Veritabanı ve iki kurulum servisi için resmî, Debian tabanlı `postgres:18` seçildi; mimariyi zorlayan satırlar kaldırıldı. Veritabanı konteyneri `briefyn-pg`, yerel port `127.0.0.1:5432:5432`, kalıcı birim `pg_data:/var/lib/postgresql`. PostgreSQL 18 imajı birimi `/var/lib/postgresql` yolunda tanımlar; varsayılan veri dizini `/var/lib/postgresql/18/docker` olur. Kaynak: [resmî imaj belgesi](https://github.com/docker-library/docs/blob/master/postgres/README.md#pgdata) ve [resmî Dockerfile](https://github.com/docker-library/postgres/blob/master/18/trixie/Dockerfile). Denemede Debian **13.7**, PostgreSQL **18.7** ve aynı veri dizini görüldü. ICU desteği, `tr_ci` kuralının migration ile kurulmasıyla doğrulandı.
+
+ADR-0009 ayrımı korundu: yalnız kurulum servisleri süper kullanıcı `postgres` ile bağlanır; `migrate`, `briefyn_migrator` ile şemayı kurar; web, `briefyn_app` ile yalnız veri okur/yazar. Varsayılan yetkiler, sonradan kurulan `hangfire` şemasını, tablolarını ve dizilerini de kapsar. Okuyucu izinleri her başlangıçta tablolardan ve kolonlardan kaldırılıp güncel kolon listesiyle yeniden verilir; tablo düzeyindeki REVOKE tek başına eski kolon izinlerini kaldırmadığı için kolon izinleri de temizlenir.
+
+Adım 5 denemesi gerçek `.env` kullanılmadan, yalnız `/tmp/briefyn-pgtest.env` içindeki rastgele deneme parolaları ve 32 baytlık base64 şifreleme anahtarıyla yapıldı. Compose'un kullandığı diğer değişkenler boş bırakıldı. Okuyucu parolasında hem tek tırnak hem `$` vardı. `docker compose version`: **v5.7.1**; `!override` desteklendi. `/tmp/briefyn-pgtest.override.yml` yalnız veritabanı portunu `127.0.0.1:55432:5432` yaptı. Bütün Compose komutlarında `-p briefynpgtest --env-file /tmp/briefyn-pgtest.env -f docker-compose.yml -f /tmp/briefyn-pgtest.override.yml` kullanıldı.
+
+Çalıştırılan denemeler ve gerçek sonuçları:
+
+- GEÇTİ: `bash -n db/init-app-user.sh` ve `docker compose ... config --quiet`. `rg -n 'sqlcmd|MSSQL|SQL Server|platform:|BriefynDB|sql_data' docker-compose.yml db .env.example` eşleşme bulmadı (çıkış 1).
+- GEÇTİ: ilk dilimde `up -d db db-init`; veritabanı sağlıklı, `db-init` çıkış 0.
+- GEÇTİ: `up --build db db-init migrate db-readonly`; veritabanı sağlıklı, `db-init`, `migrate` ve `db-readonly` çıkış 0. Günlükte `migrate: veritabanı şeması hazır.` görüldü. EF migration ve Hangfire kurulumu tamamlandı. Web başlatılmadı.
+- GEÇTİ: `run --rm db-init` ve `run --rm db-readonly` tekrarları çıkış 0; var olan veritabanı, roller, tablolar ve Hangfire şemasıyla kurulum tekrar çalıştı.
+- GEÇTİ: `run --rm --no-deps -e READONLY_DB_PASSWORD= -e PGHOST=invalid-host.invalid db-readonly` çıkış 0; boş parolada bağlantı kurulmadan işlem bitti.
+- GEÇTİ, beklenen ret: `briefyn_app` ile `CREATE TABLE public.x(i int)` çıkış 1, `ERROR:  permission denied for schema public`.
+- GEÇTİ, beklenen ret: `briefyn_app` ile `CREATE SCHEMA y` çıkış 1, `ERROR:  permission denied for database briefyn`.
+- GEÇTİ: `briefyn_app` ile `SELECT count(*) FROM "AspNetUsers"` sonucu **0**, çıkış 0.
+- GEÇTİ: önce `\d hangfire.counter` ile gerçek kolonlar okundu: `id bigint`, `key text`, `value bigint`, `expireat timestamp with time zone`; `id` bir diziden gelir. `briefyn_app` ile `INSERT INTO hangfire.counter(key, value) VALUES ('t', 1)` sonucu `INSERT 0 1`; ardından aynı satır silindi, dönen değer `t|1`, sonuç `DELETE 1`.
+- GEÇTİ, beklenen ret: `briefyn_okur` ile `AspNetUsers` tablosundaki `PasswordHash`, `SecurityStamp`, `ConcurrencyStamp` kolonlarının her biri ayrı ayrı sorgulandı; her biri çıkış 1, `ERROR:  permission denied for table AspNetUsers`.
+- GEÇTİ: `briefyn_okur` ile `SELECT "Email" FROM "AspNetUsers"` çıkış 0, boş sonuç.
+- GEÇTİ, beklenen ret: `briefyn_okur` ile `SELECT * FROM "AspNetUserTokens"` çıkış 1, `ERROR:  permission denied for table AspNetUserTokens`.
+- GEÇTİ: `briefyn_okur` ile `SELECT count(*) FROM hangfire.job` sonucu **0**, çıkış 0.
+- GEÇTİ, beklenen ret: `briefyn_okur` ile `hangfire.counter` tablosuna INSERT çıkış 1, `ERROR:  permission denied for table counter`.
+- GEÇTİ: `briefyn_migrator` ile `pg_tables.tableowner` denetiminde `public` şemasındaki **22**, `hangfire` şemasındaki **12** tablonun tamamının sahibi `briefyn_migrator`; başka sahipli tablo sayısı **0**.
+- GEÇTİ: `pg_collation` sonucu `tr_ci|i|f` (ICU, deterministik değil); `to_regclass` sonucu `"Logs"`, tablo var.
+- GEÇTİ: üç rolde de superuser, veritabanı kurma ve rol kurma bayrakları `false`. Uygulamanın veritabanında, `public` ve `hangfire` şemalarında CREATE yetkisi yok; sahip olduğu veritabanı/şema/ilişki sayısı **0**. Hangfire dizilerinin tümünde USAGE var.
+- GEÇTİ: ek katalog sorguları bütün tablolarda uygulamanın SELECT/INSERT/UPDATE/DELETE yetkilerini, okuyucunun hiçbir tabloda yazma yetkisi olmadığını ve bütün kolonların okuma izinlerinin yukarıdaki istisnalarla birebir eşleştiğini doğruladı; üç sonuç da `t`.
+
+İlk SQL denemesinde **13/20** kontrol geçti; okuyucuya ait yedi kontrol `FATAL:  password authentication failed for user "briefyn_okur"` ile durdu. Sebep test aracının `docker compose config --format json` çıktısındaki `$` → `$$` kaçışını gerçek parola sanmasıydı. Geçici konteynerin parola uzunluğu ve karakter sayıları karşılaştırıldı; gerçek deneme parolasıyla bağlantı çıkış 0 verdi. Yalnız `/tmp` altındaki test aracı kendi oluşturduğu deneme dosyasını okuyacak şekilde düzeltildi; depo betiklerini değiştirmek gerekmedi. Son koşuda **20/20** kontrol geçti. SQL bağlantıları `-h db` ve her rolün kendi `PGPASSWORD` değeriyle kuruldu; yerel parolasız bağlantı kullanılmadı.
+
+Temizlik GEÇTİ: `docker compose ... down -v --rmi local` çıkış 0; geçici konteynerler, `briefynpgtest_pg_data`, `briefynpgtest_default` ve `briefynpgtest-migrate:latest` kaldırıldı. Ardından `docker ps -a`, `docker volume ls --filter name=briefynpgtest`, `docker network ls --filter name=briefynpgtest` ve `docker image ls --filter 'reference=briefynpgtest*'` geçici kaynak göstermedi; sabit adlı `briefyn-pg` de yok. Oluşturulan sekiz `/tmp` dosyası, deneme env ve override dahil, silindi ve yoklukları denetlendi. Mevcut `briefyn-sql` son listede çalışmaya devam ediyordu; ona ve mevcut yığının kaynaklarına işlem yapılmadı.
+
+Ulaş için, `docker compose up` öncesi:
+
+- Gerçek `.env` dosyasına yeni `POSTGRES_PASSWORD` değişkenini güçlü bir parolayla ekle. Bu parola PostgreSQL süper kullanıcısınındır; bağlantılarda yalnız `db-init` ve `db-readonly` kullanır.
+
+Açık sorun yok. Çalıştırmadım: .NET test takımı, `scripts/verify.sh`, ayrı lint/biçim denetimi ve web/HTTP kontrolleri. Git komutu kullanmadım; gerçek `.env` dosyasını okumadım veya değiştirmedim. .NET kodu, paketler, migration dosyaları, CI, README ve ADR dosyaları değiştirilmedi.
