@@ -10,6 +10,18 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -23,7 +35,25 @@ jobs:
         run: npm ci
       - name: Install ffmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Prepare PostgreSQL roles and schema
+        run: |
+          export APP_DB_PASSWORD="$(openssl rand -hex 24)"
+          export MIGRATOR_DB_PASSWORD="$(openssl rand -hex 24)"
+          export READONLY_DB_PASSWORD="$(openssl rand -hex 24)"
+          docker run --rm --network host -v "$PWD/db:/db:ro" \
+            -e PGHOST=127.0.0.1 -e PGUSER=postgres -e APP_DB_PASSWORD -e MIGRATOR_DB_PASSWORD \
+            -e READONLY_DB_PASSWORD --entrypoint /bin/bash postgres:18 /db/init-app-user.sh
+          (
+            cd MeetingWeb
+            ConnectionStrings__DefaultConnection="Host=127.0.0.1;Database=briefyn;Username=briefyn_migrator" \
+              EncryptionSettings__KeyV2="$(openssl rand -base64 32)" dotnet run -- migrate
+          )
+          docker run --rm --network host -v "$PWD/db:/db:ro" \
+            -e PGHOST=127.0.0.1 -e PGUSER=postgres -e APP_DB_PASSWORD -e MIGRATOR_DB_PASSWORD \
+            -e READONLY_DB_PASSWORD --entrypoint /bin/bash postgres:18 /db/init-app-user.sh readonly
       - run: scripts/verify.sh
+        env:
+          BRIEFYN_PG_TEST: Host=127.0.0.1;Username=postgres;Database=postgres
       - name: Security audit
         run: |
           dotnet list Briefyn.slnx package --vulnerable --include-transitive 2>&1 | tee audit.txt

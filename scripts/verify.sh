@@ -33,4 +33,7 @@ if [ -z "$NET" ] || [ "$NET_KOD" -ne 0 ]; then
 fi
 GECEN=$(printf '%s' "$NET" | sed -nE 's/.*(Başarılı|Passed): *([0-9]+).*/\2/p')
 TOPLAM=$(printf '%s' "$NET" | sed -nE 's/.*(Toplam|Total): *([0-9]+).*/\2/p')
-echo "Doğrulama: GEÇTİ (CSS, biçim · .NET $GECEN/$TOPLAM)"
+ATLANAN=$(printf '%s' "$NET" | sed -nE 's/.*(Atlanan|Atlandı|Skipped): *([0-9]+).*/\2/p')
+ATLANAN_NOTU=""
+if [ "${ATLANAN:-0}" -gt 0 ]; then ATLANAN_NOTU=", $ATLANAN atlandı"; fi
+echo "Doğrulama: GEÇTİ (CSS, biçim · .NET $GECEN/$TOPLAM$ATLANAN_NOTU)"

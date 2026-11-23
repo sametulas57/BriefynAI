@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MeetingWeb.Tests.Infrastructure
 {
-    // Boots the real app in the "Testing" environment against an in-memory SQLite database.
+    // Boots the real app in the "Testing" environment against SQLite or a disposable PostgreSQL database.
     // Each factory instance gets its own database, so test classes never see each other's data.
     public class BriefynFactory : WebApplicationFactory<Program>
     {
@@ -32,6 +32,7 @@ namespace MeetingWeb.Tests.Infrastructure
         public bool ZoomEnabled { get; init; }
         public Dictionary<string, string> ExtraSettings { get; } = new();
         public DbCommandInterceptor? CommandInterceptor { get; init; }
+        public string? PostgresConnectionString { get; init; }
         public IAudioStorage? AudioStorageOverride { get; init; }
         public IEmailService? EmailServiceOverride { get; init; }
         public TimeProvider? TimeProviderOverride { get; init; }
@@ -85,14 +86,15 @@ namespace MeetingWeb.Tests.Infrastructure
 
             builder.ConfigureTestServices(services =>
             {
-                // Swap SQL Server for SQLite (EF Core 9+ also registers an options-configuration service).
+                // Replace the app's database options (EF Core 9+ also registers an options-configuration service).
                 var efDescriptors = services.Where(d =>
                     d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>) ||
                     d.ServiceType == typeof(IDbContextOptionsConfiguration<ApplicationDbContext>)).ToList();
                 foreach (var d in efDescriptors) services.Remove(d);
                 services.AddDbContext<ApplicationDbContext>(o =>
                 {
-                    if (UseFileDatabase) o.UseSqlite(FileConnectionString);
+                    if (PostgresConnectionString != null) o.UseNpgsql(PostgresConnectionString);
+                    else if (UseFileDatabase) o.UseSqlite(FileConnectionString);
                     else o.UseSqlite(_connection);
                     o.AddInterceptors(new UtcDateTimeGuard());
                     if (CommandInterceptor != null) o.AddInterceptors(CommandInterceptor);
@@ -140,8 +142,12 @@ namespace MeetingWeb.Tests.Infrastructure
         {
             using var scope = Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            await db.Database.EnsureCreatedAsync();
-            if (UseFileDatabase) await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+            if (PostgresConnectionString != null) await db.Database.MigrateAsync();
+            else
+            {
+                await db.Database.EnsureCreatedAsync();
+                if (UseFileDatabase) await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+            }
             Seed = await SeedData.CreateAsync(db);
         }
 
