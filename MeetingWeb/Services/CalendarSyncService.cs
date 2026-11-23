@@ -265,7 +265,7 @@ namespace MeetingWeb.Services
             }
             catch (Exception ex)
             {
-                record.UpdatedAtUtc = DateTime.MinValue;
+                record.UpdatedAtUtc = DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
                 await db.SaveChangesAsync();
                 logger.LogError("Takvim daveti gönderilemedi. Görev={ActionItemId}, HataTürü={ErrorType}", record.ActionItemId, ex.GetType().Name);
                 throw;

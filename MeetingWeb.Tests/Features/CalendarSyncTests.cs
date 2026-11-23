@@ -355,7 +355,8 @@ public class CalendarSyncTests
     public async Task Failed_request_releases_claim_and_retries_the_same_sequence()
     {
         var mail = new RecordingEmail { FailNext = 1 }; using var app = await ReadyAsync(mail);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(app));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(app));
+        Assert.StartsWith("Private mail failure:", error.Message);
         var pending = Record(app);
         Assert.True(pending.SendPending);
         Assert.Equal(DateTime.MinValue, pending.UpdatedAtUtc);
@@ -1264,7 +1265,7 @@ public class CalendarSelfServiceTests
     public async Task Resend_after_a_failed_cancellation_raises_the_sequence()
     {
         var mail = new RecordingEmail(); using var app = await ReadyAsync(mail);
-        AddRecord(app, CalendarInviteStatus.Cancelled, pending: true, updated: DateTime.MinValue);
+        AddRecord(app, CalendarInviteStatus.Cancelled, pending: true, updated: DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc));
         await RunAsync(app, force: true);
         var sent = Assert.Single(mail.Sent);
         Assert.Equal((CalendarMethod.Request, 4), (sent.Method, sent.Invite.Sequence));

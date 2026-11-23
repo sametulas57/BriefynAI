@@ -17,7 +17,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
     - ardından `docker cp briefyn-sql:/var/opt/mssql/BriefynDB.bak ~/Yedekler/briefyn-db-<tarih>/`
   - Bağımlılık: yok.
 
-- [ ] **Görev 2: UTC kuralı testle, metin karşılaştıran sorgular listede** (S)
+- [x] **Görev 2: UTC kuralı testle, metin karşılaştıran sorgular listede** (S)
   - Kabul:
     - Bir test, değişen her varlığın `DateTime` alanlarının kayıtta `Kind == Utc` olduğunu SaveChanges üzerinden denetliyor; tam takımda kırılan yer yok ya da düzeltildi.
     - `Services/`, `Pages/`, `Hubs/` ve `Areas/`'ta veritabanına giden metin karşılaştırmaları (`==`, `Contains`, `StartsWith`, `EF.Functions.Like`; değişken ya da kullanıcı girdisiyle) listelenip bu dosyanın sonuna "Görev 2 notu" olarak yazıldı. Her biri için: büyük-küçük harf farkı sonucu değiştirir mi?
@@ -130,3 +130,53 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 - [ ] Spec'in 6 başarı ölçütü tek tek işaretlendi.
 - [ ] Eski `briefynai_sql_data` birimi Ulaş onaylayınca silindi (yedek Görev 1'de).
 - [ ] Ulaş'a hatırlatıldı: `/agent-skills:review postgres geçişi`.
+
+## Görev 2 notu
+
+`MeetingWeb/Data/ApplicationDbContext.cs` içinde yalnız mevcut SQL Server dışı dalda bütün `DateTime` ve `DateTime?` alanlarına yazarken değeri değiştirmeyen, okurken `Kind` değerini UTC yapan dönüştürücü eklendi. SQL Server dalı ve RowVersion davranışı değiştirilmedi. `MeetingWeb.Tests/Infrastructure/UtcDateTimeGuard.cs` eklendi ve `MeetingWeb.Tests/Infrastructure/BriefynFactory.cs` içinde kaydedildi. Koruma hem senkron hem asenkron kayıtta yeni varlığın bütün tarihlerini, güncellenen varlığın yalnız değişmiş tarihlerini denetliyor. `MeetingWeb.Tests/Security/UtcDateTimeTests.cs` yerel ve türü belirtilmemiş tarihlerin reddini, nullable tarih güncellemesini, UTC tarihlerin ayrı bağlamdan UTC okunmasını ve değişmeyen tarihlerin denetlenmemesini sınar. Diğer değişen dosyalar `MeetingWeb/Services/CalendarSyncService.cs`, `MeetingWeb.Tests/Features/CalendarSyncTests.cs` ve bu görev notudur.
+
+UTC olmayan veritabanı yazıcıları: `MeetingWeb/Services/CalendarSyncService.cs:268` gönderim hatasında `UpdatedAtUtc` alanına türü belirtilmemiş `DateTime.MinValue` yazıyordu; aynı tarih UTC olarak işaretlendi. `MeetingWeb.Tests/Features/CalendarSyncTests.cs:1268` başarısız iptal senaryosunda aynı değeri kaydediyordu; test verisi UTC olarak işaretlendi. `MeetingWeb.Tests/Features/CalendarSyncTests.cs:359` asıl posta hatasının koruma hatasıyla örtülmediğini de doğruluyor. Yeniden deneme ve sıra numarası davranışı odaklı takvim testlerinde korunuyor. Başka UTC olmayan model tarihi yazıcısı bulunmadı; SeedData modelin UTC varsayılanlarını, GoldSet açıkça UTC dönüşümünü kullanıyor.
+
+Taramada görülen ama veritabanına yazmayan yerler de incelendi. `MeetingWeb/Services/EmailService.cs:349` içindeki `DateTime.Now.Year` yalnız e-posta metninin yılıdır. `MeetingWeb/Services/ZoomApiClient.cs:251` içindeki varsayılan tarih yalnız kayıt bilgisinde gösterilir; toplantının oluşturulma tarihine yazılmaz. `MeetingWeb/Services/SeriesAgendaService.cs:37` içindeki en küçük tarih bellekte sıralama içindir. `MeetingWeb/Services/ZoomWebhookHandler.cs:104` ayrıştırırken zaten `AdjustToUniversal | AssumeUniversal` kullanır. `MeetingWeb.Tests/Features/UserFacingTests.cs:30` ve `MeetingWeb.Tests/Features/CalendarInviteBuilderTests.cs:220` UTC olmayan değerlerle yalnız biçimlendirmeyi sınar, veritabanına yazmaz. Yeni UTC testindeki `MeetingWeb.Tests/Security/UtcDateTimeTests.cs:31` ve `MeetingWeb.Tests/Security/UtcDateTimeTests.cs:77` kasıtlı reddetme örnekleridir; `MeetingWeb.Tests/Security/UtcDateTimeTests.cs:94` ise değişmeyen bir alanın yazılmadığını sınar. Bunlar UTC'ye çevrilmedi ve koruma gevşetilmedi.
+
+`MeetingWeb/Pages/History.cshtml.cs:78` ve `MeetingWeb/Pages/History.cshtml.cs:84` formdan gelen tarihleri yalnız sorgu sınırı olarak kullanıyor, model alanına yazmıyor. Karar gerek: PostgreSQL geçişinde bu parametrelerin UTC türü ve seçilen günün UTC günü mü Türkiye günü mü olduğu ayrıca ele alınmalı; kullanıcıya gösterilen gün aralığı bu görevde değiştirilmedi.
+
+Metin karşılaştırmaları `Services`, `Pages`, `Hubs` ve `Areas` altında tarandı; `Controllers` klasörü yok. Şifreli alanlar, uygulamanın ürettiği GUID kimlikleri ve bellekte yapılan karşılaştırmalar listeye alınmadı. `Contains`, `StartsWith`, `EndsWith`, `EF.Functions.Like` ve `string.Equals` taraması da yapıldı. Veritabanına giden, bu dışlamalardan sonra kalan karşılaştırmalar aşağıdadır.
+
+`MeetingWeb/Pages/Auth/Register.cshtml.cs:81` telefon numarasının başka hesapta olup olmadığını karşılaştırır. Etkilenmez: giriş doğrulaması yalnız rakam kabul eder, harf yoktur.
+
+`MeetingWeb/Pages/Profile/Index.cshtml.cs:116` telefon numarasının başka hesapta olup olmadığını karşılaştırır. Etkilenmez: giriş doğrulaması yalnız rakam kabul eder, harf yoktur.
+
+`MeetingWeb/Pages/Workspace/Join.cshtml.cs:50` davet jetonunun SHA-256 özetini karşılaştırır. Etkilenmez: hem yazarken hem ararken `WorkspaceInvitation.HashOf` aynı büyük harfli onaltılık gösterimi üretir; kullanıcı jetonunun harfini değiştirmek başka bir özet üretir.
+
+`MeetingWeb/Pages/Workspace/Join.cshtml.cs:82` daveti kullanırken aynı jeton özetini karşılaştırır. Etkilenmez: iki taraf da aynı `HashOf` çıktısıdır.
+
+`MeetingWeb/Services/MeetingSeriesService.cs:164` Zoom toplantı numarasından hesaplanan `ZoomMeetingKey` özetini karşılaştırır. Etkilenmez: yazma ve arama aynı `KeyedHash` yolunu kullanır; çıktı daima küçük harfli onaltılık gösterimdir.
+
+`MeetingWeb/Services/ZoomService.cs:390` içe alınmış kaydın `ExternalRecordingId` değerini arar. Etkilenmez: SQL Server'da bu kolon zaten `Latin1_General_100_BIN2` kullanıyor, kayıt kimliğinin harf farkı bugün de ayrılıyor.
+
+`MeetingWeb/Pages/Zoom/Recordings.cshtml.cs:64` Zoom kayıt kimliklerini `Contains` ile içe alınan kayıtlarla eşleştirir. Etkilenmez: karşılaştırılan `ExternalRecordingId` kolonu SQL Server'da zaten büyük-küçük harf ayırıyor.
+
+`MeetingWeb/Pages/Workspace/Members.cshtml.cs:115` aynı ekipte aynı unvan adının bulunup bulunmadığını karşılaştırır. Karar gerek: PostgreSQL'de örneğin `Yönetici` ile `yönetici` farklı kabul edilebilir. Türkçe I/İ/ı/i eşitlik kuralı ve `(WorkspaceId, Name)` tekil indeksinin aynı kurala göre düzenlenmesi birlikte kararlaştırılmalı. Hazır normalize kolon yok; görünen adı büyük harfe çevirmek kullanıcı metnini değiştirir, normalize kolon ve indeks migration'ı ise bu görevin kapsamı dışındadır. Sorgu tek başına değiştirilmedi.
+
+`MeetingWeb/Services/ZoomService.cs:246` bildirimdeki Zoom kullanıcı kimliğini `ZoomUserId` ile eşleştirir. Karar gerek: bu kolonda açık bir harf karşılaştırma kuralı yok; SQL Server'ın harf farkını yok sayması ile PostgreSQL'in ayırması farklı hesap eşleşmelerine yol açabilir. Dış sistemin verdiği kimliği büyük harfe çevirmek güvenli bir normalleştirme değildir; mevcut eşleşmenin mi yoksa birebir kimlik eşleşmesinin mi korunacağı kararlaştırılmalı.
+
+`MeetingWeb/Services/ZoomWebhookHandler.cs:106` bağlantı kaldırma bildirimindeki Zoom kullanıcı kimliğini karşılaştırır. Karar gerek: `ZoomUserId` için yukarıdaki karar burada da uygulanmalı; hesap bağlantısı silindiği için eşleştirme kuralı varsayılmadı.
+
+`MeetingWeb/Services/OverdueReminderService.cs:26` e-posta alanını null ve boş metinle karşılaştırır. Etkilenmez: başka bir e-posta adresiyle eşleştirme yapılmaz, boşluk kontrolünde harf yoktur.
+
+`MeetingWeb/Services/CalendarSyncService.cs:237` e-posta alanını null ve boş metinle karşılaştırır. Etkilenmez: yalnız adresin varlığı denetlenir, harf karşılaştırması yapılmaz.
+
+`MeetingWeb/Services/AudioCleanupService.cs:40` ses dosyası adını null ile karşılaştırır. Etkilenmez: dosya adı eşleştirmesi yapılmaz.
+
+`MeetingWeb/Services/AudioCleanupService.cs:51` ses dosyası adını null ile karşılaştırır. Etkilenmez: dosya adı eşleştirmesi yapılmaz.
+
+`MeetingWeb/Services/AccountDeletionService.cs:74` ses dosyası adını null ile karşılaştırır. Etkilenmez: yalnız dosya adının varlığı denetlenir.
+
+`MeetingWeb/Pages/Workspace/Members.cshtml.cs:390` ses dosyası adını null ile karşılaştırır. Etkilenmez: yalnız dosya adının varlığı denetlenir.
+
+E-posta araması `MeetingWeb/Pages/Auth/Login.cshtml.cs:69` ve `MeetingWeb/Services/PasswordResetService.cs:56` üzerinden Identity'nin `FindByEmailAsync` yolunu kullanır; normalize Identity alanları bu taramanın dışındadır. Rapor ve gündem alıcılarını seçen `MeetingWeb/Pages/Details.cshtml.cs:528` ile `MeetingWeb/Pages/Series/Show.cshtml.cs:72` karşılaştırmaları veriler okunduktan sonra bellekte `OrdinalIgnoreCase` kullanır. `Hubs` ve `Areas` altında kalan bir veritabanı metin karşılaştırması bulunmadı. Bu görevde metin karşılaştırması düzeltmesi yapılmadı; karar gerektirenler yukarıda açıklandı.
+
+Çalıştırılan odaklı test komutu `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~UtcDateTime"` oldu. İlk sandbox denemesinde test çalıştırıcısının yerel soket açması engellendi; testler başlamadı, geçme sayısı yoktur. Soket izniyle düzeltme öncesi koşuda 0 başarılı ve beklenen 8 başarısız test görüldü. Dönüştürücü ve koruma eklendikten sonra 8 başarılı, 0 başarısız ve 0 atlanan test görüldü. Değişmeyen tarih alanı senaryosu eklendikten sonraki son koşuda 10 başarılı, 0 başarısız ve 0 atlanan test görüldü.
+
+`dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~CalendarSyncTests|FullyQualifiedName~CalendarSelfServiceTests"` komutu UTC koruması açıkken düzeltme öncesi çalıştırıldı; 79 başarılı, UTC ihlallerinden kaynaklanan 4 başarısız ve 0 atlanan test görüldü. `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~CalendarSync|FullyQualifiedName~CalendarSelfServiceTests|FullyQualifiedName~CalendarLossTests|FullyQualifiedName~CalendarSweepTests"` komutu düzeltmeden sonra değişen test dosyasındaki beş sınıfı çalıştırdı; 110 başarılı, 0 başarısız ve 0 atlanan test görüldü. Koşularda NuGet güvenlik açığı kaynağına erişilemediğine dair NU1900 uyarısı vardı; test çalışmasını engellemedi. Tam test takımını ve `scripts/verify.sh` dosyasını çalıştırmadım. Git komutu kullanmadım; görev kutusunu işaretlemedim.
