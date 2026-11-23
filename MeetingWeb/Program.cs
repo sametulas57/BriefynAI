@@ -1,5 +1,6 @@
 using Hangfire;
-using Hangfire.SqlServer;
+using Hangfire.PostgreSql;
+using Hangfire.PostgreSql.Factories;
 using MeetingWeb.Data;
 using MeetingWeb.Models;
 using MeetingWeb.Services;
@@ -8,7 +9,9 @@ using MeetingWeb.Services.ArchiveSearch;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using NpgsqlTypes;
 using Serilog;
+using Serilog.Sinks.PostgreSQL.ColumnWriters;
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
@@ -26,7 +29,7 @@ try
     Log.Information("Uygulama başlatılıyor, servisler yükleniyor...");
     var builder = WebApplication.CreateBuilder(args);
 
-    // Entegrasyon testleri "Testing" ortamında çalışır: SQL Server'a bağlı parçalar (Hangfire, migration, SQL log) atlanır.
+    // Entegrasyon testleri "Testing" ortamında çalışır: veritabanına bağlı parçalar (Hangfire, migration, SQL log) atlanır.
     isTesting = builder.Environment.IsEnvironment("Testing");
 
     // Appsettings.json'dan connection string'i al
@@ -107,7 +110,8 @@ try
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             // ADR-0009: Hangfire tables are installed by the "migrate" step; the app user cannot change the schema.
-            .UseSqlServerStorage(connectionString, new SqlServerStorageOptions { PrepareSchemaIfNecessary = false }));
+            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString),
+                new PostgreSqlStorageOptions { PrepareSchemaIfNecessary = false }));
 
         builder.Services.AddHangfireServer(options =>
         {
@@ -268,13 +272,19 @@ try
     {
         using var scope = app.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
-        // Creating the storage with PrepareSchemaIfNecessary installs (or upgrades) Hangfire's tables.
-        _ = new SqlServerStorage(connectionString, new SqlServerStorageOptions { PrepareSchemaIfNecessary = true });
+        // Creating the storage with PrepareSchemaIfNecessary installs (or upgrades) Hangfire's PostgreSQL schema and tables.
+        // A failed installation must fail the migrate step instead of allowing degraded startup.
+        var storageOptions = new PostgreSqlStorageOptions
+        {
+            PrepareSchemaIfNecessary = true,
+            AllowDegradedModeWithoutStorage = false
+        };
+        _ = new PostgreSqlStorage(new NpgsqlConnectionFactory(connectionString, storageOptions), storageOptions);
         Log.Information("migrate: veritabanı şeması hazır.");
         return;
     }
 
-    // Testler veritabanını kendisi kurar (SQLite, EnsureCreated) ve SQL Server log hedefini kullanmaz.
+    // Testler veritabanını kendisi kurar (SQLite, EnsureCreated) ve veritabanı log hedefini kullanmaz.
     if (!isTesting)
     {
         using (var scope = app.Services.CreateScope())
@@ -287,7 +297,7 @@ try
         }
 
         // Veritabanı KESİN olarak var olduğuna göre Asıl Logger'a geçebiliriz.
-        Log.Information("MSSQL Loglama sistemine geçiş yapılıyor...");
+        Log.Information("Veritabanı loglamasına geçiliyor...");
         Log.CloseAndFlush(); // Geçici logger'ı kapat ve belleği boşalt
 
         // ADR-0009: framework ayrıntısı (istek adresleri ve davet bağlantıları, SQL komutları) yalnız uyarıdan itibaren;
@@ -296,14 +306,22 @@ try
             .ApplyLevels()
             .WriteTo.Console() // Docker terminali için konsol AÇIK kalmalı
             .WriteTo.File("logs/ai-service-log-.txt", rollingInterval: RollingInterval.Day) // Dosya yedeği (senin talebin)
-            .WriteTo.MSSqlServer(
+            .WriteTo.PostgreSQL(
                 connectionString: connectionString,
-                sinkOptions: new Serilog.Sinks.MSSqlServer.MSSqlServerSinkOptions
+                tableName: "Logs",
+                columnOptions: new Dictionary<string, ColumnWriterBase>
                 {
-                    TableName = "Logs",
-                    AutoCreateSqlTable = false
+                    ["Message"] = new RenderedMessageColumnWriter(NpgsqlDbType.Text),
+                    ["MessageTemplate"] = new MessageTemplateColumnWriter(NpgsqlDbType.Text),
+                    ["Level"] = new LevelColumnWriter(renderAsText: true, NpgsqlDbType.Varchar),
+                    ["TimeStamp"] = new TimestampColumnWriter(NpgsqlDbType.TimestampTz),
+                    ["Exception"] = new ExceptionColumnWriter(NpgsqlDbType.Text),
+                    ["Properties"] = new PropertiesColumnWriter(NpgsqlDbType.Text)
                 },
-                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning)
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning,
+                useCopy: false,
+                schemaName: "public",
+                needAutoCreateTable: false)
             .CreateLogger();
     }
     // =========================================================================
