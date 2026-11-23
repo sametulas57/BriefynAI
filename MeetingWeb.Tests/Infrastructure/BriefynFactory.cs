@@ -94,6 +94,7 @@ namespace MeetingWeb.Tests.Infrastructure
                 {
                     if (UseFileDatabase) o.UseSqlite(FileConnectionString);
                     else o.UseSqlite(_connection);
+                    o.AddInterceptors(new UtcDateTimeGuard());
                     if (CommandInterceptor != null) o.AddInterceptors(CommandInterceptor);
                 });
 

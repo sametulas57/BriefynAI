@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MeetingWeb.Models;
 using MeetingWeb.Services.ArchiveSearch;
 
@@ -181,6 +182,17 @@ namespace MeetingWeb.Data
             // same concurrency check runs in tests as on SQL Server.
             if (!Database.IsSqlServer())
             {
+                // SQLite (tests) returns DateTimeKind.Unspecified; PostgreSQL returns Utc, so tests read times the same way.
+                var utcConverter = new ValueConverter<DateTime, DateTime>(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc));
+                foreach (var entityType in builder.Model.GetEntityTypes())
+                {
+                    foreach (var property in entityType.GetProperties())
+                    {
+                        if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                            property.SetValueConverter(utcConverter);
+                    }
+                }
+
                 builder.Entity<Meeting>().Property(x => x.RowVersion).ValueGeneratedNever();
                 builder.Entity<ActionItem>().Property(x => x.RowVersion).ValueGeneratedNever();
                 builder.Entity<CalendarInvite>().Property(x => x.RowVersion).ValueGeneratedNever();
