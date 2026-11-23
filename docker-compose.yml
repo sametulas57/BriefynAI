@@ -80,7 +80,9 @@ services:
       context: ./MeetingWeb
     container_name: briefyn-web
     ports:
-      - "8080:8080"
+      # Varsayılan: yalnız bu bilgisayardan (iOS Simülatörü de bu bilgisayardan sayılır). Gerçek telefonla
+      # ev ağında denemek için .env'de WEB_BIND=0.0.0.0; ortak ağlarda (kafe, okul) açık bırakılmaz.
+      - "${WEB_BIND:-127.0.0.1}:8080:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       # S9a: yalnız briefyn veritabanını okuyan/yazan kullanıcı; süper kullanıcı postgres kullanılmaz.
