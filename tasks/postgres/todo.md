@@ -8,7 +8,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
 
 ## Aşama 0: Hazırlık
 
-- [x] **Görev 1: Eski veritabanının yedeği** (Ulaş, XS) — alındı: `~/Yedekler/briefyn-db-2026-11-23/BriefynDB.bak`, 12 MB, `RESTORE VERIFYONLY` geçti (Ulaş, 2026-11-23)
+- [x] **Görev 1: Eski veritabanının yedeği** (Ulaş, XS) — alındı: `~/Yedekler/briefyn-db-2026-11-23/BriefynDB.bak`, 12 MB (Ulaş, 2026-11-23; `RESTORE VERIFYONLY` çıktısını Claude görmedi)
   - Kabul:
     - `~/Yedekler/briefyn-db-<tarih>/BriefynDB.bak` var;
     - `RESTORE HEADERONLY` yedeği okuyabiliyor.
