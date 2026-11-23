@@ -14,6 +14,7 @@ namespace MeetingWeb.Pages
     [Authorize]
     public class HistoryModel : PageModel
     {
+        private static readonly TimeZoneInfo TurkeyTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul");
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IAudioStorage _audioStorage;
@@ -73,14 +74,18 @@ namespace MeetingWeb.Pages
                 .Where(m => m.WorkspaceId == activeWorkspaceId)
                 .AsQueryable();
 
+            // The selected day is the Turkish calendar day; boundaries must be UTC for PostgreSQL.
             if (StartDate.HasValue)
             {
-                sqlQuery = sqlQuery.Where(m => m.CreatedAtUtc >= StartDate.Value.Date);
+                var startOfSelectedDay = TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(StartDate.Value.Date, DateTimeKind.Unspecified), TurkeyTimeZone);
+                sqlQuery = sqlQuery.Where(m => m.CreatedAtUtc >= startOfSelectedDay);
             }
 
             if (EndDate.HasValue)
             {
-                var endOfSelectedDay = EndDate.Value.Date.AddDays(1);
+                var endOfSelectedDay = TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(EndDate.Value.Date.AddDays(1), DateTimeKind.Unspecified), TurkeyTimeZone);
                 sqlQuery = sqlQuery.Where(m => m.CreatedAtUtc < endOfSelectedDay);
             }
 

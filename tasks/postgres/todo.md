@@ -26,7 +26,7 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: yok. SQL Server'dayken yapılır, davranışı değiştirmez.
   - Dosyalar: `MeetingWeb.Tests/Security/SchemaTests.cs` (ya da yeni `UtcTests.cs`), bulunursa ilgili servis.
 
-- [ ] **Görev 2b: Geçmiş sayfasında tarih filtresi Türkiye günü** (S)
+- [x] **Görev 2b: Geçmiş sayfasında tarih filtresi Türkiye günü** (S)
   - Karar (Ulaş, 2026-11-23): seçilen gün Türkiye saatiyle 00:00-24:00. Bugün UTC günü (Türkiye saatiyle 03:00-03:00) uygulanıyor.
   - Kabul: `History.cshtml.cs:78-84` başlangıç ve bitiş günü `Europe/Istanbul` saat diliminde günün başı olarak alınır, UTC'ye çevrilir (`Kind == Utc`) ve öyle sorgulanır. Gece 00:00-03:00 (Türkiye) arası oluşturulan toplantı o günün filtresinde çıkar, bir önceki günün filtresinde çıkmaz.
   - Doğrula: sınır durumlarını sınayan odaklı test; `verify.sh` (hook).
@@ -189,3 +189,11 @@ E-posta araması `MeetingWeb/Pages/Auth/Login.cshtml.cs:69` ve `MeetingWeb/Servi
 Çalıştırılan odaklı test komutu `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~UtcDateTime"` oldu. İlk sandbox denemesinde test çalıştırıcısının yerel soket açması engellendi; testler başlamadı, geçme sayısı yoktur. Soket izniyle düzeltme öncesi koşuda 0 başarılı ve beklenen 8 başarısız test görüldü. Dönüştürücü ve koruma eklendikten sonra 8 başarılı, 0 başarısız ve 0 atlanan test görüldü. Değişmeyen tarih alanı senaryosu eklendikten sonraki son koşuda 10 başarılı, 0 başarısız ve 0 atlanan test görüldü.
 
 `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~CalendarSyncTests|FullyQualifiedName~CalendarSelfServiceTests"` komutu UTC koruması açıkken düzeltme öncesi çalıştırıldı; 79 başarılı, UTC ihlallerinden kaynaklanan 4 başarısız ve 0 atlanan test görüldü. `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~CalendarSync|FullyQualifiedName~CalendarSelfServiceTests|FullyQualifiedName~CalendarLossTests|FullyQualifiedName~CalendarSweepTests"` komutu düzeltmeden sonra değişen test dosyasındaki beş sınıfı çalıştırdı; 110 başarılı, 0 başarısız ve 0 atlanan test görüldü. Koşularda NuGet güvenlik açığı kaynağına erişilemediğine dair NU1900 uyarısı vardı; test çalışmasını engellemedi. Tam test takımını ve `scripts/verify.sh` dosyasını çalıştırmadım. Git komutu kullanmadım; görev kutusunu işaretlemedim.
+
+## Görev 2b notu
+
+Değişen dosyalar: `MeetingWeb/Pages/History.cshtml.cs`, `MeetingWeb.Tests/Features/HistoryDateFilterTests.cs` ve bu notun eklendiği `tasks/postgres/todo.md`. Geçmiş sayfasında seçilen günün başlangıcı ve ertesi günün başlangıcı `Europe/Istanbul` saat diliminden UTC'ye çevrilerek sorgulanıyor. İki toplantı saati için dört test durumu, toplantının Türkiye gününde göründüğünü ve komşu günde görünmediğini denetliyor.
+
+Çalıştırılan komut: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQualifiedName~History"`. İlk denemede test çalıştırıcısının yerel soket açması engellendi; testler başlamadı. Soket izniyle düzeltme öncesi koşuda 10 başarılı, beklenen 2 başarısız ve 0 atlanan test görüldü. Düzeltme sonrası aynı komutla 12 başarılı, 0 başarısız ve 0 atlanan test görüldü. NuGet güvenlik açığı kaynağına erişilemediği için NU1900 uyarısı vardı; testleri engellemedi.
+
+Tam test takımını ve `scripts/verify.sh` komutunu çalıştırmadım. Git komutu çalıştırmadım; görev kutularını değiştirmedim.
