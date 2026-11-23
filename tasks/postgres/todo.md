@@ -80,19 +80,21 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: 4.
   - Dosyalar: `docker-compose.yml`, `db/init-app-user.sh`, `db/init-app-user.sql`, `db/init-readonly-user.sql`, `.env.example`.
 
-### Kontrol A
-- [ ] `scripts/verify.sh` GEÇTİ.
-- [ ] Spec başarı ölçütü 2: boş birimle açılış, öykünme yok.
-- [ ] Spec başarı ölçütü 3, elle:
-  - kayıt ve giriş;
-  - ekip ve davet;
-  - yükleme ve analiz;
-  - görev;
-  - yorum ve tepki;
-  - şifre sıfırlama;
-  - takvim daveti.
-- [ ] Spec başarı ölçütü 4: iki sekmede aynı görev, ikincisine "başkası değiştirdi".
-- [ ] Spec başarı ölçütü 6: uyarı logu `Logs`'a düşüyor.
+### Kontrol A (2026-11-23, Claude; yerel yığın, boş `pg_data`)
+- [x] `scripts/verify.sh` GEÇTİ (Görev 5 commit'inde, 1730/1730).
+- [x] Spec başarı ölçütü 2: `docker compose up -d --build` boş birimle açıldı; `db-init`, `migrate`, `db-readonly` 0 ile çıktı; `platform` satırı yok, `postgres:18` ARM'de öykünmesiz; `/tr` 200.
+- [ ] Spec başarı ölçütü 3, elle (tarayıcı + `psql` ile veritabanından bakıldı):
+  - [x] kayıt: iki test hesabı (`kontrol-a1@example.test`, `kontrol-a2@example.test`), kişisel alanlar, tarihler `timestamptz` UTC;
+  - [x] ekip ve davet: ekip kuruldu, davet bağlantısıyla ikinci kullanıcı katıldı, davet kullanıldı işaretlendi; "Yönetici" varken "yönetici" eklenemedi ("Bu adda bir unvan zaten var.", `tr_ci`);
+  - [x] yükleme ve analiz: `say` ile üretilen Türkçe ses (m4a, 165 KB) yüklendi; Groq'la ~3 sn'de tamamlandı; 8 madde, 2 görev; ses silindi; Hangfire işi `Succeeded`;
+  - [x] görev: atama ve bitiş tarihi (`DueDate` = 2026-12-15), tamamlama, elle görev ekleme; takvim eşitleme işi `Succeeded` (test hesaplarında takvim daveti kapatıldı, e-posta gitmedi);
+  - [x] yorum ve tepki: yorum ve beğeni yazıldı;
+  - [x] sayfalar: Geçmiş (tarih filtresiyle: 23 Kasım'da toplantı var, 22 Kasım'da yok), Görevlerim, Sor, Seriler 200;
+  - [ ] şifre sıfırlama: denenmedi, gerçek e-posta gönderir (Ulaş);
+  - [ ] takvim daveti e-postası: denenmedi, gerçek e-posta gönderir (Ulaş).
+- [x] Spec başarı ölçütü 4: arayüzden iki sekmeyle tetiklenemiyor (form sürümü taşımıyor; çakışma yalnız aynı isteğin okuma ile yazma arasında olur). Veritabanında gösterildi: aynı eski `xmin` ile ilk UPDATE 1 satır, ikincisi 0 satır (EF'in çakışma saydığı durum). Uygulama yolu Görev 6'da PostgreSQL testiyle sınanır.
+- [x] Spec başarı ölçütü 5 (yerel yığında): `briefyn_app` tablo kuramıyor (`permission denied for schema public`), `briefyn_okur` `AspNetUsers`'ı parola kolonuyla okuyamıyor (`permission denied for table AspNetUsers`), e-postayı okuyabiliyor.
+- [x] Spec başarı ölçütü 6: iki uyarı satırı `Logs`'a düştü (`Level` = Warning, `TimeStamp` UTC). `LogCleanupService` silme yolu denenmedi (30 günlük kayıt yok).
 - [ ] Push; CI yeşil.
 
 ## Aşama 2: Güvence
