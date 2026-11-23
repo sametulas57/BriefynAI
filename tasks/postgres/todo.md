@@ -26,6 +26,13 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
   - Bağımlılık: yok. SQL Server'dayken yapılır, davranışı değiştirmez.
   - Dosyalar: `MeetingWeb.Tests/Security/SchemaTests.cs` (ya da yeni `UtcTests.cs`), bulunursa ilgili servis.
 
+- [ ] **Görev 2b: Geçmiş sayfasında tarih filtresi Türkiye günü** (S)
+  - Karar (Ulaş, 2026-11-23): seçilen gün Türkiye saatiyle 00:00-24:00. Bugün UTC günü (Türkiye saatiyle 03:00-03:00) uygulanıyor.
+  - Kabul: `History.cshtml.cs:78-84` başlangıç ve bitiş günü `Europe/Istanbul` saat diliminde günün başı olarak alınır, UTC'ye çevrilir (`Kind == Utc`) ve öyle sorgulanır. Gece 00:00-03:00 (Türkiye) arası oluşturulan toplantı o günün filtresinde çıkar, bir önceki günün filtresinde çıkmaz.
+  - Doğrula: sınır durumlarını sınayan odaklı test; `verify.sh` (hook).
+  - Bağımlılık: yok (SQL Server'dayken yapılır).
+  - Dosyalar: `MeetingWeb/Pages/History.cshtml.cs`, ilgili test dosyası.
+
 ## Aşama 1: Sağlayıcı değişimi (Kontrol A'ya kadar push yok)
 
 - [ ] **Görev 3: EF sağlayıcısı ve şema PostgreSQL'e** (M-L)
@@ -40,6 +47,8 @@ Odaklı test komutu: `dotnet test MeetingWeb.Tests --nologo --filter "FullyQuali
     - `Logs` tablosu migration'da PostgreSQL ham SQL'iyle, aynı kolonlar ve `IX_Logs_TimeStamp` ile kuruluyor.
     - `LogCleanupService` ham SQL'i çift tırnaklı.
     - `ZoomTests.cs:771` `UseNpgsql("Host=unused")`.
+    - Ekip unvanı (`WorkspaceTitle.Name`) PostgreSQL'de büyük-küçük harf ayırmayan ICU karşılaştırma kuralıyla (nondeterministic collation, `HasCollation` + `UseCollation`, yalnız Npgsql dalında): aynı ekipte "Yönetici" varken "yönetici" eklenemez (Ulaş, 2026-11-23; bugünkü davranış). Görev 6'da PostgreSQL testi.
+    - `ZoomUserId` birebir eşleşir, kod değişmez; ADR-0019'a not (Ulaş, 2026-11-23).
   - Doğrula: tam takım SQLite'ta geçiyor (hook); `dotnet ef migrations script` çıktısında köşeli parantez yok.
   - Bağımlılık: 1, 2.
   - Dosyalar: `MeetingWeb/MeetingWeb.csproj`, `MeetingWeb/Program.cs` (yalnız `UseNpgsql`), `MeetingWeb/Data/ApplicationDbContext.cs`, 4 model, `MeetingWeb/Migrations/*`, `MeetingWeb/Services/LogCleanupService.cs`, `MeetingWeb/Services/SpeakerNamingService.cs` (yorum), `MeetingWeb.Tests/Features/ZoomTests.cs`.
